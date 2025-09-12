@@ -8,8 +8,6 @@ import (
 	cid "github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	dssync "github.com/ipfs/go-datastore/sync"
-	mc "github.com/multiformats/go-multicodec"
-	mh "github.com/multiformats/go-multihash"
 )
 
 type BlockWrapper struct {
@@ -80,23 +78,4 @@ func (s *BlockWrapper) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) 
 
 func (s *BlockWrapper) Delete(ctx context.Context, c cid.Cid) error {
 	return s.Blockstore.DeleteBlock(ctx, c)
-}
-
-func NewV1Prefix(mcType mc.Code, mhType uint64, mhLength int) *cid.Prefix {
-	if mcType == 0 {
-		mcType = mc.Raw
-	}
-	if mhType == 0 {
-		mhType = mh.SHA2_256
-	}
-	if mhLength == 0 {
-		mhLength = -1
-	}
-
-	return &cid.Prefix{
-		Version:  1,
-		Codec:    uint64(mc.Raw),
-		MhType:   mhType,
-		MhLength: mhLength,
-	}
 }
