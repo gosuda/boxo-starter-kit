@@ -81,9 +81,9 @@ func (d *DagWrapper) GetAny(ctx context.Context, c cid.Cid) (any, error) {
 	return NodeToAny(node)
 }
 
-// func (d *DagWrapper) Delete(ctx context.Context, c cid.Cid) (bool, error) {
-// 	return d.Delete(ctx, c)
-// }
+func (d *DagWrapper) Delete(ctx context.Context, c cid.Cid) error {
+	return d.blocks.Delete(ctx, c)
+}
 
 func (d *DagWrapper) ResolvePath(ctx context.Context, root cid.Cid, path string) (datamodel.Node, cid.Cid, error) {
 	cur, err := d.Get(ctx, root)
