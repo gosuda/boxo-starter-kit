@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	block "github.com/gosunuts/boxo-starter-kit/00-block-cid/pkg"
+	persistent "github.com/gosunuts/boxo-starter-kit/01-persistent/pkg"
 	"github.com/ipld/go-ipld-prime/codec"
 	"github.com/ipld/go-ipld-prime/datamodel"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
@@ -17,7 +18,7 @@ import (
 )
 
 type DagWrapper struct {
-	blocks *block.BlockWrapper
+	*persistent.PersistentWrapper
 	prefix *cid.Prefix
 
 	proto datamodel.NodePrototype
@@ -25,7 +26,7 @@ type DagWrapper struct {
 	dec   codec.Decoder
 }
 
-func New(prefix *cid.Prefix) *DagWrapper {
+func New(prefix *cid.Prefix, pType persistent.PersistentType) (*DagWrapper, error) {
 	if prefix == nil {
 		// default to v1, cbor, sha2-256
 		prefix = block.NewV1Prefix(mc.DagCbor, 0, 0)
@@ -33,16 +34,20 @@ func New(prefix *cid.Prefix) *DagWrapper {
 
 	enc, dec, err := GetEncodeFuncs(prefix.Codec)
 	if err != nil {
-		panic(err)
+		return nil, err
+	}
+	blocks, err := persistent.New(pType, "")
+	if err != nil {
+		return nil, err
 	}
 
 	return &DagWrapper{
-		blocks: block.NewInMemory(),
-		prefix: prefix,
-		proto:  basicnode.Prototype.Any,
-		enc:    enc,
-		dec:    dec,
-	}
+		PersistentWrapper: blocks,
+		prefix:            prefix,
+		proto:             basicnode.Prototype.Any,
+		enc:               enc,
+		dec:               dec,
+	}, nil
 }
 
 func (d *DagWrapper) Put(ctx context.Context, node datamodel.Node) (cid.Cid, error) {
@@ -50,7 +55,7 @@ func (d *DagWrapper) Put(ctx context.Context, node datamodel.Node) (cid.Cid, err
 	if err := d.enc(node, &buf); err != nil {
 		return cid.Undef, err
 	}
-	return d.blocks.PutV1Cid(ctx, buf.Bytes(), d.prefix)
+	return d.PersistentWrapper.PutV1Cid(ctx, buf.Bytes(), d.prefix)
 }
 
 func (d *DagWrapper) PutAny(ctx context.Context, data any) (cid.Cid, error) {
@@ -62,7 +67,7 @@ func (d *DagWrapper) PutAny(ctx context.Context, data any) (cid.Cid, error) {
 }
 
 func (d *DagWrapper) Get(ctx context.Context, c cid.Cid) (datamodel.Node, error) {
-	b, err := d.blocks.GetRaw(ctx, c)
+	b, err := d.PersistentWrapper.GetRaw(ctx, c)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +87,7 @@ func (d *DagWrapper) GetAny(ctx context.Context, c cid.Cid) (any, error) {
 }
 
 func (d *DagWrapper) Delete(ctx context.Context, c cid.Cid) error {
-	return d.blocks.Delete(ctx, c)
+	return d.PersistentWrapper.Delete(ctx, c)
 }
 
 func (d *DagWrapper) ResolvePath(ctx context.Context, root cid.Cid, path string) (datamodel.Node, cid.Cid, error) {

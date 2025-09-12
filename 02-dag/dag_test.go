@@ -4,14 +4,16 @@ import (
 	"context"
 	"testing"
 
-	dag "github.com/gosunuts/boxo-starter-kit/01-dag/pkg"
+	persistent "github.com/gosunuts/boxo-starter-kit/01-persistent/pkg"
+	dag "github.com/gosunuts/boxo-starter-kit/02-dag/pkg"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestDagSingle(t *testing.T) {
 	ctx := context.TODO()
-	d := dag.New(nil)
+	d, err := dag.New(nil, persistent.Memory)
+	require.NoError(t, err)
 
 	c1, err := d.PutAny(ctx, map[string]any{"name": "bob", "age": 30})
 	require.NoError(t, err)
@@ -38,7 +40,8 @@ func TestDagSingle(t *testing.T) {
 
 func TestDagNestedLinks(t *testing.T) {
 	ctx := context.TODO()
-	d := dag.New(nil)
+	d, err := dag.New(nil, persistent.Memory)
+	require.NoError(t, err)
 
 	c1, err := d.PutAny(ctx, map[string]any{"name": "bob", "age": 30})
 	require.NoError(t, err)
