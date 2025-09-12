@@ -85,12 +85,7 @@ func TestCidVersion(t *testing.T) {
 
 	t.Run("v1_diff_codec", func(t *testing.T) {
 		// Store using default prefix (v1 + raw + sha2-256)
-		cRaw, err := store.PutV1Cid(ctx, data, &cid.Prefix{
-			Version:  1,
-			Codec:    uint64(0), // will be set to raw in PutV1Cid
-			MhType:   0,         // will be set to sha2-256 in PutV1Cid
-			MhLength: 0,         // default length
-		})
+		cRaw, err := store.PutV1Cid(ctx, data, block.NewV1Prefix(0, 0, 0))
 		require.NoError(t, err)
 
 		// Same multihash, but explicitly labeled as dag-pb instead of raw
@@ -113,12 +108,7 @@ func TestCidVersion(t *testing.T) {
 
 	t.Run("v1_diff_hash", func(t *testing.T) {
 		// Store with default prefix (v1 + raw + sha2-256)
-		cRaw, err := store.PutV1Cid(ctx, data, &cid.Prefix{
-			Version:  1,
-			Codec:    uint64(0), // will be set to raw in PutV1Cid
-			MhType:   0,         // will be set to sha2-256 in PutV1Cid
-			MhLength: 0,         // default length
-		})
+		cRaw, err := store.PutV1Cid(ctx, data, block.NewV1Prefix(0, 0, 0))
 		require.NoError(t, err)
 
 		// Build a CID with BLAKE3 hash instead of SHA2-256
@@ -134,12 +124,7 @@ func TestCidVersion(t *testing.T) {
 		require.Error(t, err, "not found until we Put the BLAKE3-identified block")
 
 		// Now put it explicitly with BLAKE3
-		cB3Put, err := store.PutV1Cid(ctx, data, &cid.Prefix{
-			Version:  1,
-			Codec:    uint64(0), // will be set to raw in PutV1Cid
-			MhType:   mh.BLAKE3, // use BLAKE3
-			MhLength: 0,         // default length
-		})
+		cB3Put, err := store.PutV1Cid(ctx, data, block.NewV1Prefix(0, mh.BLAKE3, 32))
 		require.NoError(t, err)
 		assert.Equal(t, cB3, cB3Put, "same prefix + hash → same CID")
 

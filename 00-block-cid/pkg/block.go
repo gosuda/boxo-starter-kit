@@ -12,43 +12,34 @@ import (
 	mh "github.com/multiformats/go-multihash"
 )
 
-type Store struct {
-	bs blockstore.Blockstore
+type BlockWrapper struct {
+	blockstore.Blockstore
 }
 
-func NewInMemory() *Store {
+func NewInMemory() *BlockWrapper {
 	mds := dssync.MutexWrap(ds.NewMapDatastore())
 	return New(mds)
 }
 
-func New(ds ds.Batching, opts ...blockstore.Option) *Store {
+func New(ds ds.Batching, opts ...blockstore.Option) *BlockWrapper {
 	bs := blockstore.NewBlockstore(ds, opts...)
-	return &Store{bs: bs}
+	return &BlockWrapper{Blockstore: bs}
 }
 
-func (s *Store) Put(ctx context.Context, data []byte) (cid.Cid, error) {
+func (s *BlockWrapper) Put(ctx context.Context, data []byte) (cid.Cid, error) {
 	blk := blockformat.NewBlock(data)
-	if err := s.bs.Put(ctx, blk); err != nil {
+	if err := s.Blockstore.Put(ctx, blk); err != nil {
 		return cid.Undef, err
 	}
 
 	return blk.Cid(), nil
 }
 
-func (s *Store) PutV1Cid(ctx context.Context, data []byte, prefix *cid.Prefix) (cid.Cid, error) {
-	if prefix.Version != 0 {
-		prefix.Version = 1
+func (s *BlockWrapper) PutV1Cid(ctx context.Context, data []byte, prefix *cid.Prefix) (cid.Cid, error) {
+	if prefix == nil {
+		// default to v1, raw, sha2-256
+		prefix = NewV1Prefix(0, 0, 0)
 	}
-	if prefix.Codec == 0 {
-		prefix.Codec = uint64(mc.Raw)
-	}
-	if prefix.MhType == 0 {
-		prefix.MhType = mh.SHA2_256
-	}
-	if prefix.MhLength == 0 {
-		prefix.MhLength = -1
-	}
-
 	c, err := prefix.Sum(data)
 	if err != nil {
 		return cid.Undef, err
@@ -57,21 +48,21 @@ func (s *Store) PutV1Cid(ctx context.Context, data []byte, prefix *cid.Prefix) (
 	if err != nil {
 		return cid.Undef, err
 	}
-	if err := s.bs.Put(ctx, blk); err != nil {
+	if err := s.Blockstore.Put(ctx, blk); err != nil {
 		return cid.Undef, err
 	}
 	return blk.Cid(), nil
 }
 
-func (s *Store) Has(ctx context.Context, c cid.Cid) (bool, error) {
-	return s.bs.Has(ctx, c)
+func (s *BlockWrapper) Has(ctx context.Context, c cid.Cid) (bool, error) {
+	return s.Blockstore.Has(ctx, c)
 }
 
-func (s *Store) Get(ctx context.Context, c cid.Cid) (blockformat.Block, error) {
-	return s.bs.Get(ctx, c)
+func (s *BlockWrapper) Get(ctx context.Context, c cid.Cid) (blockformat.Block, error) {
+	return s.Blockstore.Get(ctx, c)
 }
 
-func (s *Store) GetRaw(ctx context.Context, c cid.Cid) ([]byte, error) {
+func (s *BlockWrapper) GetRaw(ctx context.Context, c cid.Cid) ([]byte, error) {
 	blk, err := s.Get(ctx, c)
 	if err != nil {
 		return nil, err
@@ -79,14 +70,33 @@ func (s *Store) GetRaw(ctx context.Context, c cid.Cid) ([]byte, error) {
 	return blk.RawData(), nil
 }
 
-func (s *Store) GetSize(ctx context.Context, c cid.Cid) (int, error) {
-	return s.bs.GetSize(ctx, c)
+func (s *BlockWrapper) GetSize(ctx context.Context, c cid.Cid) (int, error) {
+	return s.Blockstore.GetSize(ctx, c)
 }
 
-func (s *Store) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
-	return s.bs.AllKeysChan(ctx)
+func (s *BlockWrapper) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
+	return s.Blockstore.AllKeysChan(ctx)
 }
 
-func (s *Store) Delete(ctx context.Context, c cid.Cid) error {
-	return s.bs.DeleteBlock(ctx, c)
+func (s *BlockWrapper) Delete(ctx context.Context, c cid.Cid) error {
+	return s.Blockstore.DeleteBlock(ctx, c)
+}
+
+func NewV1Prefix(mcType mc.Code, mhType uint64, mhLength int) *cid.Prefix {
+	if mcType == 0 {
+		mcType = mc.Raw
+	}
+	if mhType == 0 {
+		mhType = mh.SHA2_256
+	}
+	if mhLength == 0 {
+		mhLength = -1
+	}
+
+	return &cid.Prefix{
+		Version:  1,
+		Codec:    uint64(mc.Raw),
+		MhType:   mhType,
+		MhLength: mhLength,
+	}
 }
