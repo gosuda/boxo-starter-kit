@@ -20,6 +20,7 @@ require (
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
 	github.com/DataDog/zstd v1.5.6-0.20230824185856-869dae002e5e // indirect
 	github.com/Jorropo/jsync v1.0.1 // indirect
+	github.com/alecthomas/units v0.0.0-20240927000941-0f3dac36c52b // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -47,6 +48,7 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/ipfs/bbloom v0.0.4 // indirect
+	github.com/ipfs/go-bitfield v1.1.0 // indirect
 	github.com/ipfs/go-ipld-legacy v0.2.2 // indirect
 	github.com/ipfs/go-log/v2 v2.8.1 // indirect
 	github.com/ipfs/go-metrics-interface v0.3.0 // indirect
@@ -87,6 +89,7 @@ require (
 	golang.org/x/crypto v0.41.0 // indirect
 	golang.org/x/exp v0.0.0-20250813145105-42675adae3e6 // indirect
 	golang.org/x/net v0.43.0 // indirect
+	golang.org/x/sync v0.16.0 // indirect
 	golang.org/x/sys v0.35.0 // indirect
 	golang.org/x/text v0.28.0 // indirect
 	google.golang.org/protobuf v1.36.7 // indirect
