@@ -51,9 +51,9 @@ func (u *UnixFsWrapper) Put(ctx context.Context, node files.Node) (cid.Cid, erro
 
 }
 func (u *UnixFsWrapper) putFile(ctx context.Context, file files.File) (cid.Cid, error) {
-	size, err := file.Size()
-	if err != nil {
-		return cid.Undef, err
+	size, _ := file.Size()
+	if size <= 0 {
+		size = u.defaultChunkSize
 	}
 	splitter := chunk.NewSizeSplitter(file, GetChunkSize(int(size), u.defaultChunkSize))
 
@@ -63,42 +63,46 @@ func (u *UnixFsWrapper) putFile(ctx context.Context, file files.File) (cid.Cid, 
 	}
 	return nd.Cid(), nil
 }
-
 func (u *UnixFsWrapper) putDir(ctx context.Context, d files.Directory) (cid.Cid, error) {
 	root := ufs.EmptyDirNode()
 
-	it := d.Entries()
-	var ents []struct {
+	type child struct {
 		name string
-		node files.Node
+		cid  cid.Cid
 	}
-	for it.Next() {
-		ents = append(ents, struct {
-			name string
-			node files.Node
-		}{name: it.Name(), node: it.Node()})
-	}
-	if err := it.Err(); err != nil {
-		return cid.Undef, err
-	}
-	sort.Slice(ents, func(i, j int) bool { return ents[i].name < ents[j].name })
+	var children []child
 
-	for _, e := range ents {
+	it := d.Entries()
+	for it.Next() {
 		select {
 		case <-ctx.Done():
 			return cid.Undef, ctx.Err()
 		default:
 		}
-		childCid, err := u.Put(ctx, e.node)
+
+		name := it.Name()
+		n := it.Node()
+
+		childCid, err := u.Put(ctx, n)
+		_ = n.Close()
 		if err != nil {
-			return cid.Undef, fmt.Errorf("put child %q: %w", e.name, err)
+			return cid.Undef, fmt.Errorf("put child %q: %w", name, err)
 		}
-		childNode, err := u.DagWrapper.Get(ctx, childCid)
+		children = append(children, child{name: name, cid: childCid})
+	}
+	if err := it.Err(); err != nil {
+		return cid.Undef, err
+	}
+
+	sort.Slice(children, func(i, j int) bool { return children[i].name < children[j].name })
+
+	for _, c := range children {
+		childNode, err := u.DagWrapper.Get(ctx, c.cid)
 		if err != nil {
-			return cid.Undef, fmt.Errorf("get child %q (%s): %w", e.name, childCid, err)
+			return cid.Undef, fmt.Errorf("get child %q (%s): %w", c.name, c.cid, err)
 		}
-		if err := root.AddNodeLink(e.name, childNode); err != nil {
-			return cid.Undef, fmt.Errorf("add link %q: %w", e.name, err)
+		if err := root.AddNodeLink(c.name, childNode); err != nil {
+			return cid.Undef, fmt.Errorf("add link %q: %w", c.name, err)
 		}
 	}
 
@@ -125,7 +129,6 @@ func (u *UnixFsWrapper) PutPath(ctx context.Context, path string) (cid.Cid, erro
 		if err != nil {
 			return cid.Undef, fmt.Errorf("open %q: %w", path, err)
 		}
-		defer f.Close()
 		node = files.NewReaderFile(f)
 	} else { // put directory
 		node, err = files.NewSerialFile(path, false, info)
@@ -133,6 +136,7 @@ func (u *UnixFsWrapper) PutPath(ctx context.Context, path string) (cid.Cid, erro
 			return cid.Undef, fmt.Errorf("new serial file %q: %w", path, err)
 		}
 	}
+	defer node.Close()
 
 	return u.Put(ctx, node)
 }
@@ -209,10 +213,13 @@ func (u *UnixFsWrapper) writeDirToPath(ctx context.Context, dir files.Directory,
 		subPath := filepath.Join(dstPath, name)
 
 		var err error
-		if subNode.Mode().IsDir() {
-			err = u.writeDirToPath(ctx, subNode.(files.Directory), subPath)
-		} else {
-			err = u.writeFileToPath(subNode.(files.File), subPath)
+		switch n := subNode.(type) {
+		case files.Directory:
+			err = u.writeDirToPath(ctx, n, subPath)
+		case files.File:
+			err = u.writeFileToPath(n, subPath)
+		default:
+			err = fmt.Errorf("unsupported node type %T for %q", n, name)
 		}
 		if err != nil {
 			return err
