@@ -33,6 +33,14 @@ func (s *BlockWrapper) Put(ctx context.Context, data []byte) (cid.Cid, error) {
 	return blk.Cid(), nil
 }
 
+func (s *BlockWrapper) PutWithCID(ctx context.Context, data []byte, c cid.Cid) error {
+	blk, err := blockformat.NewBlockWithCid(data, c)
+	if err != nil {
+		return err
+	}
+	return s.Blockstore.Put(ctx, blk)
+}
+
 func (s *BlockWrapper) PutV1Cid(ctx context.Context, data []byte, prefix *cid.Prefix) (cid.Cid, error) {
 	if prefix == nil {
 		// default to v1, raw, sha2-256
@@ -42,14 +50,11 @@ func (s *BlockWrapper) PutV1Cid(ctx context.Context, data []byte, prefix *cid.Pr
 	if err != nil {
 		return cid.Undef, err
 	}
-	blk, err := blockformat.NewBlockWithCid(data, c)
+	err = s.PutWithCID(ctx, data, c)
 	if err != nil {
 		return cid.Undef, err
 	}
-	if err := s.Blockstore.Put(ctx, blk); err != nil {
-		return cid.Undef, err
-	}
-	return blk.Cid(), nil
+	return c, nil
 }
 
 func (s *BlockWrapper) Has(ctx context.Context, c cid.Cid) (bool, error) {

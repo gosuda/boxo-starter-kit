@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDagSingle(t *testing.T) {
+func TestDagIPLDSingle(t *testing.T) {
 	ctx := context.TODO()
 	d, err := dag.New(nil, persistent.Memory)
 	require.NoError(t, err)
@@ -29,7 +29,7 @@ func TestDagSingle(t *testing.T) {
 	assert.Equal(t, map[string]any{"name": "bob", "age": int64(30)}, m, "data must match original")
 
 	// get node and lookup
-	n, err := d.Get(ctx, c1)
+	n, err := d.GetIPLD(ctx, c1)
 	require.NoError(t, err)
 	name, err := n.LookupByString("name")
 	require.NoError(t, err)
@@ -38,7 +38,7 @@ func TestDagSingle(t *testing.T) {
 	assert.Equal(t, "bob", ns, "name must be 'bob'")
 }
 
-func TestDagNestedLinks(t *testing.T) {
+func TestDagIPLDNestedLinks(t *testing.T) {
 	ctx := context.TODO()
 	d, err := dag.New(nil, persistent.Memory)
 	require.NoError(t, err)
