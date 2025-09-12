@@ -69,6 +69,8 @@ func (d *DagWrapper) Get(ctx context.Context, c cid.Cid) (format.Node, error) {
 		return merkledag.DecodeProtobufBlock(blk)
 	case uint64(mc.Raw):
 		return merkledag.DecodeRawBlock(blk)
+		// intentionally unsupported in DAGService: use GetIPLD() for general IPLD (dag-cbor).
+		// case uint64(mc.DagCbor):
 	}
 	return nil, fmt.Errorf("unsupported codec in DAGService.Get: %s", mc.Code(c.Prefix().Codec).String())
 }

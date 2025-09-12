@@ -6,6 +6,7 @@ import (
 
 	persistent "github.com/gosunuts/boxo-starter-kit/01-persistent/pkg"
 	dag "github.com/gosunuts/boxo-starter-kit/02-dag/pkg"
+	"github.com/ipfs/boxo/ipld/merkledag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -70,4 +71,28 @@ func TestDagIPLDNestedLinks(t *testing.T) {
 	assert.True(t, resolved3.Equals(c1), "resolved remains c1 at leaf value access")
 	s, _ := n3.AsString()
 	assert.Equal(t, "bob", s)
+}
+
+func TestDagServiceAddGet(t *testing.T) {
+	ctx := context.TODO()
+	d, err := dag.New(nil, persistent.Memory)
+	require.NoError(t, err)
+
+	// make a dag-pb node
+	pn := merkledag.NodeWithData([]byte("hello dag-pb"))
+	err = d.Add(ctx, pn)
+	require.NoError(t, err)
+
+	// get back
+	got, err := d.Get(ctx, pn.Cid())
+	require.NoError(t, err)
+	assert.Equal(t, pn.Cid(), got.Cid())
+	assert.Equal(t, pn.RawData(), got.RawData())
+
+	// clean up
+	err = d.Delete(ctx, pn.Cid())
+	require.NoError(t, err)
+
+	_, err = d.Get(ctx, pn.Cid())
+	assert.Error(t, err, "must error after delete")
 }
