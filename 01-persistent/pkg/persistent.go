@@ -69,3 +69,8 @@ func New(ptype PersistentType, path string) (*PersistentWrapper, error) {
 func (p *PersistentWrapper) Close() error {
 	return p.batching.Close()
 }
+
+// Datastore returns the underlying datastore for advanced usage
+func (p *PersistentWrapper) Datastore() ds.Datastore {
+	return p.batching
+}
