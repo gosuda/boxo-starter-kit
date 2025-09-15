@@ -8,8 +8,8 @@ import (
 	"io"
 	"time"
 
-	shell "github.com/ipfs/go-ipfs-api"
 	"github.com/ipfs/go-cid"
+	shell "github.com/ipfs/go-ipfs-api"
 )
 
 // KuboAPI wraps the IPFS HTTP API client
@@ -233,7 +233,7 @@ func (k *KuboAPI) GarbageCollect(ctx context.Context) (*GCResult, error) {
 	}
 
 	return &GCResult{
-		RemovedKeys: removedKeys,
+		RemovedKeys:  removedKeys,
 		TotalRemoved: len(removedKeys),
 	}, nil
 }

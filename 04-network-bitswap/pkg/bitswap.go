@@ -26,8 +26,8 @@ type BitswapNode struct {
 
 	// Statistics
 	stats struct {
-		mutex         sync.RWMutex
-		BlocksSent    int64 `json:"blocks_sent"`
+		mutex          sync.RWMutex
+		BlocksSent     int64 `json:"blocks_sent"`
 		BlocksReceived int64 `json:"blocks_received"`
 		PeersConnected int   `json:"peers_connected"`
 		WantListSize   int   `json:"want_list_size"`
@@ -36,7 +36,7 @@ type BitswapNode struct {
 
 // NodeConfig configures a bitswap node
 type NodeConfig struct {
-	ListenAddrs []string // Addresses to listen on (e.g., "/ip4/0.0.0.0/tcp/0")
+	ListenAddrs    []string // Addresses to listen on (e.g., "/ip4/0.0.0.0/tcp/0")
 	BootstrapPeers []string // Bootstrap peer addresses
 }
 

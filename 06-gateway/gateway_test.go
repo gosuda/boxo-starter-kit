@@ -150,8 +150,8 @@ func TestGateway(t *testing.T) {
 
 	t.Run("Content Type Detection", func(t *testing.T) {
 		testCases := []struct {
-			filename    string
-			expectedCT  string
+			filename   string
+			expectedCT string
 		}{
 			{"test.html", "text/html"},
 			{"test.css", "text/css"},
@@ -322,7 +322,7 @@ func TestHTMLTemplateLogic(t *testing.T) {
 		rootCID := "QmTest123"
 
 		testCases := []struct {
-			subPath      string
+			subPath        string
 			expectedParent string
 		}{
 			{"", ""},

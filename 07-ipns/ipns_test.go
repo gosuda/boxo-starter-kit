@@ -30,7 +30,7 @@ func TestIPNSManager(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotEmpty(t, peerID.String(), "Peer ID should not be empty")
 		assert.True(t, strings.HasPrefix(peerID.String(), "12D3KooW") ||
-			         strings.HasPrefix(peerID.String(), "Qm"), "Peer ID should have valid format")
+			strings.HasPrefix(peerID.String(), "Qm"), "Peer ID should have valid format")
 	})
 
 	t.Run("IPNS Publishing", func(t *testing.T) {

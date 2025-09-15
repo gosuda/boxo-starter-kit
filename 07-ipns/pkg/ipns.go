@@ -26,13 +26,13 @@ type IPNSManager struct {
 
 // IPNSRecord represents an IPNS record with metadata
 type IPNSRecord struct {
-	Name       string    `json:"name"`        // IPNS name (peer ID)
-	Value      string    `json:"value"`       // CID or path this name points to
-	CreatedAt  time.Time `json:"created_at"`  // When record was created
-	UpdatedAt  time.Time `json:"updated_at"`  // Last update time
-	TTL        uint64    `json:"ttl"`         // Time to live in seconds
-	Sequence   uint64    `json:"sequence"`    // Sequence number for updates
-	PrivateKey crypto.PrivKey `json:"-"`      // Private key (not exported)
+	Name       string         `json:"name"`       // IPNS name (peer ID)
+	Value      string         `json:"value"`      // CID or path this name points to
+	CreatedAt  time.Time      `json:"created_at"` // When record was created
+	UpdatedAt  time.Time      `json:"updated_at"` // Last update time
+	TTL        uint64         `json:"ttl"`        // Time to live in seconds
+	Sequence   uint64         `json:"sequence"`   // Sequence number for updates
+	PrivateKey crypto.PrivKey `json:"-"`          // Private key (not exported)
 }
 
 // NewIPNSManager creates a new IPNS manager

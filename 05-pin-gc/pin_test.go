@@ -28,7 +28,7 @@ func TestPinManager(t *testing.T) {
 	t.Run("Pin and Unpin Operations", func(t *testing.T) {
 		// Create test content
 		testData := map[string]any{
-			"test": "data",
+			"test":   "data",
 			"number": 42,
 		}
 

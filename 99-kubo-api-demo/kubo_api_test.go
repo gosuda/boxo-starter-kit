@@ -60,7 +60,7 @@ func TestKuboAPIOffline(t *testing.T) {
 	t.Run("CID Parsing", func(t *testing.T) {
 		// Test valid CID parsing
 		validCIDs := []string{
-			"QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG", // CIDv0
+			"QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG",              // CIDv0
 			"bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi", // CIDv1
 		}
 

@@ -185,7 +185,7 @@ func createSampleContent(ctx context.Context, dagWrapper *dag.DagWrapper) []cid.
 			"data":        make([]byte, 2048), // Some binary data
 		},
 		{
-			"type":    "cache",
+			"type": "cache",
 			"entries": []map[string]any{
 				{"key": "cache1", "value": "data1"},
 				{"key": "cache2", "value": "data2"},

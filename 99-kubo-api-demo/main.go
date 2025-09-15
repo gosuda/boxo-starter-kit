@@ -71,10 +71,10 @@ func main() {
 
 	// Add sample files
 	files := map[string][]byte{
-		"hello.txt":    []byte("Hello from Kubo API Demo!"),
-		"readme.md":    []byte("# IPFS Demo\n\nThis file was added via the Kubo HTTP API."),
-		"data.json":    []byte(`{"message": "IPFS rocks!", "timestamp": "` + time.Now().Format(time.RFC3339) + `"}`),
-		"script.py":    []byte("#!/usr/bin/env python3\nprint('Hello from IPFS!')"),
+		"hello.txt": []byte("Hello from Kubo API Demo!"),
+		"readme.md": []byte("# IPFS Demo\n\nThis file was added via the Kubo HTTP API."),
+		"data.json": []byte(`{"message": "IPFS rocks!", "timestamp": "` + time.Now().Format(time.RFC3339) + `"}`),
+		"script.py": []byte("#!/usr/bin/env python3\nprint('Hello from IPFS!')"),
 	}
 
 	addedFiles := make(map[string]string) // filename -> CID
