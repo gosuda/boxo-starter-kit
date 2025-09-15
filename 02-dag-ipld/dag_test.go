@@ -4,11 +4,12 @@ import (
 	"context"
 	"testing"
 
-	persistent "github.com/gosunuts/boxo-starter-kit/01-persistent/pkg"
-	dag "github.com/gosunuts/boxo-starter-kit/02-dag-ipld/pkg"
 	"github.com/ipfs/boxo/ipld/merkledag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	persistent "github.com/gosuda/boxo-starter-kit/01-persistent/pkg"
+	dag "github.com/gosuda/boxo-starter-kit/02-dag-ipld/pkg"
 )
 
 func TestDagServiceAddGet(t *testing.T) {

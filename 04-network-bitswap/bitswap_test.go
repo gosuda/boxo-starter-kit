@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	dag "github.com/gosunuts/boxo-starter-kit/02-dag-ipld/pkg"
-	"github.com/gosunuts/boxo-starter-kit/04-network-bitswap/pkg"
+	dag "github.com/gosuda/boxo-starter-kit/02-dag-ipld/pkg"
+	bitswap "github.com/gosuda/boxo-starter-kit/04-network-bitswap/pkg"
 )
 
 func TestBitswapNode(t *testing.T) {

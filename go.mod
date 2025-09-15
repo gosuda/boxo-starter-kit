@@ -1,4 +1,4 @@
-module github.com/gosunuts/boxo-starter-kit
+module github.com/gosuda/boxo-starter-kit
 
 go 1.25.0
 

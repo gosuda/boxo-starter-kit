@@ -791,8 +791,8 @@ import (
     "fmt"
     "os"
 
-    bitswap "github.com/gosunuts/boxo-starter-kit/04-network-bitswap/pkg"
-    dag "github.com/gosunuts/boxo-starter-kit/02-dag-ipld/pkg"
+    bitswap "github.com/gosuda/boxo-starter-kit/04-network-bitswap/pkg"
+    dag "github.com/gosuda/boxo-starter-kit/02-dag-ipld/pkg"
 )
 
 // 파일을 P2P 네트워크에 공유

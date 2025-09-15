@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	kubo_api "github.com/gosunuts/boxo-starter-kit/99-kubo-api-demo/pkg"
+	kubo_api "github.com/gosuda/boxo-starter-kit/99-kubo-api-demo/pkg"
 )
 
 func TestKuboAPIOffline(t *testing.T) {

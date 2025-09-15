@@ -939,8 +939,8 @@ import (
     "context"
     "time"
 
-    pin "github.com/gosunuts/boxo-starter-kit/05-pin-gc/pkg"
-    dag "github.com/gosunuts/boxo-starter-kit/02-dag-ipld/pkg"
+    pin "github.com/gosuda/boxo-starter-kit/05-pin-gc/pkg"
+    dag "github.com/gosuda/boxo-starter-kit/02-dag-ipld/pkg"
 )
 
 // 자동으로 콘텐츠를 Pin하고 관리하는 시스템

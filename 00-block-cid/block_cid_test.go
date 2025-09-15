@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	block "github.com/gosunuts/boxo-starter-kit/00-block-cid/pkg"
+	block "github.com/gosuda/boxo-starter-kit/00-block-cid/pkg"
 )
 
 func TestBlockStore(t *testing.T) {

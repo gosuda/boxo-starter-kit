@@ -15,8 +15,8 @@ import (
 	"github.com/ipld/go-ipld-prime/node/basicnode"
 	mc "github.com/multiformats/go-multicodec"
 
-	block "github.com/gosunuts/boxo-starter-kit/00-block-cid/pkg"
-	persistent "github.com/gosunuts/boxo-starter-kit/01-persistent/pkg"
+	block "github.com/gosuda/boxo-starter-kit/00-block-cid/pkg"
+	persistent "github.com/gosuda/boxo-starter-kit/01-persistent/pkg"
 )
 
 var _ format.DAGService = (*DagWrapper)(nil)

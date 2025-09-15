@@ -9,7 +9,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 
-	kubo_api "github.com/gosunuts/boxo-starter-kit/99-kubo-api-demo/pkg"
+	kubo_api "github.com/gosuda/boxo-starter-kit/99-kubo-api-demo/pkg"
 )
 
 // Helper function to parse CID

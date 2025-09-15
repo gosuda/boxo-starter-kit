@@ -16,7 +16,7 @@ import (
 	"github.com/ipfs/boxo/ipld/unixfs/importer"
 	"github.com/ipfs/go-cid"
 
-	dag "github.com/gosunuts/boxo-starter-kit/02-dag-ipld/pkg"
+	dag "github.com/gosuda/boxo-starter-kit/02-dag-ipld/pkg"
 )
 
 type UnixFsWrapper struct {

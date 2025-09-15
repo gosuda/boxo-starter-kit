@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	unixfs "github.com/gosunuts/boxo-starter-kit/03-unixfs/pkg"
+	unixfs "github.com/gosuda/boxo-starter-kit/03-unixfs/pkg"
 )
 
 func TestUnixFsBytes(t *testing.T) {

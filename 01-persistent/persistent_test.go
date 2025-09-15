@@ -5,9 +5,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	persistent "github.com/gosunuts/boxo-starter-kit/01-persistent/pkg"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	persistent "github.com/gosuda/boxo-starter-kit/01-persistent/pkg"
 )
 
 func TestPersistentBackends(t *testing.T) {

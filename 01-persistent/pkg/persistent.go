@@ -9,7 +9,7 @@ import (
 	badgerds "github.com/ipfs/go-ds-badger"
 	pebbleds "github.com/ipfs/go-ds-pebble"
 
-	block "github.com/gosunuts/boxo-starter-kit/00-block-cid/pkg"
+	block "github.com/gosuda/boxo-starter-kit/00-block-cid/pkg"
 )
 
 type PersistentType string

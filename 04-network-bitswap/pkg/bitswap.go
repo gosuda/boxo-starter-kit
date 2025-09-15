@@ -11,7 +11,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
 
-	dag "github.com/gosunuts/boxo-starter-kit/02-dag-ipld/pkg"
+	dag "github.com/gosuda/boxo-starter-kit/02-dag-ipld/pkg"
 )
 
 // BitswapNode represents a simplified IPFS node with block exchange capability
