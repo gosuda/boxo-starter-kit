@@ -57,7 +57,7 @@ func TestGateway(t *testing.T) {
 	t.Run("Raw Content Storage and Retrieval", func(t *testing.T) {
 		// Store test content
 		testData := []byte("Hello, Gateway World!")
-		testCID, err := dagWrapper.PersistentWrapper.Put(ctx, testData)
+		testCID, err := dagWrapper.PersistentWrapper.PutRaw(ctx, testData)
 		require.NoError(t, err)
 
 		// Verify content exists
@@ -212,7 +212,7 @@ func TestGatewayAPI(t *testing.T) {
 	t.Run("API Object Stat Simulation", func(t *testing.T) {
 		// Store test content
 		testData := []byte("Test data for object stat")
-		testCID, err := dagWrapper.PersistentWrapper.Put(ctx, testData)
+		testCID, err := dagWrapper.PersistentWrapper.PutRaw(ctx, testData)
 		require.NoError(t, err)
 
 		// Simulate object stat response

@@ -30,7 +30,7 @@ func TestPersistentBackends(t *testing.T) {
 		require.NoError(t, err, "must construct persistent wrapper")
 
 		// Put
-		c, err := pw.Put(ctx, data)
+		c, err := pw.PutRaw(ctx, data)
 		require.NoError(t, err)
 
 		// Has
@@ -56,7 +56,7 @@ func TestPersistentBackends(t *testing.T) {
 		require.NoError(t, err)
 		assert.False(t, ok, "Has must be false after Delete")
 
-		c2, err := pw.Put(ctx, data)
+		c2, err := pw.PutRaw(ctx, data)
 		require.NoError(t, err)
 		assert.True(t, c.Equals(c2), "same bytes → deterministic CID")
 

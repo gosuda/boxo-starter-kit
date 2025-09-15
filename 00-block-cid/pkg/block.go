@@ -5,10 +5,13 @@ import (
 
 	blockstore "github.com/ipfs/boxo/blockstore"
 	blockformat "github.com/ipfs/go-block-format"
+	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	dssync "github.com/ipfs/go-datastore/sync"
 )
+
+var _ blockstore.Blockstore = (*BlockWrapper)(nil)
 
 type BlockWrapper struct {
 	blockstore.Blockstore
@@ -24,7 +27,11 @@ func New(ds ds.Batching, opts ...blockstore.Option) *BlockWrapper {
 	return &BlockWrapper{Blockstore: bs}
 }
 
-func (s *BlockWrapper) Put(ctx context.Context, data []byte) (cid.Cid, error) {
+func (s *BlockWrapper) Put(ctx context.Context, b blocks.Block) error {
+	return s.Blockstore.Put(ctx, b)
+}
+
+func (s *BlockWrapper) PutRaw(ctx context.Context, data []byte) (cid.Cid, error) {
 	blk := blockformat.NewBlock(data)
 	if err := s.Blockstore.Put(ctx, blk); err != nil {
 		return cid.Undef, err

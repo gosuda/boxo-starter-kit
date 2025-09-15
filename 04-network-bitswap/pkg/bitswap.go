@@ -153,7 +153,7 @@ func (n *BitswapNode) PutBlock(ctx context.Context, data []byte) (cid.Cid, error
 	}
 
 	// Store block in local storage
-	c, err := n.dagWrapper.PersistentWrapper.Put(ctx, data)
+	c, err := n.dagWrapper.PersistentWrapper.PutRaw(ctx, data)
 	if err != nil {
 		return cid.Undef, fmt.Errorf("failed to store block: %w", err)
 	}

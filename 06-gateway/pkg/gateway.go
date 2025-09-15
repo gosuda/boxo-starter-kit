@@ -540,7 +540,7 @@ func (g *Gateway) handleAPIAdd(w http.ResponseWriter, r *http.Request) {
 		fileNode := files.NewReaderFile(fileReader)
 		c, err = g.unixfsSystem.Put(ctx, fileNode)
 	} else {
-		c, err = g.dagWrapper.PersistentWrapper.Put(ctx, data)
+		c, err = g.dagWrapper.PersistentWrapper.PutRaw(ctx, data)
 	}
 
 	if err != nil {

@@ -38,6 +38,7 @@ require (
 	github.com/cockroachdb/swiss v0.0.0-20250624142022-d6e517c1d961 // indirect
 	github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06 // indirect
 	github.com/crackcomm/go-gitignore v0.0.0-20241020182519-7843d2ba8fdf // indirect
+	github.com/cskr/pubsub v1.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/davidlazar/go-crypto v0.0.0-20200604182044-b73af7476f6c // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.0 // indirect
@@ -47,6 +48,7 @@ require (
 	github.com/filecoin-project/go-clock v0.1.0 // indirect
 	github.com/flynn/noise v1.1.0 // indirect
 	github.com/francoispqt/gojay v1.2.13 // indirect
+	github.com/gammazero/chanqueue v1.1.1 // indirect
 	github.com/gammazero/deque v1.1.0 // indirect
 	github.com/getsentry/sentry-go v0.27.0 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
@@ -61,9 +63,12 @@ require (
 	github.com/huin/goupnp v1.3.0 // indirect
 	github.com/ipfs/bbloom v0.0.4 // indirect
 	github.com/ipfs/go-bitfield v1.1.0 // indirect
+	github.com/ipfs/go-ipfs-delay v0.0.1 // indirect
+	github.com/ipfs/go-ipfs-pq v0.0.3 // indirect
 	github.com/ipfs/go-ipld-legacy v0.2.2 // indirect
 	github.com/ipfs/go-log/v2 v2.8.1 // indirect
 	github.com/ipfs/go-metrics-interface v0.3.0 // indirect
+	github.com/ipfs/go-peertaskqueue v0.8.2 // indirect
 	github.com/ipld/go-codec-dagpb v1.7.0 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
 	github.com/jbenet/go-temp-err-catcher v0.1.0 // indirect

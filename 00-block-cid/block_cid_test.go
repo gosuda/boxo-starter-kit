@@ -36,7 +36,7 @@ func TestBlockStore(t *testing.T) {
 		ctx := context.TODO()
 		s := block.NewInMemory()
 
-		c, err := s.Put(ctx, test.data)
+		c, err := s.PutRaw(ctx, test.data)
 		require.NoError(t, err, "Put should not error", test.name)
 
 		ok, err := s.Has(ctx, c)
@@ -58,7 +58,7 @@ func TestBlockStore(t *testing.T) {
 		require.NoError(t, err)
 		assert.False(t, ok, "Has must be false after Delete", test.name)
 
-		c2, err := s.Put(ctx, test.data)
+		c2, err := s.PutRaw(ctx, test.data)
 		require.NoError(t, err, "Put should not error", test.name)
 		assert.Equal(t, c, c2, "Put the same data must return the deterministic CID", test.name)
 	}
@@ -70,9 +70,9 @@ func TestCidVersion(t *testing.T) {
 	data := []byte("cid version demo data")
 
 	t.Run("v0_legacy", func(t *testing.T) {
-		c0, err := store.Put(ctx, data)
+		c0, err := store.PutRaw(ctx, data)
 		require.NoError(t, err)
-		c0b, err := store.Put(ctx, data)
+		c0b, err := store.PutRaw(ctx, data)
 		require.NoError(t, err)
 
 		// CIDv0 must always be identical for the same input bytes
@@ -147,10 +147,9 @@ func TestAllKeysChan(t *testing.T) {
 
 	var cids []cid.Cid
 	for _, d := range data {
-		c, err := store.Put(ctx, d)
+		c, err := store.PutRaw(ctx, d)
 		require.NoError(t, err)
 		cids = append(cids, c)
-
 	}
 
 	ch, err := store.AllKeysChan(ctx)
