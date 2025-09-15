@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ipfs/boxo/bitswap"
+	bnet "github.com/ipfs/boxo/bitswap/network"
 	bsnet "github.com/ipfs/boxo/bitswap/network/bsnet"
 	"github.com/ipfs/boxo/exchange"
 	blocks "github.com/ipfs/go-block-format"
@@ -42,6 +43,7 @@ func New(ctx context.Context, host *network.HostWrapper, persistentWrapper *pers
 	}
 
 	bsnet := bsnet.NewFromIpfsHost(host)
+	bsnet = bnet.New(nil, bsnet, nil)
 	bswap := bitswap.New(ctx, bsnet, nil, persistentWrapper,
 		bitswap.SetSendDontHaves(true),
 		bitswap.ProviderSearchDelay(time.Second*5),
