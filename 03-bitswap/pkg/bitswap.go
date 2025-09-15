@@ -3,6 +3,7 @@ package bitswap
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/ipfs/boxo/bitswap"
 	bsnet "github.com/ipfs/boxo/bitswap/network/bsnet"
@@ -19,12 +20,13 @@ var _ exchange.Interface = (*BitswapWrapper)(nil)
 // BitswapWrapper represents a simplified IPFS node with block exchange capability
 // This is an educational implementation focusing on core P2P concepts
 type BitswapWrapper struct {
-	persistentWrapper *persistent.PersistentWrapper
+	*network.HostWrapper
+	*persistent.PersistentWrapper
 	*bitswap.Bitswap
 }
 
-// NewBitswapNode creates a new simplified bitswap node for educational purposes
-func NewBitswapNode(ctx context.Context, host *network.HostWrapper, persistentWrapper *persistent.PersistentWrapper) (*BitswapWrapper, error) {
+// New creates a new simplified bitswap node for educational purposes
+func New(ctx context.Context, host *network.HostWrapper, persistentWrapper *persistent.PersistentWrapper) (*BitswapWrapper, error) {
 	var err error
 	if host == nil {
 		host, err = network.New(nil)
@@ -32,13 +34,23 @@ func NewBitswapNode(ctx context.Context, host *network.HostWrapper, persistentWr
 			return nil, fmt.Errorf("failed to create libp2p host: %w", err)
 		}
 	}
+	if persistentWrapper == nil {
+		persistentWrapper, err = persistent.New(persistent.Memory, "")
+		if err != nil {
+			return nil, fmt.Errorf("failed to create persistent storage: %w", err)
+		}
+	}
 
 	bsnet := bsnet.NewFromIpfsHost(host)
-	bswap := bitswap.New(ctx, bsnet, nil, persistentWrapper)
+	bswap := bitswap.New(ctx, bsnet, nil, persistentWrapper,
+		bitswap.SetSendDontHaves(true),
+		bitswap.ProviderSearchDelay(time.Second*5),
+	)
 
 	node := &BitswapWrapper{
+		HostWrapper:       host,
+		PersistentWrapper: persistentWrapper,
 		Bitswap:           bswap,
-		persistentWrapper: persistentWrapper,
 	}
 
 	return node, nil
@@ -48,8 +60,8 @@ func (b *BitswapWrapper) Close() error {
 	if err := b.Bitswap.Close(); err != nil {
 		return err
 	}
-	if b.persistentWrapper != nil {
-		return b.persistentWrapper.Close()
+	if b.PersistentWrapper != nil {
+		return b.PersistentWrapper.Close()
 	}
 	return nil
 }
@@ -59,7 +71,7 @@ func (b *BitswapWrapper) PutBlockRaw(ctx context.Context, data []byte) (cid.Cid,
 		return cid.Undef, fmt.Errorf("empty data")
 	}
 
-	c, err := b.persistentWrapper.PutRaw(ctx, data)
+	c, err := b.PersistentWrapper.PutRaw(ctx, data)
 	if err != nil {
 		return cid.Undef, fmt.Errorf("failed to store block: %w", err)
 	}
@@ -82,7 +94,7 @@ func (b *BitswapWrapper) GetBlock(ctx context.Context, c cid.Cid) (blocks.Block,
 }
 
 func (b *BitswapWrapper) GetBlockRaw(ctx context.Context, c cid.Cid) ([]byte, error) {
-	block, err := b.Bitswap.GetBlock(ctx, c)
+	block, err := b.GetBlock(ctx, c)
 	if err != nil {
 		return nil, err
 	}

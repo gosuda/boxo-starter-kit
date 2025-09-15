@@ -149,22 +149,23 @@ func (h *HostWrapper) GetFullAddresses() []multiaddr.Multiaddr {
 }
 
 // ConnectToPeer connects to another bitswap node
-func (h *HostWrapper) ConnectToPeer(ctx context.Context, addr multiaddr.Multiaddr) error {
+func (h *HostWrapper) ConnectToPeer(ctx context.Context, addrs ...multiaddr.Multiaddr) error {
 	// Extract peer info from multiaddr
-	info, err := peer.AddrInfoFromP2pAddr(addr)
-	if err != nil {
-		return fmt.Errorf("failed to parse peer address: %w", err)
+	for _, addr := range addrs {
+		info, err := peer.AddrInfoFromP2pAddr(addr)
+		if err != nil {
+			return fmt.Errorf("failed to parse peer address: %w", err)
+		}
+
+		// Connect to peer
+		err = h.Host.Connect(ctx, *info)
+		if err != nil {
+			return fmt.Errorf("failed to connect to peer %s: %w", info.ID, err)
+		}
+
+		// Update stats
+		h.peers = append(h.peers, *info)
 	}
-
-	// Connect to peer
-	err = h.Host.Connect(ctx, *info)
-	if err != nil {
-		return fmt.Errorf("failed to connect to peer %s: %w", info.ID, err)
-	}
-
-	// Update stats
-	h.peers = append(h.peers, *info)
-
 	return nil
 }
 
