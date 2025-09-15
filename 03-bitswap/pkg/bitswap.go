@@ -9,11 +9,9 @@ import (
 	"github.com/ipfs/boxo/exchange"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/multiformats/go-multiaddr"
 
 	persistent "github.com/gosuda/boxo-starter-kit/01-persistent/pkg"
+	network "github.com/gosuda/boxo-starter-kit/02-network/pkg"
 )
 
 var _ exchange.Interface = (*BitswapWrapper)(nil)
@@ -26,13 +24,10 @@ type BitswapWrapper struct {
 }
 
 // NewBitswapNode creates a new simplified bitswap node for educational purposes
-func NewBitswapNode(ctx context.Context, host host.Host, persistentWrapper *persistent.PersistentWrapper) (*BitswapWrapper, error) {
+func NewBitswapNode(ctx context.Context, host *network.HostWrapper, persistentWrapper *persistent.PersistentWrapper) (*BitswapWrapper, error) {
 	var err error
 	if host == nil {
-		host, err = libp2p.New(
-			libp2p.ListenAddrs([]multiaddr.Multiaddr{multiaddr.StringCast("/ip4/0.0.0.0/tcp/0")}...),
-			libp2p.EnableRelay(), // Enable relay for NAT traversal
-		)
+		host, err = network.New(nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create libp2p host: %w", err)
 		}
