@@ -8,7 +8,6 @@ import (
 
 	"github.com/ipfs/go-cid"
 
-	dag "github.com/gosuda/boxo-starter-kit/02-dag-ipld/pkg"
 	bitswap "github.com/gosuda/boxo-starter-kit/04-network-bitswap/pkg"
 )
 
@@ -21,33 +20,18 @@ func main() {
 	// Demo 1: Create two bitswap nodes
 	fmt.Println("\n1. Creating bitswap nodes:")
 
-	// Create DAG wrappers for both nodes
-	dagWrapper1, err := dag.New(nil, "")
-	if err != nil {
-		log.Fatalf("Failed to create DAG wrapper 1: %v", err)
-	}
-	defer dagWrapper1.Close()
-
-	dagWrapper2, err := dag.New(nil, "")
-	if err != nil {
-		log.Fatalf("Failed to create DAG wrapper 2: %v", err)
-	}
-	defer dagWrapper2.Close()
-
 	// Create bitswap nodes
-	config1 := bitswap.NodeConfig{
+	node1, err := bitswap.NewBitswapNode(nil, &bitswap.NodeConfig{
 		ListenAddrs: []string{"/ip4/127.0.0.1/tcp/0"},
-	}
-	node1, err := bitswap.NewBitswapNode(ctx, dagWrapper1, config1)
+	})
 	if err != nil {
 		log.Fatalf("Failed to create bitswap node 1: %v", err)
 	}
 	defer node1.Close()
 
-	config2 := bitswap.NodeConfig{
+	node2, err := bitswap.NewBitswapNode(nil, &bitswap.NodeConfig{
 		ListenAddrs: []string{"/ip4/127.0.0.1/tcp/0"},
-	}
-	node2, err := bitswap.NewBitswapNode(ctx, dagWrapper2, config2)
+	})
 	if err != nil {
 		log.Fatalf("Failed to create bitswap node 2: %v", err)
 	}

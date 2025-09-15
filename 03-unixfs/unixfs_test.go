@@ -13,7 +13,7 @@ import (
 
 func TestUnixFsBytes(t *testing.T) {
 	ctx := context.TODO()
-	ufs, err := unixfs.New(0)
+	ufs, err := unixfs.New(0, nil)
 	require.NoError(t, err)
 
 	input := []byte("hello unixfs")
@@ -27,7 +27,7 @@ func TestUnixFsBytes(t *testing.T) {
 
 func TestUnixFsFiles(t *testing.T) {
 	ctx := context.TODO()
-	ufs, err := unixfs.New(0)
+	ufs, err := unixfs.New(0, nil)
 	require.NoError(t, err)
 
 	tmp := t.TempDir()
@@ -55,7 +55,7 @@ func TestUnixFsFiles(t *testing.T) {
 
 func TestUnixFsDirs(t *testing.T) {
 	ctx := context.TODO()
-	ufs, err := unixfs.New(0)
+	ufs, err := unixfs.New(0, nil)
 	require.NoError(t, err)
 
 	tmp := t.TempDir()

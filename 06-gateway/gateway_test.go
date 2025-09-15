@@ -30,7 +30,7 @@ func TestGateway(t *testing.T) {
 	require.NoError(t, err)
 	defer dagWrapper.Close()
 
-	unixfsSystem, err := unixfs.New(256 * 1024)
+	unixfsSystem, err := unixfs.New(256*1024, nil)
 	require.NoError(t, err)
 	defer unixfsSystem.Close()
 
@@ -181,7 +181,7 @@ func TestGatewayAPI(t *testing.T) {
 	require.NoError(t, err)
 	defer dagWrapper.Close()
 
-	unixfsSystem, err := unixfs.New(256 * 1024)
+	unixfsSystem, err := unixfs.New(256*1024, nil)
 	require.NoError(t, err)
 	defer unixfsSystem.Close()
 

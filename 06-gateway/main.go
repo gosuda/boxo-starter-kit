@@ -33,7 +33,7 @@ func main() {
 	defer dagWrapper.Close()
 
 	// Create UnixFS system
-	unixfsSystem, err := unixfs.New(256 * 1024) // 256KB chunks
+	unixfsSystem, err := unixfs.New(256*1024, nil) // 256KB chunks
 	if err != nil {
 		log.Fatalf("Failed to create UnixFS system: %v", err)
 	}

@@ -18,16 +18,10 @@ func TestBitswapNode(t *testing.T) {
 	defer cancel()
 
 	t.Run("Node Creation", func(t *testing.T) {
-		// Create DAG wrapper
-		dagWrapper, err := dag.New(nil, "")
-		require.NoError(t, err)
-		defer dagWrapper.Close()
-
 		// Create bitswap node
-		config := bitswap.NodeConfig{
+		node, err := bitswap.NewBitswapNode(nil, &bitswap.NodeConfig{
 			ListenAddrs: []string{"/ip4/127.0.0.1/tcp/0"},
-		}
-		node, err := bitswap.NewBitswapNode(ctx, dagWrapper, config)
+		})
 		require.NoError(t, err)
 		defer node.Close()
 
@@ -43,19 +37,12 @@ func TestBitswapNode(t *testing.T) {
 	})
 
 	t.Run("Block Storage and Retrieval", func(t *testing.T) {
-		// Create DAG wrapper
-		dagWrapper, err := dag.New(nil, "")
-		require.NoError(t, err)
-		defer dagWrapper.Close()
-
 		// Create bitswap node
-		config := bitswap.NodeConfig{
+		node, err := bitswap.NewBitswapNode(nil, &bitswap.NodeConfig{
 			ListenAddrs: []string{"/ip4/127.0.0.1/tcp/0"},
-		}
-		node, err := bitswap.NewBitswapNode(ctx, dagWrapper, config)
+		})
 		require.NoError(t, err)
 		defer node.Close()
-
 		// Store a block
 		testData := []byte("Test block data for bitswap")
 		cid, err := node.PutBlock(ctx, testData)
@@ -75,26 +62,16 @@ func TestBitswapNode(t *testing.T) {
 
 	t.Run("Two Node Connection", func(t *testing.T) {
 		// Create first node
-		dagWrapper1, err := dag.New(nil, "")
-		require.NoError(t, err)
-		defer dagWrapper1.Close()
-
-		config1 := bitswap.NodeConfig{
+		node1, err := bitswap.NewBitswapNode(nil, &bitswap.NodeConfig{
 			ListenAddrs: []string{"/ip4/127.0.0.1/tcp/0"},
-		}
-		node1, err := bitswap.NewBitswapNode(ctx, dagWrapper1, config1)
+		})
 		require.NoError(t, err)
 		defer node1.Close()
 
 		// Create second node
-		dagWrapper2, err := dag.New(nil, "")
-		require.NoError(t, err)
-		defer dagWrapper2.Close()
-
-		config2 := bitswap.NodeConfig{
+		node2, err := bitswap.NewBitswapNode(nil, &bitswap.NodeConfig{
 			ListenAddrs: []string{"/ip4/127.0.0.1/tcp/0"},
-		}
-		node2, err := bitswap.NewBitswapNode(ctx, dagWrapper2, config2)
+		})
 		require.NoError(t, err)
 		defer node2.Close()
 
@@ -119,18 +96,16 @@ func TestBitswapNode(t *testing.T) {
 
 	t.Run("Error Handling", func(t *testing.T) {
 		// Test with nil DAG wrapper
-		_, err := bitswap.NewBitswapNode(ctx, nil, bitswap.NodeConfig{})
+		_, err := bitswap.NewBitswapNode(nil, &bitswap.NodeConfig{})
 		assert.Error(t, err, "Should fail with nil DAG wrapper")
 
 		// Create valid node for other error tests
 		dagWrapper, err := dag.New(nil, "")
 		require.NoError(t, err)
 		defer dagWrapper.Close()
-
-		config := bitswap.NodeConfig{
+		node, err := bitswap.NewBitswapNode(dagWrapper, &bitswap.NodeConfig{
 			ListenAddrs: []string{"/ip4/127.0.0.1/tcp/0"},
-		}
-		node, err := bitswap.NewBitswapNode(ctx, dagWrapper, config)
+		})
 		require.NoError(t, err)
 		defer node.Close()
 
@@ -144,16 +119,10 @@ func TestBitswapNode(t *testing.T) {
 	})
 
 	t.Run("Statistics Tracking", func(t *testing.T) {
-		// Create DAG wrapper
-		dagWrapper, err := dag.New(nil, "")
-		require.NoError(t, err)
-		defer dagWrapper.Close()
-
 		// Create bitswap node
-		config := bitswap.NodeConfig{
+		node, err := bitswap.NewBitswapNode(nil, &bitswap.NodeConfig{
 			ListenAddrs: []string{"/ip4/127.0.0.1/tcp/0"},
-		}
-		node, err := bitswap.NewBitswapNode(ctx, dagWrapper, config)
+		})
 		require.NoError(t, err)
 		defer node.Close()
 
@@ -180,17 +149,9 @@ func TestBitswapNode(t *testing.T) {
 }
 
 func TestBitswapNodeConfig(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
 	t.Run("Default Configuration", func(t *testing.T) {
-		dagWrapper, err := dag.New(nil, "")
-		require.NoError(t, err)
-		defer dagWrapper.Close()
-
 		// Test with empty config (should use defaults)
-		config := bitswap.NodeConfig{}
-		node, err := bitswap.NewBitswapNode(ctx, dagWrapper, config)
+		node, err := bitswap.NewBitswapNode(nil, &bitswap.NodeConfig{})
 		require.NoError(t, err)
 		defer node.Close()
 
@@ -199,17 +160,12 @@ func TestBitswapNodeConfig(t *testing.T) {
 	})
 
 	t.Run("Custom Listen Addresses", func(t *testing.T) {
-		dagWrapper, err := dag.New(nil, "")
-		require.NoError(t, err)
-		defer dagWrapper.Close()
-
-		config := bitswap.NodeConfig{
+		node, err := bitswap.NewBitswapNode(nil, &bitswap.NodeConfig{
 			ListenAddrs: []string{
 				"/ip4/127.0.0.1/tcp/0",
 				"/ip6/::1/tcp/0",
 			},
-		}
-		node, err := bitswap.NewBitswapNode(ctx, dagWrapper, config)
+		})
 		require.NoError(t, err)
 		defer node.Close()
 
@@ -218,14 +174,9 @@ func TestBitswapNodeConfig(t *testing.T) {
 	})
 
 	t.Run("Invalid Listen Address", func(t *testing.T) {
-		dagWrapper, err := dag.New(nil, "")
-		require.NoError(t, err)
-		defer dagWrapper.Close()
-
-		config := bitswap.NodeConfig{
+		_, err := bitswap.NewBitswapNode(nil, &bitswap.NodeConfig{
 			ListenAddrs: []string{"invalid-address"},
-		}
-		_, err = bitswap.NewBitswapNode(ctx, dagWrapper, config)
+		})
 		assert.Error(t, err, "Should fail with invalid address")
 	})
 }

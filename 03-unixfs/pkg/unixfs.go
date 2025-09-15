@@ -24,9 +24,16 @@ type UnixFsWrapper struct {
 	*dag.DagWrapper
 }
 
-func New(defaultChunkSize int64) (*UnixFsWrapper, error) {
+func New(defaultChunkSize int64, dagWrapper *dag.DagWrapper) (*UnixFsWrapper, error) {
+	var err error
 	if defaultChunkSize <= 0 {
 		defaultChunkSize = 1024 * 256
+	}
+	if dagWrapper == nil {
+		dagWrapper, err = dag.New(nil, "")
+		if err != nil {
+			return nil, fmt.Errorf("failed to create DAG wrapper: %w", err)
+		}
 	}
 
 	dag, err := dag.New(nil, "")
@@ -48,8 +55,8 @@ func (u *UnixFsWrapper) Put(ctx context.Context, node files.Node) (cid.Cid, erro
 	default:
 		return cid.Undef, fmt.Errorf("unsupported node type %T", v)
 	}
-
 }
+
 func (u *UnixFsWrapper) putFile(ctx context.Context, file files.File) (cid.Cid, error) {
 	size, _ := file.Size()
 	if size <= 0 {
@@ -63,6 +70,7 @@ func (u *UnixFsWrapper) putFile(ctx context.Context, file files.File) (cid.Cid, 
 	}
 	return nd.Cid(), nil
 }
+
 func (u *UnixFsWrapper) putDir(ctx context.Context, d files.Directory) (cid.Cid, error) {
 	root := ufs.EmptyDirNode()
 
@@ -208,8 +216,15 @@ func (u *UnixFsWrapper) writeDirToPath(ctx context.Context, dir files.Directory,
 
 	entries := dir.Entries()
 	for entries.Next() {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
 		name := entries.Name()
 		subNode := entries.Node()
+		defer subNode.Close()
 		subPath := filepath.Join(dstPath, name)
 
 		var err error

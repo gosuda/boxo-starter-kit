@@ -41,9 +41,14 @@ type NodeConfig struct {
 }
 
 // NewBitswapNode creates a new simplified bitswap node for educational purposes
-func NewBitswapNode(ctx context.Context, dagWrapper *dag.DagWrapper, config NodeConfig) (*BitswapNode, error) {
+func NewBitswapNode(dagWrapper *dag.DagWrapper, config *NodeConfig) (*BitswapNode, error) {
+	var err error
 	if dagWrapper == nil {
-		return nil, fmt.Errorf("dag wrapper cannot be nil")
+		dagWrapper, err = dag.New(nil, "")
+		if err != nil {
+			return nil, fmt.Errorf("failed to create DAG wrapper: %w", err)
+		}
+
 	}
 
 	// Create libp2p host with default configuration
@@ -213,6 +218,9 @@ type BitswapStats struct {
 func (n *BitswapNode) Close() error {
 	if n.host != nil {
 		return n.host.Close()
+	}
+	if n.dagWrapper != nil {
+		return n.dagWrapper.Close()
 	}
 	return nil
 }
