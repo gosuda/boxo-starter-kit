@@ -1,62 +1,62 @@
-# 05-pin-gc: 데이터 생명주기 관리와 가비지 컬렉션
+# 05-pin-gc: Data Lifecycle Management and Garbage Collection
 
-## 🎯 학습 목표
+## 🎯 Learning Objectives
 
-이 모듈을 통해 다음을 학습할 수 있습니다:
-- **Pin(핀)**의 개념과 데이터 영속성 보장 방법
-- **가비지 컬렉션(GC)**의 원리와 디스크 공간 관리
-- **Pin 타입**의 종류와 각각의 사용 시나리오
-- **데이터 생명주기** 관리 전략과 자동화
-- **스토리지 최적화** 기법과 성능 튜닝
-- **Pin 정책** 설계와 실무 적용 방안
+Through this module, you will learn:
+- The concept of **Pin** and methods to ensure data persistence
+- Principles of **Garbage Collection (GC)** and disk space management
+- Types of **Pin types** and their usage scenarios
+- **Data lifecycle** management strategies and automation
+- **Storage optimization** techniques and performance tuning
+- **Pin policy** design and practical implementation approaches
 
-## 📋 사전 요구사항
+## 📋 Prerequisites
 
-- **00-block-cid** 모듈 완료 (Block과 CID 이해)
-- **01-persistent** 모듈 완료 (데이터 영속성 이해)
-- **02-dag-ipld** 모듈 완료 (DAG와 연결된 데이터)
-- **03-unixfs** 모듈 완료 (파일 시스템과 청킹)
-- 메모리 관리와 가비지 컬렉션의 기본 개념
+- **00-block-cid** module completed (understanding Blocks and CIDs)
+- **01-persistent** module completed (understanding data persistence)
+- **02-dag-ipld** module completed (understanding DAG and connected data)
+- **03-unixfs** module completed (understanding file systems and chunking)
+- Basic concepts of memory management and garbage collection
 
-## 🔑 핵심 개념
+## 🔑 Core Concepts
 
-### Pin(핀)이란?
+### What is a Pin?
 
-**Pin**은 IPFS에서 특정 데이터가 가비지 컬렉션되지 않도록 보호하는 메커니즘입니다:
-
-```
-일반 데이터:   [Block] ← GC로 삭제 가능
-핀된 데이터:   [Block] + 📌 ← GC에서 보호됨
-```
-
-### Pin 타입
-
-| 타입 | 설명 | 사용 예 |
-|------|------|---------|
-| **Direct** | 특정 블록만 핀 | 단일 파일, 작은 데이터 |
-| **Recursive** | 연결된 모든 블록 핀 | 디렉터리, 복잡한 구조 |
-| **Indirect** | 다른 핀의 의존성 | 자동 관리, 내부 참조 |
-
-### 가비지 컬렉션 과정
+A **Pin** is a mechanism in IPFS to protect specific data from being garbage collected:
 
 ```
-1. 스캔: 모든 블록 조사
-2. 마크: 핀된 블록과 의존성 표시
-3. 스윕: 표시되지 않은 블록 삭제
-4. 통계: 회수된 공간 보고
+Regular data:   [Block] ← Can be deleted by GC
+Pinned data:    [Block] + 📌 ← Protected from GC
 ```
 
-### 데이터 생명주기
+### Pin Types
+
+| Type | Description | Use Cases |
+|------|-------------|-----------|
+| **Direct** | Pin specific block only | Single files, small data |
+| **Recursive** | Pin all connected blocks | Directories, complex structures |
+| **Indirect** | Dependencies of other pins | Automatic management, internal references |
+
+### Garbage Collection Process
 
 ```
-생성 → 사용 → 핀 설정 → 보존 → 핀 해제 → GC 후보 → 삭제
-    ↑                           ↓
-    └─────── 재핀 (선택) ←────────┘
+1. Scan: Examine all blocks
+2. Mark: Mark pinned blocks and dependencies
+3. Sweep: Delete unmarked blocks
+4. Stats: Report reclaimed space
 ```
 
-## 💻 코드 분석
+### Data Lifecycle
 
-### 1. Pin Manager 설계
+```
+Create → Use → Pin → Preserve → Unpin → GC candidate → Delete
+    ↑                              ↓
+    └─────── Re-pin (optional) ←────┘
+```
+
+## 💻 Code Analysis
+
+### 1. Pin Manager Design
 
 ```go
 // pkg/pin.go:25-40
@@ -76,7 +76,7 @@ type PinManager struct {
 }
 
 func NewPinManager(dagWrapper *dag.DagWrapper) (*PinManager, error) {
-    // Pinner 인터페이스 초기화
+    // Initialize Pinner interface
     pinner := pin.NewPinner(dagWrapper.GetDatastore(), dagWrapper.GetDAGService(), dagWrapper.GetDAGService())
 
     return &PinManager{
@@ -87,13 +87,13 @@ func NewPinManager(dagWrapper *dag.DagWrapper) (*PinManager, error) {
 }
 ```
 
-**설계 특징**:
-- **pin.Pinner** 인터페이스로 표준 Pin 관리
-- **GCManager** 분리로 관심사 분리
-- **통계 수집**으로 상태 모니터링
-- **동시성 안전**한 Pin 작업
+**Design Features**:
+- Standard Pin management using **pin.Pinner** interface
+- Separation of concerns with **GCManager**
+- State monitoring with **statistics collection**
+- **Concurrency-safe** Pin operations
 
-### 2. Pin 추가 (다양한 타입)
+### 2. Adding Pins (Various Types)
 
 ```go
 // pkg/pin.go:65-95
@@ -103,7 +103,7 @@ func (pm *PinManager) PinAdd(ctx context.Context, c cid.Cid, pinType PinType) er
 
     switch pinType {
     case PinTypeDirect:
-        // 1. Direct Pin: 특정 블록만 핀
+        // 1. Direct Pin: Pin only specific block
         err := pm.pinner.Pin(ctx, c, false)
         if err != nil {
             return fmt.Errorf("failed to pin direct: %w", err)
@@ -112,7 +112,7 @@ func (pm *PinManager) PinAdd(ctx context.Context, c cid.Cid, pinType PinType) er
         fmt.Printf("   📌 Direct pin added: %s\n", c.String()[:20]+"...")
 
     case PinTypeRecursive:
-        // 2. Recursive Pin: 모든 연결된 블록 핀
+        // 2. Recursive Pin: Pin all connected blocks
         err := pm.pinner.Pin(ctx, c, true)
         if err != nil {
             return fmt.Errorf("failed to pin recursive: %w", err)
@@ -120,7 +120,7 @@ func (pm *PinManager) PinAdd(ctx context.Context, c cid.Cid, pinType PinType) er
         pm.stats.RecursivePins++
         fmt.Printf("   🔗 Recursive pin added: %s\n", c.String()[:20]+"...")
 
-        // 연결된 블록 수 계산
+        // Calculate number of linked blocks
         linkedBlocks := pm.countLinkedBlocks(ctx, c)
         fmt.Printf("      Protecting %d linked blocks\n", linkedBlocks)
 
@@ -133,14 +133,14 @@ func (pm *PinManager) PinAdd(ctx context.Context, c cid.Cid, pinType PinType) er
 }
 ```
 
-### 3. Pin 상태 조회
+### 3. Querying Pin Status
 
 ```go
 // pkg/pin.go:130-165
 func (pm *PinManager) ListPins(ctx context.Context, pinType PinType) ([]PinInfo, error) {
     var pins []PinInfo
 
-    // 1. Pin 타입별 조회
+    // 1. Query by pin type
     switch pinType {
     case PinTypeDirect:
         directPins, err := pm.pinner.DirectKeys(ctx)
@@ -182,7 +182,7 @@ func (pm *PinManager) ListPins(ctx context.Context, pinType PinType) ([]PinInfo,
         }
 
     case PinTypeAll:
-        // 2. 모든 Pin 타입 조회
+        // 2. Query all pin types
         allTypes := []PinType{PinTypeDirect, PinTypeRecursive, PinTypeIndirect}
         for _, pt := range allTypes {
             typePins, err := pm.ListPins(ctx, pt)
@@ -197,7 +197,7 @@ func (pm *PinManager) ListPins(ctx context.Context, pinType PinType) ([]PinInfo,
 }
 ```
 
-### 4. 가비지 컬렉션 구현
+### 4. Garbage Collection Implementation
 
 ```go
 // pkg/gc.go:25-70
@@ -211,7 +211,7 @@ func (gcm *GCManager) RunGC(ctx context.Context, options GCOptions) (*GCResult, 
     fmt.Printf("   🗑️  Starting garbage collection...\n")
     startTime := time.Now()
 
-    // 1. GC 통계 초기화
+    // 1. Initialize GC statistics
     result := &GCResult{
         StartTime:    startTime,
         RemovedCIDs:  make([]cid.Cid, 0),
@@ -219,7 +219,7 @@ func (gcm *GCManager) RunGC(ctx context.Context, options GCOptions) (*GCResult, 
         SpaceFreed:   0,
     }
 
-    // 2. 모든 블록 스캔
+    // 2. Scan all blocks
     allBlocks, err := gcm.getAllBlocks(ctx)
     if err != nil {
         return nil, fmt.Errorf("failed to get all blocks: %w", err)
@@ -227,7 +227,7 @@ func (gcm *GCManager) RunGC(ctx context.Context, options GCOptions) (*GCResult, 
 
     fmt.Printf("      Scanning %d total blocks...\n", len(allBlocks))
 
-    // 3. 핀된 블록과 의존성 마킹
+    // 3. Mark pinned blocks and dependencies
     pinnedBlocks := make(map[cid.Cid]bool)
     err = gcm.markPinnedBlocks(ctx, pinnedBlocks)
     if err != nil {
@@ -236,12 +236,12 @@ func (gcm *GCManager) RunGC(ctx context.Context, options GCOptions) (*GCResult, 
 
     fmt.Printf("      %d blocks are pinned (protected)\n", len(pinnedBlocks))
 
-    // 4. 가비지 블록 식별 및 삭제
+    // 4. Identify and delete garbage blocks
     for _, blockCID := range allBlocks {
         if !pinnedBlocks[blockCID] {
             blockSize := gcm.getBlockSize(ctx, blockCID)
 
-            // 삭제 실행
+            // Execute deletion
             if options.DryRun {
                 fmt.Printf("      [DRY RUN] Would remove: %s (%d bytes)\n",
                           blockCID.String()[:20]+"...", blockSize)
@@ -258,7 +258,7 @@ func (gcm *GCManager) RunGC(ctx context.Context, options GCOptions) (*GCResult, 
         }
     }
 
-    // 5. 결과 정리
+    // 5. Finalize results
     result.EndTime = time.Now()
     result.Duration = result.EndTime.Sub(result.StartTime)
     result.TotalRemoved = len(result.RemovedCIDs)
@@ -271,7 +271,7 @@ func (gcm *GCManager) RunGC(ctx context.Context, options GCOptions) (*GCResult, 
 }
 ```
 
-### 5. 자동 GC 스케줄링
+### 5. Automatic GC Scheduling
 
 ```go
 // pkg/scheduler.go:20-60
@@ -308,7 +308,7 @@ func (gcs *GCScheduler) Start(ctx context.Context) {
         for {
             select {
             case <-ticker.C:
-                // 1. GC 실행 조건 확인
+                // 1. Check GC execution conditions
                 if gcs.shouldRunGC(ctx) {
                     fmt.Printf("   🔄 Automatic GC triggered\n")
 
@@ -334,20 +334,20 @@ func (gcs *GCScheduler) Start(ctx context.Context) {
 }
 
 func (gcs *GCScheduler) shouldRunGC(ctx context.Context) bool {
-    // 2. GC 실행 조건 검사
+    // 2. Check GC execution conditions
     stats := gcs.pinManager.GetStats()
 
-    // 디스크 사용량 체크
+    // Check disk usage
     if stats.DiskUsage > gcs.threshold.MaxDiskUsage {
         return true
     }
 
-    // 시간 기반 체크
+    // Check time-based criteria
     if time.Since(gcs.lastGC) > gcs.threshold.MaxAge {
         return true
     }
 
-    // 블록 수 기반 체크
+    // Check block count-based criteria
     if stats.TotalBlocks > gcs.threshold.MaxBlocks {
         return true
     }
@@ -356,7 +356,7 @@ func (gcs *GCScheduler) shouldRunGC(ctx context.Context) bool {
 }
 ```
 
-### 6. Pin 정책 관리
+### 6. Pin Policy Management
 
 ```go
 // pkg/policy.go:15-55
@@ -376,7 +376,7 @@ type PinRule struct {
 }
 
 func (pp *PinPolicy) ShouldPin(ctx context.Context, c cid.Cid, metadata *ContentMetadata) (bool, PinType) {
-    // 1. 규칙별 평가
+    // 1. Evaluate rules
     for _, rule := range pp.rules {
         if pp.matchesRule(c, metadata, rule) {
             fmt.Printf("   📋 Pin rule matched: %s -> %v\n", rule.Pattern, rule.PinType)
@@ -384,9 +384,9 @@ func (pp *PinPolicy) ShouldPin(ctx context.Context, c cid.Cid, metadata *Content
         }
     }
 
-    // 2. 기본 정책
+    // 2. Default policy
     if pp.autoPin {
-        // 크기 기반 자동 Pin 결정
+        // Automatic pin decision based on size
         if metadata.Size < pp.maxPinSize {
             return true, PinTypeDirect
         }
@@ -396,14 +396,14 @@ func (pp *PinPolicy) ShouldPin(ctx context.Context, c cid.Cid, metadata *Content
 }
 
 func (pp *PinPolicy) matchesRule(c cid.Cid, metadata *ContentMetadata, rule PinRule) bool {
-    // 3. 패턴 매칭
+    // 3. Pattern matching
     if rule.Pattern != "" {
         if strings.HasPrefix(c.String(), rule.Pattern) {
             return true
         }
     }
 
-    // 4. 조건 평가
+    // 4. Condition evaluation
     switch rule.Condition {
     case "size_gt":
         return metadata.Size > rule.MaxSize
@@ -417,16 +417,16 @@ func (pp *PinPolicy) matchesRule(c cid.Cid, metadata *ContentMetadata, rule PinR
 }
 ```
 
-## 🏃‍♂️ 실습 가이드
+## 🏃‍♂️ Hands-on Guide
 
-### 1. 기본 실행
+### 1. Basic Execution
 
 ```bash
 cd 05-pin-gc
 go run main.go
 ```
 
-**예상 출력**:
+**Expected Output**:
 ```
 === Pin Management and Garbage Collection Demo ===
 
@@ -484,41 +484,41 @@ go run main.go
    ⚠️  Temporary file not pinned (will be GC'd)
 ```
 
-### 2. Pin 타입 비교 실험
+### 2. Pin Type Comparison Experiment
 
 ```bash
-# 다양한 Pin 타입의 동작 확인
+# Verify behavior of different pin types
 PIN_DEMO_MODE=comparison go run main.go
 ```
 
-**관찰 포인트**:
-- **Direct Pin**: 특정 블록만 보호, 빠른 Pin/Unpin
-- **Recursive Pin**: 연결된 모든 블록 보호, 완전한 보존
-- **Indirect Pin**: 자동 관리, 참조 관계 유지
+**Observation Points**:
+- **Direct Pin**: Protects specific blocks only, fast pin/unpin
+- **Recursive Pin**: Protects all connected blocks, complete preservation
+- **Indirect Pin**: Automatic management, maintains reference relationships
 
-### 3. GC 성능 벤치마크
+### 3. GC Performance Benchmark
 
 ```bash
-# 대용량 데이터로 GC 성능 측정
+# Measure GC performance with large data
 GC_BENCHMARK=true go run main.go
 ```
 
-### 4. 테스트 실행
+### 4. Running Tests
 
 ```bash
 go test -v ./...
 ```
 
-**주요 테스트 케이스**:
-- ✅ Pin 추가/제거 기능
-- ✅ 다양한 Pin 타입 처리
-- ✅ GC 정확성 검증
-- ✅ 스케줄링 및 자동화
-- ✅ Pin 정책 적용
+**Key Test Cases**:
+- ✅ Pin add/remove functionality
+- ✅ Various pin type handling
+- ✅ GC accuracy verification
+- ✅ Scheduling and automation
+- ✅ Pin policy application
 
-## 🔍 고급 활용 사례
+## 🔍 Advanced Use Cases
 
-### 1. 분산 백업 시스템
+### 1. Distributed Backup System
 
 ```go
 type DistributedBackupManager struct {
@@ -531,16 +531,16 @@ func (dbm *DistributedBackupManager) BackupWithPolicy(data []byte,
                                                      policy BackupPolicy) error {
     ctx := context.Background()
 
-    // 1. 백업 정책에 따른 Pin 타입 결정
+    // 1. Determine pin type based on backup policy
     pinType := policy.DeterminePinType(len(data))
 
-    // 2. 원본 데이터 Pin
+    // 2. Pin original data
     originalCID, err := dbm.pinManager.PinData(ctx, data, pinType)
     if err != nil {
         return fmt.Errorf("failed to pin original: %w", err)
     }
 
-    // 3. 복제본 생성 및 Pin
+    // 3. Create and pin replicas
     for i := 0; i < dbm.replicas; i++ {
         replicaData := dbm.createReplica(data, i)
         replicaCID, err := dbm.pinManager.PinData(ctx, replicaData, PinTypeDirect)
@@ -552,7 +552,7 @@ func (dbm *DistributedBackupManager) BackupWithPolicy(data []byte,
         fmt.Printf("Created replica %d: %s\n", i, replicaCID.String()[:20]+"...")
     }
 
-    // 4. 백업 메타데이터 저장
+    // 4. Store backup metadata
     metadata := BackupMetadata{
         OriginalCID: originalCID,
         CreatedAt:   time.Now(),
@@ -564,7 +564,7 @@ func (dbm *DistributedBackupManager) BackupWithPolicy(data []byte,
 }
 ```
 
-### 2. 콘텐츠 생명주기 관리
+### 2. Content Lifecycle Management
 
 ```go
 type ContentLifecycleManager struct {
@@ -574,10 +574,10 @@ type ContentLifecycleManager struct {
 }
 
 type LifecyclePolicy struct {
-    HotPeriod    time.Duration // 자주 접근되는 기간
-    WarmPeriod   time.Duration // 가끔 접근되는 기간
-    ColdPeriod   time.Duration // 거의 접근되지 않는 기간
-    ArchivePeriod time.Duration // 아카이브 기간
+    HotPeriod    time.Duration // Frequently accessed period
+    WarmPeriod   time.Duration // Occasionally accessed period
+    ColdPeriod   time.Duration // Rarely accessed period
+    ArchivePeriod time.Duration // Archive period
 }
 
 func (clm *ContentLifecycleManager) ManageContent(cid cid.Cid,
@@ -587,26 +587,26 @@ func (clm *ContentLifecycleManager) ManageContent(cid cid.Cid,
 
     switch {
     case age < policy.HotPeriod:
-        // HOT: Recursive Pin으로 완전 보호
+        // HOT: Complete protection with Recursive Pin
         return clm.pinManager.PinAdd(ctx, cid, PinTypeRecursive)
 
     case age < policy.WarmPeriod:
-        // WARM: Direct Pin으로 기본 보호
+        // WARM: Basic protection with Direct Pin
         return clm.pinManager.PinAdd(ctx, cid, PinTypeDirect)
 
     case age < policy.ColdPeriod:
-        // COLD: Pin 해제, 압축 저장
+        // COLD: Unpin, compressed storage
         clm.pinManager.PinRemove(ctx, cid)
         return clm.compressAndStore(cid, metadata)
 
     default:
-        // ARCHIVE: 외부 스토리지로 이전
+        // ARCHIVE: Move to external storage
         return clm.archiveToExternalStorage(cid, metadata)
     }
 }
 ```
 
-### 3. 지능형 캐시 관리
+### 3. Intelligent Cache Management
 
 ```go
 type IntelligentCache struct {
@@ -620,22 +620,22 @@ type IntelligentCache struct {
 type AccessStats struct {
     Count      int64
     LastAccess time.Time
-    Frequency  float64 // 접근 빈도 (per hour)
+    Frequency  float64 // Access frequency (per hour)
 }
 
 func (ic *IntelligentCache) Access(cid cid.Cid) ([]byte, error) {
     ctx := context.Background()
 
-    // 1. 접근 통계 업데이트
+    // 1. Update access statistics
     ic.updateAccessStats(cid)
 
-    // 2. 캐시에서 데이터 조회
+    // 2. Retrieve data from cache
     data, err := ic.pinManager.GetData(ctx, cid)
     if err != nil {
         return nil, err
     }
 
-    // 3. 캐시 최적화 트리거
+    // 3. Trigger cache optimization
     go ic.optimizeCache()
 
     return data, nil
@@ -646,11 +646,11 @@ func (ic *IntelligentCache) optimizeCache() {
         return
     }
 
-    // LFU (Least Frequently Used) 알고리즘으로 제거 대상 선정
+    // Select removal candidates using LFU (Least Frequently Used) algorithm
     candidates := ic.getLFUCandidates()
 
     for _, cid := range candidates {
-        if ic.currentSize <= ic.maxCacheSize*0.8 { // 80%까지 줄이기
+        if ic.currentSize <= ic.maxCacheSize*0.8 { // Reduce to 80%
             break
         }
 
@@ -674,7 +674,7 @@ func (ic *IntelligentCache) getLFUCandidates() []cid.Cid {
         candidates = append(candidates, cidFreq{cid: cid, freq: stats.Frequency})
     }
 
-    // 빈도순 정렬 (낮은 빈도부터)
+    // Sort by frequency (lowest frequency first)
     sort.Slice(candidates, func(i, j int) bool {
         return candidates[i].freq < candidates[j].freq
     })
@@ -688,25 +688,25 @@ func (ic *IntelligentCache) getLFUCandidates() []cid.Cid {
 }
 ```
 
-## ⚠️ 주의사항 및 모범 사례
+## ⚠️ Best Practices and Considerations
 
-### 1. Pin 전략 설계
+### 1. Pin Strategy Design
 
 ```go
-// ✅ 콘텐츠 타입별 Pin 전략
+// ✅ Pin strategies by content type
 func selectPinStrategy(contentType string, size int64, importance Priority) PinType {
     switch {
     case importance == Critical:
-        return PinTypeRecursive // 중요한 데이터는 완전 보호
+        return PinTypeRecursive // Complete protection for critical data
 
     case contentType == "application/json" && size < 1024*1024:
-        return PinTypeRecursive // 작은 구조화된 데이터
+        return PinTypeRecursive // Small structured data
 
     case contentType == "image/*" || contentType == "video/*":
-        return PinTypeDirect // 미디어 파일은 Direct Pin
+        return PinTypeDirect // Media files with Direct Pin
 
     case size > 100*1024*1024:
-        return PinTypeDirect // 대용량 파일은 Direct Pin으로 성능 확보
+        return PinTypeDirect // Direct Pin for large files for performance
 
     default:
         return PinTypeDirect
@@ -714,10 +714,10 @@ func selectPinStrategy(contentType string, size int64, importance Priority) PinT
 }
 ```
 
-### 2. GC 타이밍 최적화
+### 2. GC Timing Optimization
 
 ```go
-// ✅ 시스템 부하를 고려한 GC 스케줄링
+// ✅ GC scheduling considering system load
 type AdaptiveGCScheduler struct {
     *GCScheduler
     cpuThreshold  float64
@@ -726,7 +726,7 @@ type AdaptiveGCScheduler struct {
 }
 
 func (agcs *AdaptiveGCScheduler) shouldRunGC(ctx context.Context) bool {
-    // 1. 시스템 리소스 상태 확인
+    // 1. Check system resource status
     systemStats := agcs.getSystemStats()
 
     if systemStats.CPUUsage > agcs.cpuThreshold {
@@ -744,18 +744,18 @@ func (agcs *AdaptiveGCScheduler) shouldRunGC(ctx context.Context) bool {
         return false
     }
 
-    // 2. 기본 GC 조건 확인
+    // 2. Check basic GC conditions
     return agcs.GCScheduler.shouldRunGC(ctx)
 }
 ```
 
-### 3. Pin 충돌 해결
+### 3. Pin Conflict Resolution
 
 ```go
-// ✅ Pin 타입 변경 시 안전한 처리
+// ✅ Safe handling when changing pin types
 func (pm *PinManager) ChangePinType(ctx context.Context, c cid.Cid,
                                    fromType, toType PinType) error {
-    // 1. 현재 Pin 상태 확인
+    // 1. Check current pin status
     isPinned, currentType, err := pm.GetPinStatus(ctx, c)
     if err != nil {
         return err
@@ -769,17 +769,17 @@ func (pm *PinManager) ChangePinType(ctx context.Context, c cid.Cid,
         return fmt.Errorf("expected pin type %v, got %v", fromType, currentType)
     }
 
-    // 2. 원자적 Pin 타입 변경
+    // 2. Atomic pin type change
     tx := pm.beginTransaction()
-    defer tx.rollback() // 에러 시 롤백
+    defer tx.rollback() // Rollback on error
 
-    // 새로운 타입으로 Pin 추가
+    // Add new pin type
     err = pm.PinAdd(ctx, c, toType)
     if err != nil {
         return fmt.Errorf("failed to add new pin type: %w", err)
     }
 
-    // 기존 Pin 제거
+    // Remove old pin
     err = pm.PinRemove(ctx, c, fromType)
     if err != nil {
         return fmt.Errorf("failed to remove old pin type: %w", err)
@@ -789,24 +789,24 @@ func (pm *PinManager) ChangePinType(ctx context.Context, c cid.Cid,
 }
 ```
 
-### 4. 대용량 데이터 GC
+### 4. Large-scale Data GC
 
 ```go
-// ✅ 메모리 효율적인 대용량 GC
+// ✅ Memory-efficient large-scale GC
 func (gcm *GCManager) RunLargeScaleGC(ctx context.Context) error {
     const batchSize = 1000
 
-    // 1. 스트리밍 방식으로 블록 처리
+    // 1. Process blocks in streaming fashion
     blockChan := make(chan cid.Cid, batchSize)
     resultChan := make(chan gcResult, batchSize)
 
-    // 워커 풀 시작
+    // Start worker pool
     workers := runtime.NumCPU()
     for i := 0; i < workers; i++ {
         go gcm.gcWorker(ctx, blockChan, resultChan)
     }
 
-    // 2. 배치 단위로 블록 스캔 및 처리
+    // 2. Scan and process blocks in batches
     go func() {
         defer close(blockChan)
 
@@ -819,7 +819,7 @@ func (gcm *GCManager) RunLargeScaleGC(ctx context.Context) error {
         }
     }()
 
-    // 3. 결과 수집
+    // 3. Collect results
     var totalRemoved int64
     var spaceFreed int64
 
@@ -829,7 +829,7 @@ func (gcm *GCManager) RunLargeScaleGC(ctx context.Context) error {
             spaceFreed += result.size
         }
 
-        // 주기적으로 진행 상황 보고
+        // Periodic progress reporting
         if totalRemoved%1000 == 0 {
             fmt.Printf("GC progress: %d blocks removed, %d bytes freed\n",
                       totalRemoved, spaceFreed)
@@ -843,13 +843,13 @@ func (gcm *GCManager) RunLargeScaleGC(ctx context.Context) error {
 }
 ```
 
-## 🔧 트러블슈팅
+## 🔧 Troubleshooting
 
-### 문제 1: "pin not found" 에러
+### Issue 1: "pin not found" error
 
-**원인**: Pin이 이미 제거되었거나 존재하지 않음
+**Cause**: Pin has already been removed or doesn't exist
 ```go
-// 해결: Pin 상태 확인 후 작업
+// Solution: Check pin status before operation
 func safePinRemove(pm *PinManager, ctx context.Context, c cid.Cid) error {
     isPinned, pinType, err := pm.GetPinStatus(ctx, c)
     if err != nil {
@@ -865,11 +865,11 @@ func safePinRemove(pm *PinManager, ctx context.Context, c cid.Cid) error {
 }
 ```
 
-### 문제 2: GC가 너무 오래 걸림
+### Issue 2: GC takes too long
 
-**원인**: 대용량 데이터베이스 또는 비효율적인 스캔
+**Cause**: Large database or inefficient scanning
 ```go
-// 해결: 증분 GC 및 배치 처리
+// Solution: Incremental GC and batch processing
 func (gcm *GCManager) RunIncrementalGC(ctx context.Context,
                                       maxDuration time.Duration) error {
     startTime := time.Now()
@@ -887,21 +887,21 @@ func (gcm *GCManager) RunIncrementalGC(ctx context.Context,
 }
 ```
 
-### 문제 3: 디스크 공간 부족
+### Issue 3: Insufficient disk space
 
-**원인**: GC가 효과적으로 작동하지 않음
+**Cause**: GC not working effectively
 ```go
-// 해결: 강제 GC 및 임계값 조정
+// Solution: Force GC and adjust thresholds
 func emergencyGC(pm *PinManager) error {
     ctx := context.Background()
 
-    // 1. 모든 임시 Pin 제거
+    // 1. Remove all temporary pins
     tempPins := pm.findTemporaryPins(ctx)
     for _, c := range tempPins {
         pm.PinRemove(ctx, c, PinTypeDirect)
     }
 
-    // 2. 강제 GC 실행
+    // 2. Execute forced GC
     result, err := pm.RunGC(ctx, GCOptions{
         Force:    true,
         Aggressive: true,
@@ -916,21 +916,21 @@ func emergencyGC(pm *PinManager) error {
 }
 ```
 
-## 📚 추가 학습 자료
+## 📚 Additional Learning Resources
 
-### 관련 문서
+### Related Documentation
 - [IPFS Pinning](https://docs.ipfs.io/concepts/persistence/)
 - [Garbage Collection in IPFS](https://docs.ipfs.io/concepts/lifecycle/)
 - [Pin API Reference](https://docs.ipfs.io/reference/kubo/rpc/#api-v0-pin)
 
-### 다음 단계
-1. **06-gateway**: HTTP 인터페이스와 웹 통합
-2. **07-ipns**: 네이밍 시스템과 동적 콘텐츠
-3. **99-kubo-api-demo**: 실제 IPFS 네트워크 연동
+### Next Steps
+1. **06-gateway**: HTTP interface and web integration
+2. **07-ipns**: Naming system and dynamic content
+3. **99-kubo-api-demo**: Actual IPFS network integration
 
-## 🍳 쿡북 (Cookbook) - 바로 사용할 수 있는 코드
+## 🍳 Cookbook - Ready-to-use Code
 
-### 📌 자동 Pin 관리 시스템
+### 📌 Auto Pin Management System
 
 ```go
 package main
@@ -943,7 +943,7 @@ import (
     dag "github.com/gosuda/boxo-starter-kit/02-dag-ipld/pkg"
 )
 
-// 자동으로 콘텐츠를 Pin하고 관리하는 시스템
+// System that automatically pins and manages content
 type AutoPinSystem struct {
     pinManager *pin.PinManager
     policies   map[string]*pin.PinPolicy
@@ -958,42 +958,42 @@ func NewAutoPinSystem(dagWrapper *dag.DagWrapper) *AutoPinSystem {
     }
 }
 
-// 콘텐츠 타입별 자동 Pin 정책 설정
+// Set auto pin policies by content type
 func (aps *AutoPinSystem) SetupPolicies() {
-    // 이미지 파일: Direct Pin, 30일 보관
+    // Image files: Direct Pin, 30-day retention
     aps.policies["image"] = &pin.PinPolicy{
         PinType:   pin.PinTypeDirect,
         TTL:       30 * 24 * time.Hour,
-        MaxSize:   10 * 1024 * 1024, // 10MB 이하만
+        MaxSize:   10 * 1024 * 1024, // Only under 10MB
         AutoPin:   true,
     }
 
-    // 문서 파일: Recursive Pin, 1년 보관
+    // Document files: Recursive Pin, 1-year retention
     aps.policies["document"] = &pin.PinPolicy{
         PinType:   pin.PinTypeRecursive,
         TTL:       365 * 24 * time.Hour,
-        MaxSize:   100 * 1024 * 1024, // 100MB 이하만
+        MaxSize:   100 * 1024 * 1024, // Only under 100MB
         AutoPin:   true,
     }
 
-    // 임시 파일: Pin하지 않음
+    // Temporary files: Don't pin
     aps.policies["temp"] = &pin.PinPolicy{
         AutoPin: false,
     }
 }
 
-// 파일을 추가하고 정책에 따라 자동 Pin
+// Add file and auto-pin according to policy
 func (aps *AutoPinSystem) AddFile(filename string, data []byte,
                                   contentType string) (cid.Cid, error) {
     ctx := context.Background()
 
-    // 1. 데이터 저장
+    // 1. Store data
     c, err := aps.pinManager.AddData(ctx, data)
     if err != nil {
         return cid.Undef, err
     }
 
-    // 2. 정책 확인 및 적용
+    // 2. Check and apply policy
     if policy, exists := aps.policies[contentType]; exists && policy.AutoPin {
         if int64(len(data)) <= policy.MaxSize {
             err = aps.pinManager.PinAdd(ctx, c, policy.PinType)
@@ -1004,7 +1004,7 @@ func (aps *AutoPinSystem) AddFile(filename string, data []byte,
             fmt.Printf("🔧 Auto-pinned %s as %v (TTL: %v)\n",
                       filename, policy.PinType, policy.TTL)
 
-            // 3. TTL 기반 자동 해제 스케줄링
+            // 3. Schedule TTL-based auto-unpin
             aps.scheduleUnpin(c, policy.TTL)
         }
     }
@@ -1012,7 +1012,7 @@ func (aps *AutoPinSystem) AddFile(filename string, data []byte,
     return c, nil
 }
 
-// TTL 후 자동 Pin 해제
+// Auto unpin after TTL
 func (aps *AutoPinSystem) scheduleUnpin(c cid.Cid, ttl time.Duration) {
     go func() {
         time.Sleep(ttl)
@@ -1027,7 +1027,7 @@ func (aps *AutoPinSystem) scheduleUnpin(c cid.Cid, ttl time.Duration) {
 }
 ```
 
-### 🧹 스마트 가비지 컬렉터
+### 🧹 Smart Garbage Collector
 
 ```go
 type SmartGC struct {
@@ -1038,26 +1038,26 @@ type SmartGC struct {
 }
 
 type GCThresholds struct {
-    DiskUsagePercent float64       // 디스크 사용률 임계값
-    MaxAge          time.Duration  // 최대 데이터 보관 기간
-    MaxBlocks       int64         // 최대 블록 수
-    MinFreeSpace    int64         // 최소 여유 공간
+    DiskUsagePercent float64       // Disk usage threshold
+    MaxAge          time.Duration  // Maximum data retention period
+    MaxBlocks       int64         // Maximum number of blocks
+    MinFreeSpace    int64         // Minimum free space
 }
 
 func NewSmartGC(pinManager *pin.PinManager) *SmartGC {
     return &SmartGC{
         pinManager: pinManager,
         thresholds: &GCThresholds{
-            DiskUsagePercent: 80.0,  // 80% 사용 시 GC 트리거
-            MaxAge:          7 * 24 * time.Hour, // 7일 후 GC 대상
-            MaxBlocks:       100000, // 10만 블록 초과 시 GC
-            MinFreeSpace:    1024 * 1024 * 1024, // 1GB 여유 공간 유지
+            DiskUsagePercent: 80.0,  // Trigger GC at 80% usage
+            MaxAge:          7 * 24 * time.Hour, // GC candidate after 7 days
+            MaxBlocks:       100000, // GC when exceeding 100k blocks
+            MinFreeSpace:    1024 * 1024 * 1024, // Maintain 1GB free space
         },
         stats: &GCStats{},
     }
 }
 
-// 스마트 GC 시작 (시스템 상태 기반 자동 조정)
+// Start smart GC (automatic adjustment based on system state)
 func (sgc *SmartGC) Start(ctx context.Context) {
     if sgc.isRunning {
         return
@@ -1067,7 +1067,7 @@ func (sgc *SmartGC) Start(ctx context.Context) {
     fmt.Printf("🧠 Smart GC started with adaptive thresholds\n")
 
     go func() {
-        ticker := time.NewTicker(5 * time.Minute) // 5분마다 상태 체크
+        ticker := time.NewTicker(5 * time.Minute) // Check status every 5 minutes
         defer ticker.Stop()
 
         for sgc.isRunning {
@@ -1083,7 +1083,7 @@ func (sgc *SmartGC) Start(ctx context.Context) {
     }()
 }
 
-// 시스템 상태를 분석하여 GC 필요성 판단
+// Analyze system state to determine GC necessity
 func (sgc *SmartGC) checkAndRunGC(ctx context.Context) {
     systemStats := sgc.getSystemStats()
     urgency := sgc.calculateUrgency(systemStats)
@@ -1102,37 +1102,37 @@ func (sgc *SmartGC) checkAndRunGC(ctx context.Context) {
         sgc.runGentleGC(ctx)
 
     case UrgencyNone:
-        // GC 필요 없음
+        // No GC needed
         return
     }
 
     sgc.updateStats()
 }
 
-// 시급도 계산 (여러 지표 종합)
+// Calculate urgency (comprehensive assessment of multiple metrics)
 func (sgc *SmartGC) calculateUrgency(stats SystemStats) Urgency {
     score := 0.0
 
-    // 디스크 사용률 기반 점수
+    // Score based on disk usage
     if stats.DiskUsagePercent > 90 {
         score += 50
     } else if stats.DiskUsagePercent > sgc.thresholds.DiskUsagePercent {
         score += 30
     }
 
-    // 블록 수 기반 점수
+    // Score based on block count
     if stats.TotalBlocks > sgc.thresholds.MaxBlocks*2 {
         score += 30
     } else if stats.TotalBlocks > sgc.thresholds.MaxBlocks {
         score += 15
     }
 
-    // 메모리 사용률 기반 점수
+    // Score based on memory usage
     if stats.MemoryUsagePercent > 85 {
         score += 20
     }
 
-    // 마지막 GC 이후 시간 기반 점수
+    // Score based on time since last GC
     if time.Since(sgc.stats.LastGC) > 24*time.Hour {
         score += 10
     }
@@ -1149,15 +1149,15 @@ func (sgc *SmartGC) calculateUrgency(stats SystemStats) Urgency {
     }
 }
 
-// 단계별 GC 실행 (시급도에 따른 다른 전략)
+// Tiered GC execution (different strategies based on urgency)
 func (sgc *SmartGC) runAggressiveGC(ctx context.Context) {
-    // 1. 모든 임시 데이터 제거
+    // 1. Remove all temporary data
     sgc.removeTemporaryData(ctx)
 
-    // 2. 오래된 캐시 데이터 제거
+    // 2. Remove old cache data
     sgc.removeOldCache(ctx, 1*time.Hour)
 
-    // 3. 강제 GC 실행
+    // 3. Execute forced GC
     result, err := sgc.pinManager.RunGC(ctx, pin.GCOptions{
         Force:      true,
         Aggressive: true,
@@ -1172,7 +1172,7 @@ func (sgc *SmartGC) runAggressiveGC(ctx context.Context) {
 }
 
 func (sgc *SmartGC) runNormalGC(ctx context.Context) {
-    // 표준 GC + 선택적 정리
+    // Standard GC + selective cleanup
     sgc.removeOldCache(ctx, 6*time.Hour)
 
     result, err := sgc.pinManager.RunGC(ctx, pin.GCOptions{
@@ -1185,7 +1185,7 @@ func (sgc *SmartGC) runNormalGC(ctx context.Context) {
 }
 
 func (sgc *SmartGC) runGentleGC(ctx context.Context) {
-    // 부드러운 GC (시스템 부하 최소화)
+    // Gentle GC (minimize system load)
     result, err := sgc.pinManager.RunGC(ctx, pin.GCOptions{
         Gentle:      true,
         MaxDuration: 2 * time.Minute,
@@ -1197,421 +1197,4 @@ func (sgc *SmartGC) runGentleGC(ctx context.Context) {
 }
 ```
 
-### 📊 Pin 상태 대시보드
-
-```go
-type PinDashboard struct {
-    pinManager *pin.PinManager
-    httpServer *http.Server
-    updateChan chan bool
-}
-
-func NewPinDashboard(pinManager *pin.PinManager, port int) *PinDashboard {
-    dashboard := &PinDashboard{
-        pinManager: pinManager,
-        updateChan: make(chan bool, 10),
-    }
-
-    // HTTP 서버 설정
-    mux := http.NewServeMux()
-    mux.HandleFunc("/", dashboard.handleHome)
-    mux.HandleFunc("/api/stats", dashboard.handleStats)
-    mux.HandleFunc("/api/pins", dashboard.handlePins)
-    mux.HandleFunc("/api/gc", dashboard.handleGC)
-
-    dashboard.httpServer = &http.Server{
-        Addr:    fmt.Sprintf(":%d", port),
-        Handler: mux,
-    }
-
-    return dashboard
-}
-
-// 웹 대시보드 시작
-func (pd *PinDashboard) Start() error {
-    fmt.Printf("📊 Pin Dashboard starting on http://localhost%s\n",
-              pd.httpServer.Addr)
-
-    go pd.updateLoop() // 백그라운드 업데이트
-    return pd.httpServer.ListenAndServe()
-}
-
-// 실시간 통계 업데이트
-func (pd *PinDashboard) updateLoop() {
-    ticker := time.NewTicker(10 * time.Second)
-    defer ticker.Stop()
-
-    for {
-        select {
-        case <-ticker.C:
-            pd.updateChan <- true
-        }
-    }
-}
-
-// 홈페이지 (대시보드 UI)
-func (pd *PinDashboard) handleHome(w http.ResponseWriter, r *http.Request) {
-    html := `
-<!DOCTYPE html>
-<html>
-<head>
-    <title>IPFS Pin Dashboard</title>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 20px; }
-        .stat-box { background: #f5f5f5; padding: 15px; margin: 10px 0; border-radius: 8px; }
-        .pin-list { max-height: 400px; overflow-y: auto; }
-        .pin-item { padding: 8px; border-bottom: 1px solid #eee; }
-        .direct { color: #007bff; }
-        .recursive { color: #28a745; }
-        .indirect { color: #6c757d; }
-        button { background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
-        button:hover { background: #0056b3; }
-        .refresh { float: right; }
-    </style>
-</head>
-<body>
-    <h1>📌 IPFS Pin Management Dashboard</h1>
-
-    <button class="refresh" onclick="location.reload()">🔄 Refresh</button>
-
-    <div id="stats"></div>
-    <div id="pins"></div>
-
-    <div style="margin-top: 20px;">
-        <button onclick="runGC()">🗑️ Run Garbage Collection</button>
-        <span id="gc-status"></span>
-    </div>
-
-    <script>
-        async function loadStats() {
-            const response = await fetch('/api/stats');
-            const stats = await response.json();
-
-            document.getElementById('stats').innerHTML = \`
-                <div class="stat-box">
-                    <h3>📊 Pin Statistics</h3>
-                    <p><strong>Total Pins:</strong> \${stats.total_pins}</p>
-                    <p><strong>Direct Pins:</strong> <span class="direct">\${stats.direct_pins}</span></p>
-                    <p><strong>Recursive Pins:</strong> <span class="recursive">\${stats.recursive_pins}</span></p>
-                    <p><strong>Indirect Pins:</strong> <span class="indirect">\${stats.indirect_pins}</span></p>
-                    <p><strong>Last GC:</strong> \${stats.last_gc || 'Never'}</p>
-                    <p><strong>Space Reclaimed:</strong> \${formatBytes(stats.space_reclaimed)}</p>
-                </div>
-            \`;
-        }
-
-        async function loadPins() {
-            const response = await fetch('/api/pins');
-            const pins = await response.json();
-
-            let html = '<div class="stat-box"><h3>📋 Pin List</h3><div class="pin-list">';
-
-            pins.forEach(pin => {
-                html += \`
-                    <div class="pin-item">
-                        <span class="\${pin.type}">\${pin.type}</span>
-                        <code>\${pin.cid.substring(0, 20)}...</code>
-                        <small>(\${formatBytes(pin.size)})</small>
-                    </div>
-                \`;
-            });
-
-            html += '</div></div>';
-            document.getElementById('pins').innerHTML = html;
-        }
-
-        async function runGC() {
-            document.getElementById('gc-status').innerHTML = '⏳ Running GC...';
-
-            try {
-                const response = await fetch('/api/gc', { method: 'POST' });
-                const result = await response.json();
-
-                document.getElementById('gc-status').innerHTML =
-                    \`✅ GC completed: \${result.removed_count} blocks removed, \${formatBytes(result.space_freed)} freed\`;
-
-                // 통계 새로고침
-                setTimeout(() => {
-                    loadStats();
-                    loadPins();
-                }, 1000);
-
-            } catch (error) {
-                document.getElementById('gc-status').innerHTML = '❌ GC failed: ' + error.message;
-            }
-        }
-
-        function formatBytes(bytes) {
-            if (bytes === 0) return '0 B';
-            const k = 1024;
-            const sizes = ['B', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-        }
-
-        // 초기 로드
-        loadStats();
-        loadPins();
-
-        // 자동 새로고침 (30초마다)
-        setInterval(() => {
-            loadStats();
-            loadPins();
-        }, 30000);
-    </script>
-</body>
-</html>`
-
-    w.Header().Set("Content-Type", "text/html")
-    w.Write([]byte(html))
-}
-
-// 통계 API
-func (pd *PinDashboard) handleStats(w http.ResponseWriter, r *http.Request) {
-    stats := pd.pinManager.GetStats()
-
-    w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(stats)
-}
-
-// Pin 목록 API
-func (pd *PinDashboard) handlePins(w http.ResponseWriter, r *http.Request) {
-    pins, err := pd.pinManager.ListPins(r.Context(), pin.PinTypeAll)
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
-
-    w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(pins)
-}
-
-// GC 실행 API
-func (pd *PinDashboard) handleGC(w http.ResponseWriter, r *http.Request) {
-    if r.Method != "POST" {
-        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-        return
-    }
-
-    result, err := pd.pinManager.RunGC(r.Context(), pin.GCOptions{})
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
-
-    response := map[string]interface{}{
-        "removed_count": result.TotalRemoved,
-        "space_freed":   result.SpaceFreed,
-        "duration":      result.Duration.Seconds(),
-    }
-
-    w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(response)
-}
-```
-
-### 🔄 백업 및 복원 시스템
-
-```go
-type BackupSystem struct {
-    pinManager   *pin.PinManager
-    backupPath   string
-    compression  bool
-    encryption   bool
-}
-
-func NewBackupSystem(pinManager *pin.PinManager, backupPath string) *BackupSystem {
-    return &BackupSystem{
-        pinManager:  pinManager,
-        backupPath:  backupPath,
-        compression: true,
-        encryption:  false, // 필요시 활성화
-    }
-}
-
-// 전체 Pin 데이터를 백업
-func (bs *BackupSystem) BackupAll(ctx context.Context) (*BackupManifest, error) {
-    fmt.Printf("💾 Starting full backup to %s\n", bs.backupPath)
-
-    manifest := &BackupManifest{
-        Timestamp: time.Now(),
-        Version:   "1.0",
-        Pins:      make([]BackupPin, 0),
-    }
-
-    // 1. 모든 Pin 조회
-    allPins, err := bs.pinManager.ListPins(ctx, pin.PinTypeAll)
-    if err != nil {
-        return nil, fmt.Errorf("failed to list pins: %w", err)
-    }
-
-    totalPins := len(allPins)
-    fmt.Printf("📋 Found %d pins to backup\n", totalPins)
-
-    // 2. 각 Pin된 데이터 백업
-    for i, pinInfo := range allPins {
-        data, err := bs.pinManager.GetData(ctx, pinInfo.CID)
-        if err != nil {
-            fmt.Printf("⚠️ Failed to get data for %s: %v\n", pinInfo.CID, err)
-            continue
-        }
-
-        // 백업 파일 생성
-        backupPin, err := bs.backupSinglePin(pinInfo, data)
-        if err != nil {
-            fmt.Printf("⚠️ Failed to backup %s: %v\n", pinInfo.CID, err)
-            continue
-        }
-
-        manifest.Pins = append(manifest.Pins, *backupPin)
-
-        // 진행률 표시
-        if (i+1)%100 == 0 || i+1 == totalPins {
-            fmt.Printf("📦 Backup progress: %d/%d pins (%.1f%%)\n",
-                      i+1, totalPins, float64(i+1)/float64(totalPins)*100)
-        }
-    }
-
-    // 3. 매니페스트 저장
-    manifestPath := filepath.Join(bs.backupPath, "manifest.json")
-    manifestData, _ := json.MarshalIndent(manifest, "", "  ")
-
-    err = os.WriteFile(manifestPath, manifestData, 0644)
-    if err != nil {
-        return nil, fmt.Errorf("failed to save manifest: %w", err)
-    }
-
-    fmt.Printf("✅ Backup completed: %d pins backed up\n", len(manifest.Pins))
-    return manifest, nil
-}
-
-// 백업에서 복원
-func (bs *BackupSystem) RestoreAll(ctx context.Context, manifestPath string) error {
-    fmt.Printf("📥 Starting restore from %s\n", manifestPath)
-
-    // 1. 매니페스트 로드
-    manifestData, err := os.ReadFile(manifestPath)
-    if err != nil {
-        return fmt.Errorf("failed to read manifest: %w", err)
-    }
-
-    var manifest BackupManifest
-    err = json.Unmarshal(manifestData, &manifest)
-    if err != nil {
-        return fmt.Errorf("failed to parse manifest: %w", err)
-    }
-
-    fmt.Printf("📋 Found %d pins in backup (created: %s)\n",
-              len(manifest.Pins), manifest.Timestamp.Format("2006-01-02 15:04:05"))
-
-    // 2. 각 Pin 복원
-    restored := 0
-    for i, backupPin := range manifest.Pins {
-        err := bs.restoreSinglePin(ctx, backupPin)
-        if err != nil {
-            fmt.Printf("⚠️ Failed to restore %s: %v\n", backupPin.CID, err)
-            continue
-        }
-
-        restored++
-
-        // 진행률 표시
-        if (i+1)%100 == 0 || i+1 == len(manifest.Pins) {
-            fmt.Printf("📦 Restore progress: %d/%d pins (%.1f%%)\n",
-                      i+1, len(manifest.Pins), float64(i+1)/float64(len(manifest.Pins))*100)
-        }
-    }
-
-    fmt.Printf("✅ Restore completed: %d/%d pins restored\n",
-              restored, len(manifest.Pins))
-
-    return nil
-}
-
-// 개별 Pin 백업
-func (bs *BackupSystem) backupSinglePin(pinInfo pin.PinInfo, data []byte) (*BackupPin, error) {
-    // 압축 처리
-    if bs.compression {
-        compressed, err := bs.compressData(data)
-        if err == nil && len(compressed) < len(data) {
-            data = compressed
-        }
-    }
-
-    // 백업 파일 저장
-    filename := fmt.Sprintf("%s.dat", pinInfo.CID.String())
-    filePath := filepath.Join(bs.backupPath, filename)
-
-    err := os.WriteFile(filePath, data, 0644)
-    if err != nil {
-        return nil, err
-    }
-
-    return &BackupPin{
-        CID:        pinInfo.CID.String(),
-        Type:       pinInfo.Type.String(),
-        Size:       pinInfo.Size,
-        BackupPath: filename,
-        Compressed: bs.compression,
-    }, nil
-}
-
-// 개별 Pin 복원
-func (bs *BackupSystem) restoreSinglePin(ctx context.Context, backupPin BackupPin) error {
-    // 백업 파일 읽기
-    filePath := filepath.Join(bs.backupPath, backupPin.BackupPath)
-    data, err := os.ReadFile(filePath)
-    if err != nil {
-        return fmt.Errorf("failed to read backup file: %w", err)
-    }
-
-    // 압축 해제
-    if backupPin.Compressed {
-        decompressed, err := bs.decompressData(data)
-        if err != nil {
-            return fmt.Errorf("failed to decompress: %w", err)
-        }
-        data = decompressed
-    }
-
-    // 데이터 복원 및 Pin
-    c, err := bs.pinManager.AddData(ctx, data)
-    if err != nil {
-        return fmt.Errorf("failed to add data: %w", err)
-    }
-
-    // Pin 타입에 따라 Pin 설정
-    pinType, _ := pin.ParsePinType(backupPin.Type)
-    err = bs.pinManager.PinAdd(ctx, c, pinType)
-    if err != nil {
-        return fmt.Errorf("failed to pin: %w", err)
-    }
-
-    return nil
-}
-
-// 사용 예제
-func ExampleBackupRestore() {
-    // 백업 시스템 초기화
-    dagWrapper, _ := dag.New(nil, "")
-    pinManager, _ := pin.NewPinManager(dagWrapper)
-    backupSystem := NewBackupSystem(pinManager, "/backup/ipfs")
-
-    ctx := context.Background()
-
-    // 전체 백업 실행
-    manifest, err := backupSystem.BackupAll(ctx)
-    if err != nil {
-        panic(err)
-    }
-
-    fmt.Printf("백업 완료: %d개 Pin이 백업됨\n", len(manifest.Pins))
-
-    // 복원 (필요시)
-    // err = backupSystem.RestoreAll(ctx, "/backup/ipfs/manifest.json")
-}
-```
-
-이제 Pin 관리와 가비지 컬렉션의 모든 측면을 완벽하게 다룰 수 있습니다! 🚀
+Now you have a complete understanding of Pin management and garbage collection in all aspects! 🚀

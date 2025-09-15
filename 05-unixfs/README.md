@@ -1,41 +1,41 @@
-# 03-unixfs: 파일시스템 추상화와 대용량 파일 처리
+# 03-unixfs: File System Abstraction and Large File Processing
 
-## 🎯 학습 목표
+## 🎯 Learning Objectives
 
-이 모듈을 통해 다음을 학습할 수 있습니다:
-- **UnixFS**의 개념과 IPFS에서 파일을 표현하는 방법
-- **청킹(Chunking)** 전략과 대용량 파일 처리
-- **파일과 디렉터리** 구조의 IPFS 저장 방식
-- **Merkle DAG**를 통한 효율적인 파일 검증
-- **스트리밍** 기반 파일 입출력과 성능 최적화
-- **파일 메타데이터** 관리와 MIME 타입 처리
+Through this module, you will learn:
+- The concept of **UnixFS** and how files are represented in IPFS
+- **Chunking** strategies and large file processing
+- How **files and directories** are stored in IPFS structure
+- Efficient file verification through **Merkle DAG**
+- **Streaming**-based file I/O and performance optimization
+- **File metadata** management and MIME type handling
 
-## 📋 사전 요구사항
+## 📋 Prerequisites
 
-- **00-block-cid** 모듈 완료 (Block과 CID 이해)
-- **01-persistent** 모듈 완료 (데이터 영속성 이해)
-- **02-dag-ipld** 모듈 완료 (DAG와 IPLD 이해)
-- 파일시스템의 기본 개념 (파일, 디렉터리, 경로)
-- 스트림 처리와 I/O 개념
+- **00-block-cid** module completed (understanding Blocks and CIDs)
+- **01-persistent** module completed (understanding data persistence)
+- **02-dag-ipld** module completed (understanding DAG and IPLD)
+- Basic file system concepts (files, directories, paths)
+- Stream processing and I/O concepts
 
-## 🔑 핵심 개념
+## 🔑 Core Concepts
 
-### UnixFS란?
+### What is UnixFS?
 
-**UnixFS**는 IPFS에서 파일과 디렉터리를 표현하기 위한 데이터 형식입니다:
-
-```
-일반 파일시스템: /home/user/document.txt
-UnixFS in IPFS: QmHash... (파일 내용) + 메타데이터
-```
-
-### 청킹(Chunking) 전략
-
-대용량 파일은 작은 청크로 분할되어 저장됩니다:
+**UnixFS** is a data format for representing files and directories in IPFS:
 
 ```
-큰 파일 (10MB)
-    ↓ 청킹
+Traditional filesystem: /home/user/document.txt
+UnixFS in IPFS: QmHash... (file content) + metadata
+```
+
+### Chunking Strategy
+
+Large files are divided into smaller chunks for storage:
+
+```
+Large file (10MB)
+    ↓ chunking
 Chunk1 (256KB) → Chunk2 (256KB) → ... → Chunk40 (256KB)
     ↓ Merkle DAG
       Root
@@ -43,26 +43,26 @@ Chunk1 (256KB) → Chunk2 (256KB) → ... → Chunk40 (256KB)
   C1   C2   C3...
 ```
 
-### 파일 구조 계층
+### File Structure Hierarchy
 
 ```
 UnixFS Node
 ├─ Type: File | Directory | Symlink
-├─ Data: 실제 내용 또는 청크 참조
-├─ Links: 하위 청크/파일에 대한 CID 링크
-└─ Metadata: 크기, 권한, 타임스탬프 등
+├─ Data: actual content or chunk references
+├─ Links: CID links to child chunks/files
+└─ Metadata: size, permissions, timestamp, etc.
 ```
 
-### Merkle DAG의 장점
+### Advantages of Merkle DAG
 
-1. **무결성 검증**: 단일 해시로 전체 파일 검증
-2. **효율적 동기화**: 변경된 청크만 전송
-3. **중복 제거**: 동일한 청크는 한 번만 저장
-4. **병렬 처리**: 청크 단위 독립적 처리
+1. **Integrity verification**: verify entire file with a single hash
+2. **Efficient synchronization**: transfer only changed chunks
+3. **Deduplication**: identical chunks stored only once
+4. **Parallel processing**: independent processing per chunk
 
-## 💻 코드 분석
+## 💻 Code Analysis
 
-### 1. UnixFS Wrapper 설계
+### 1. UnixFS Wrapper Design
 
 ```go
 // pkg/unixfs.go:21-31
@@ -77,24 +77,24 @@ func New(maxChunkSize int) (*UnixFsWrapper, error) {
     if maxChunkSize <= 0 {
         maxChunkSize = DefaultChunkSize // 256KB
     }
-    // DAG 서비스와 청커 초기화
+    // Initialize DAG service and chunker
 }
 ```
 
-**설계 특징**:
-- **dag.DagWrapper** 재사용으로 IPLD 기능 활용
-- **chunk.Splitter**로 유연한 청킹 전략
-- **설정 가능한 청크 크기**로 용도별 최적화
+**Design Features**:
+- Reuse **dag.DagWrapper** for IPLD functionality
+- Flexible chunking strategy with **chunk.Splitter**
+- **Configurable chunk size** for use-case optimization
 
-### 2. 파일 저장 (청킹 포함)
+### 2. File Storage (with Chunking)
 
 ```go
 // pkg/unixfs.go:60-95
 func (ufs *UnixFsWrapper) Put(ctx context.Context, file files.File) (cid.Cid, error) {
-    // 1. 파일을 청크로 분할
+    // 1. Split file into chunks
     chunker := chunk.NewSizeSplitter(file, int64(ufs.maxChunkSize))
 
-    // 2. 청크들을 개별적으로 저장
+    // 2. Store chunks individually
     var links []*format.Link
     totalSize := uint64(0)
 
@@ -107,11 +107,11 @@ func (ufs *UnixFsWrapper) Put(ctx context.Context, file files.File) (cid.Cid, er
             return cid.Undef, fmt.Errorf("failed to get next chunk: %w", err)
         }
 
-        // 3. 각 청크를 UnixFS 노드로 생성
+        // 3. Create each chunk as UnixFS node
         chunkNode := &dag.ProtoNode{}
         chunkNode.SetData(unixfs.FilePBData(chunk, uint64(len(chunk))))
 
-        // 4. 청크 저장 및 링크 생성
+        // 4. Store chunk and create link
         err = ufs.dagService.Add(ctx, chunkNode)
         if err != nil {
             return cid.Undef, fmt.Errorf("failed to add chunk: %w", err)
@@ -125,7 +125,7 @@ func (ufs *UnixFsWrapper) Put(ctx context.Context, file files.File) (cid.Cid, er
         totalSize += uint64(len(chunk))
     }
 
-    // 5. 루트 노드 생성 (모든 청크를 링크)
+    // 5. Create root node (links all chunks)
     rootNode := &dag.ProtoNode{}
     rootNode.SetLinks(links)
     rootNode.SetData(unixfs.FilePBData(nil, totalSize))
@@ -135,25 +135,25 @@ func (ufs *UnixFsWrapper) Put(ctx context.Context, file files.File) (cid.Cid, er
 }
 ```
 
-**핵심 과정**:
-1. **청킹**: 파일을 설정된 크기로 분할
-2. **청크 저장**: 각 청크를 UnixFS 노드로 저장
-3. **링크 수집**: 청크 CID들을 수집
-4. **루트 생성**: 모든 청크를 링크하는 루트 노드
-5. **메타데이터**: 파일 크기 등 정보 포함
+**Core Process**:
+1. **Chunking**: Split file into configured size chunks
+2. **Chunk Storage**: Store each chunk as UnixFS node
+3. **Link Collection**: Collect chunk CIDs
+4. **Root Creation**: Root node linking all chunks
+5. **Metadata**: Include file size and other information
 
-### 3. 파일 검색 (스트리밍)
+### 3. File Retrieval (Streaming)
 
 ```go
 // pkg/unixfs.go:98-130
 func (ufs *UnixFsWrapper) Get(ctx context.Context, c cid.Cid) (files.Node, error) {
-    // 1. 루트 노드 조회
+    // 1. Retrieve root node
     rootNode, err := ufs.dagService.Get(ctx, c)
     if err != nil {
         return nil, fmt.Errorf("failed to get root node: %w", err)
     }
 
-    // 2. UnixFS 메타데이터 파싱
+    // 2. Parse UnixFS metadata
     fsNode, err := unixfs.FSNodeFromBytes(rootNode.RawData())
     if err != nil {
         return nil, fmt.Errorf("failed to parse UnixFS node: %w", err)
@@ -171,33 +171,33 @@ func (ufs *UnixFsWrapper) Get(ctx context.Context, c cid.Cid) (files.Node, error
 
 func (ufs *UnixFsWrapper) getFile(ctx context.Context, rootNode format.Node,
                                  fsNode *unixfs.FSNode) (files.File, error) {
-    // 3. 파일 리더 생성 (스트리밍)
+    // 3. Create file reader (streaming)
     dagReader, err := uio.NewDagReader(ctx, rootNode, ufs.dagService)
     if err != nil {
         return nil, fmt.Errorf("failed to create DAG reader: %w", err)
     }
 
-    // 4. 청크들을 순차적으로 읽는 스트림 반환
+    // 4. Return stream that reads chunks sequentially
     return files.NewReaderFile(dagReader), nil
 }
 ```
 
-### 4. 디렉터리 처리
+### 4. Directory Processing
 
 ```go
 // pkg/unixfs.go:170-200
 func (ufs *UnixFsWrapper) putDirectory(ctx context.Context, dir files.Directory) (cid.Cid, error) {
-    // 1. 디렉터리 노드 생성
+    // 1. Create directory node
     dirNode := &dag.ProtoNode{}
     dirNode.SetData(unixfs.FolderPBData())
 
-    // 2. 디렉터리 내 파일/하위 디렉터리 처리
+    // 2. Process files/subdirectories in directory
     entries := dir.Entries()
     for entries.Next() {
         entry := entries.Node()
         entryName := entries.Name()
 
-        // 3. 재귀적으로 하위 항목 처리
+        // 3. Recursively process child entries
         var entryCID cid.Cid
         var err error
 
@@ -214,20 +214,20 @@ func (ufs *UnixFsWrapper) putDirectory(ctx context.Context, dir files.Directory)
             return cid.Undef, fmt.Errorf("failed to add entry %s: %w", entryName, err)
         }
 
-        // 4. 디렉터리 링크 추가
+        // 4. Add directory link
         err = dirNode.AddNodeLink(entryName, &dag.ProtoNode{})
         if err != nil {
             return cid.Undef, fmt.Errorf("failed to add link: %w", err)
         }
     }
 
-    // 5. 디렉터리 노드 저장
+    // 5. Store directory node
     err := ufs.dagService.Add(ctx, dirNode)
     return dirNode.Cid(), err
 }
 ```
 
-### 5. 경로 기반 파일 접근
+### 5. Path-based File Access
 
 ```go
 // pkg/unixfs.go:240-270
@@ -236,30 +236,30 @@ func (ufs *UnixFsWrapper) GetPath(ctx context.Context, rootCID cid.Cid, path str
         return ufs.Get(ctx, rootCID)
     }
 
-    // 1. 경로 파싱
+    // 1. Parse path
     pathSegments := strings.Split(strings.Trim(path, "/"), "/")
     currentCID := rootCID
 
-    // 2. 경로를 따라 순차적으로 탐색
+    // 2. Navigate through path sequentially
     for _, segment := range pathSegments {
-        // 현재 노드 조회
+        // Get current node
         currentNode, err := ufs.dagService.Get(ctx, currentCID)
         if err != nil {
             return nil, fmt.Errorf("failed to get node: %w", err)
         }
 
-        // UnixFS 메타데이터 파싱
+        // Parse UnixFS metadata
         fsNode, err := unixfs.FSNodeFromBytes(currentNode.RawData())
         if err != nil {
             return nil, fmt.Errorf("failed to parse UnixFS node: %w", err)
         }
 
-        // 디렉터리인지 확인
+        // Check if it's a directory
         if fsNode.Type() != unixfs.TDirectory {
             return nil, fmt.Errorf("path segment '%s' is not a directory", segment)
         }
 
-        // 3. 디렉터리에서 해당 이름의 링크 찾기
+        // 3. Find link with matching name in directory
         found := false
         for _, link := range currentNode.Links() {
             if link.Name == segment {
@@ -274,21 +274,21 @@ func (ufs *UnixFsWrapper) GetPath(ctx context.Context, rootCID cid.Cid, path str
         }
     }
 
-    // 4. 최종 노드 반환
+    // 4. Return final node
     return ufs.Get(ctx, currentCID)
 }
 ```
 
-## 🏃‍♂️ 실습 가이드
+## 🏃‍♂️ Hands-on Guide
 
-### 1. 기본 실행
+### 1. Basic Execution
 
 ```bash
 cd 03-unixfs
 go run main.go
 ```
 
-**예상 출력**:
+**Expected Output**:
 ```
 === UnixFS Demo ===
 
@@ -331,30 +331,30 @@ go run main.go
       Chunk distribution: [262144, 262144, 262144, 262144]
 ```
 
-### 2. 청킹 전략 실험
+### 2. Chunking Strategy Experiments
 
-다양한 청크 크기로 성능 비교:
+Compare performance with different chunk sizes:
 
 ```bash
-# 작은 청크 (64KB)
+# Small chunks (64KB)
 UnixFS_CHUNK_SIZE=65536 go run main.go
 
-# 큰 청크 (1MB)
+# Large chunks (1MB)
 UnixFS_CHUNK_SIZE=1048576 go run main.go
 
-# 기본값 (256KB)
+# Default (256KB)
 go run main.go
 ```
 
-**관찰 포인트**:
-- 청크 크기가 작을수록 더 많은 청크 생성
-- 청크 크기가 클수록 메모리 사용량 증가
-- 네트워크 조건에 따른 최적 청크 크기 변화
+**Observation Points**:
+- Smaller chunk sizes create more chunks
+- Larger chunk sizes increase memory usage
+- Optimal chunk size varies with network conditions
 
-### 3. 대용량 파일 처리 테스트
+### 3. Large File Processing Test
 
 ```go
-// 10MB 파일 생성 및 처리
+// Test 10MB file creation and processing
 func testLargeFile() {
     largeData := make([]byte, 10*1024*1024)
     for i := range largeData {
@@ -363,26 +363,26 @@ func testLargeFile() {
 
     file := files.NewBytesFile(largeData)
     cid, err := unixfsWrapper.Put(ctx, file)
-    // 청킹 및 메모리 사용량 관찰
+    // Observe chunking and memory usage
 }
 ```
 
-### 4. 테스트 실행
+### 4. Running Tests
 
 ```bash
 go test -v ./...
 ```
 
-**주요 테스트 케이스**:
-- ✅ 작은 파일 저장/검색
-- ✅ 대용량 파일 청킹
-- ✅ 디렉터리 구조 생성
-- ✅ 경로 기반 접근
-- ✅ 스트리밍 I/O 성능
+**Key Test Cases**:
+- ✅ Small file storage/retrieval
+- ✅ Large file chunking
+- ✅ Directory structure creation
+- ✅ Path-based access
+- ✅ Streaming I/O performance
 
-## 🔍 고급 활용 사례
+## 🔍 Advanced Use Cases
 
-### 1. 웹사이트 호스팅
+### 1. Website Hosting
 
 ```go
 type WebsiteBuilder struct {
@@ -390,7 +390,7 @@ type WebsiteBuilder struct {
 }
 
 func (wb *WebsiteBuilder) BuildSite(sitePath string) (cid.Cid, error) {
-    // 1. HTML, CSS, JS 파일들을 수집
+    // 1. Collect HTML, CSS, JS files
     var htmlFiles []files.File
     var assetFiles []files.File
 
@@ -415,24 +415,24 @@ func (wb *WebsiteBuilder) BuildSite(sitePath string) (cid.Cid, error) {
         return nil
     })
 
-    // 2. 웹사이트 디렉터리 구조 생성
+    // 2. Create website directory structure
     websiteDir := files.NewMapDirectory(map[string]files.Node{
         "index.html": htmlFiles[0],
         "assets":     files.NewMapDirectory(assetsMap),
     })
 
-    // 3. 전체 사이트를 IPFS에 추가
+    // 3. Add entire site to IPFS
     return wb.unixfs.Put(ctx, websiteDir)
 }
 ```
 
-### 2. 버전 관리 시스템
+### 2. Version Control System
 
 ```go
 type VersionedFile struct {
     Content     []byte            `json:"content"`
     Version     int               `json:"version"`
-    PreviousRef map[string]string `json:"previous,omitempty"` // CID 링크
+    PreviousRef map[string]string `json:"previous,omitempty"` // CID links
     Timestamp   string            `json:"timestamp"`
     Author      string            `json:"author"`
     Message     string            `json:"message"`
@@ -444,7 +444,7 @@ func (vcs *VersionControlSystem) CommitFile(content []byte, message, author stri
     var previousRef map[string]string
 
     if previousCID != nil {
-        // 이전 버전 정보 조회하여 버전 번호 증가
+        // Get previous version info to increment version number
         version = getPreviousVersion(*previousCID) + 1
         previousRef = map[string]string{"/": previousCID.String()}
     }
@@ -458,14 +458,14 @@ func (vcs *VersionControlSystem) CommitFile(content []byte, message, author stri
         Message:     message,
     }
 
-    // JSON으로 직렬화하여 저장
+    // Serialize to JSON and store
     data, _ := json.Marshal(versionedFile)
     file := files.NewBytesFile(data)
     return vcs.unixfs.Put(ctx, file)
 }
 ```
 
-### 3. 분산 파일 백업
+### 3. Distributed File Backup
 
 ```go
 type BackupSystem struct {
@@ -483,10 +483,10 @@ func (bs *BackupSystem) BackupDirectory(sourcePath string) (*BackupManifest, err
             return err
         }
 
-        // 1. 파일 해시 계산 (중복 제거)
+        // 1. Calculate file hash (for deduplication)
         fileHash := calculateFileHash(path)
 
-        // 2. 중복이 아닌 경우만 업로드
+        // 2. Upload only if not duplicate
         if !bs.isDuplicate(fileHash) {
             file, err := os.Open(path)
             if err != nil {
@@ -499,7 +499,7 @@ func (bs *BackupSystem) BackupDirectory(sourcePath string) (*BackupManifest, err
                 return err
             }
 
-            // 3. 매니페스트에 파일 정보 기록
+            // 3. Record file info in manifest
             relativePath, _ := filepath.Rel(sourcePath, path)
             manifest.Files[relativePath] = FileInfo{
                 CID:      cid.String(),
@@ -512,7 +512,7 @@ func (bs *BackupSystem) BackupDirectory(sourcePath string) (*BackupManifest, err
         return nil
     })
 
-    // 4. 매니페스트 자체도 IPFS에 저장
+    // 4. Store manifest itself in IPFS
     manifestData, _ := json.Marshal(manifest)
     manifestFile := files.NewBytesFile(manifestData)
     manifestCID, err := bs.unixfs.Put(ctx, manifestFile)
@@ -522,7 +522,7 @@ func (bs *BackupSystem) BackupDirectory(sourcePath string) (*BackupManifest, err
 }
 ```
 
-### 4. 미디어 스트리밍
+### 4. Media Streaming
 
 ```go
 type MediaStreamer struct {
@@ -531,7 +531,7 @@ type MediaStreamer struct {
 
 func (ms *MediaStreamer) StreamVideo(videoCID cid.Cid,
                                    startByte, endByte int64) (io.Reader, error) {
-    // 1. 비디오 파일 노드 조회
+    // 1. Get video file node
     videoNode, err := ms.unixfs.Get(ctx, videoCID)
     if err != nil {
         return nil, err
@@ -542,7 +542,7 @@ func (ms *MediaStreamer) StreamVideo(videoCID cid.Cid,
         return nil, fmt.Errorf("not a file")
     }
 
-    // 2. 범위 기반 읽기 (HTTP Range Request 지원)
+    // 2. Range-based reading (HTTP Range Request support)
     if startByte > 0 {
         _, err = videoFile.Seek(startByte, io.SeekStart)
         if err != nil {
@@ -550,7 +550,7 @@ func (ms *MediaStreamer) StreamVideo(videoCID cid.Cid,
         }
     }
 
-    // 3. 제한된 크기만 읽는 리더 반환
+    // 3. Return reader limited to specified size
     if endByte > startByte {
         return io.LimitReader(videoFile, endByte-startByte+1), nil
     }
@@ -559,44 +559,44 @@ func (ms *MediaStreamer) StreamVideo(videoCID cid.Cid,
 }
 
 func (ms *MediaStreamer) CreateVideoManifest(videoCID cid.Cid) (*HLSManifest, error) {
-    // HLS (HTTP Live Streaming) 매니페스트 생성
+    // Create HLS (HTTP Live Streaming) manifest
     manifest := &HLSManifest{
         Version:    3,
         TargetDuration: 10,
         Segments:   []HLSSegment{},
     }
 
-    // 비디오를 10초 세그먼트로 분할하여 각각 CID 생성
-    // 실제 구현에서는 FFmpeg 등을 사용하여 세그먼트 분할
+    // Split video into 10-second segments, each with its own CID
+    // In real implementation, use FFmpeg or similar for segment splitting
 
     return manifest, nil
 }
 ```
 
-## ⚠️ 주의사항 및 모범 사례
+## ⚠️ Best Practices and Considerations
 
-### 1. 청크 크기 선택
+### 1. Chunk Size Selection
 
 ```go
-// ✅ 용도별 최적 청크 크기
+// ✅ Optimal chunk sizes by use case
 func selectChunkSize(fileSize int64, networkCondition string) int {
     switch {
-    case fileSize < 1*1024*1024: // 1MB 미만
+    case fileSize < 1*1024*1024: // Under 1MB
         return 64 * 1024 // 64KB
     case networkCondition == "slow":
         return 128 * 1024 // 128KB
     case networkCondition == "fast":
         return 1024 * 1024 // 1MB
     default:
-        return 256 * 1024 // 256KB (기본값)
+        return 256 * 1024 // 256KB (default)
     }
 }
 ```
 
-### 2. 메모리 효율적인 대용량 파일 처리
+### 2. Memory-efficient Large File Processing
 
 ```go
-// ✅ 스트리밍 기반 처리
+// ✅ Streaming-based processing
 func processLargeFile(filePath string, ufs *UnixFsWrapper) error {
     file, err := os.Open(filePath)
     if err != nil {
@@ -604,15 +604,15 @@ func processLargeFile(filePath string, ufs *UnixFsWrapper) error {
     }
     defer file.Close()
 
-    // 파일 전체를 메모리에 로드하지 않고 스트림으로 처리
+    // Process as stream without loading entire file into memory
     readerFile := files.NewReaderFile(file)
     _, err = ufs.Put(ctx, readerFile)
     return err
 }
 
-// ❌ 잘못된 방법: 메모리 부족 위험
+// ❌ Wrong approach: Risk of memory exhaustion
 func processLargeFileWrong(filePath string, ufs *UnixFsWrapper) error {
-    data, err := ioutil.ReadFile(filePath) // 전체 파일을 메모리에 로드
+    data, err := ioutil.ReadFile(filePath) // Load entire file into memory
     if err != nil {
         return err
     }
@@ -623,20 +623,20 @@ func processLargeFileWrong(filePath string, ufs *UnixFsWrapper) error {
 }
 ```
 
-### 3. 경로 정규화
+### 3. Path Normalization
 
 ```go
-// ✅ 안전한 경로 처리
+// ✅ Safe path handling
 func normalizePath(path string) string {
-    // 상대 경로 공격 방지
+    // Prevent path traversal attacks
     path = filepath.Clean(path)
 
-    // 절대 경로를 상대 경로로 변환
+    // Convert absolute path to relative path
     if filepath.IsAbs(path) {
         path = path[1:]
     }
 
-    // 빈 경로 처리
+    // Handle empty paths
     if path == "." {
         return ""
     }
@@ -645,18 +645,18 @@ func normalizePath(path string) string {
 }
 ```
 
-### 4. MIME 타입 처리
+### 4. MIME Type Handling
 
 ```go
-// ✅ 자동 MIME 타입 감지
+// ✅ Automatic MIME type detection
 func detectMimeType(filename string, content []byte) string {
-    // 1. 확장자 기반 감지
+    // 1. Extension-based detection
     ext := filepath.Ext(filename)
     if mimeType := mime.TypeByExtension(ext); mimeType != "" {
         return mimeType
     }
 
-    // 2. 내용 기반 감지
+    // 2. Content-based detection
     return http.DetectContentType(content)
 }
 
@@ -664,7 +664,7 @@ func addFileWithMetadata(ufs *UnixFsWrapper, filename string,
                         content []byte) (cid.Cid, error) {
     mimeType := detectMimeType(filename, content)
 
-    // 메타데이터와 함께 저장
+    // Store with metadata
     fileWithMeta := struct {
         Content  []byte `json:"content"`
         Filename string `json:"filename"`
@@ -683,13 +683,13 @@ func addFileWithMetadata(ufs *UnixFsWrapper, filename string,
 }
 ```
 
-## 🔧 트러블슈팅
+## 🔧 Troubleshooting
 
-### 문제 1: "chunk too large" 에러
+### Issue 1: "chunk too large" error
 
-**원인**: 청크 크기가 시스템 한계를 초과
+**Cause**: Chunk size exceeds system limits
 ```go
-// 해결: 청크 크기 제한
+// Solution: Limit chunk size
 const MaxChunkSize = 1024 * 1024 // 1MB
 
 func validateChunkSize(chunkSize int) int {
@@ -701,23 +701,23 @@ func validateChunkSize(chunkSize int) int {
 }
 ```
 
-### 문제 2: "out of memory" 에러
+### Issue 2: "out of memory" error
 
-**원인**: 대용량 파일을 한 번에 메모리에 로드
+**Cause**: Loading large files entirely into memory
 ```go
-// 해결: 스트리밍 처리
+// Solution: Streaming processing
 func processFileStream(reader io.Reader, ufs *UnixFsWrapper) (cid.Cid, error) {
-    // io.Reader를 직접 사용하여 메모리 사용량 최소화
+    // Use io.Reader directly to minimize memory usage
     file := files.NewReaderFile(reader)
     return ufs.Put(ctx, file)
 }
 ```
 
-### 문제 3: "path not found" 에러
+### Issue 3: "path not found" error
 
-**원인**: 잘못된 경로 또는 디렉터리 구조
+**Cause**: Invalid path or directory structure
 ```go
-// 해결: 경로 유효성 검사
+// Solution: Path validation
 func validatePath(ufs *UnixFsWrapper, rootCID cid.Cid, path string) error {
     pathSegments := strings.Split(strings.Trim(path, "/"), "/")
 
@@ -732,11 +732,11 @@ func validatePath(ufs *UnixFsWrapper, rootCID cid.Cid, path string) error {
 }
 ```
 
-### 문제 4: 청킹 불일치
+### Issue 4: Chunking inconsistency
 
-**원인**: 다른 청크 크기로 저장된 파일 접근
+**Cause**: Accessing files stored with different chunk sizes
 ```go
-// 해결: 청크 정보 메타데이터 저장
+// Solution: Store chunk info in metadata
 type FileMetadata struct {
     ChunkSize    int    `json:"chunk_size"`
     TotalSize    int64  `json:"total_size"`
@@ -746,21 +746,21 @@ type FileMetadata struct {
 
 func putFileWithMetadata(ufs *UnixFsWrapper, file files.File,
                         chunkSize int) (cid.Cid, error) {
-    // 파일과 메타데이터를 함께 저장
+    // Store file with metadata
     metadata := FileMetadata{
         ChunkSize:  chunkSize,
         Algorithm:  "size-splitter",
     }
 
-    // 메타데이터를 포함한 wrapper 구조 생성
+    // Create wrapper structure with metadata
     wrapper := struct {
         Metadata FileMetadata `json:"metadata"`
-        Content  string       `json:"content"` // 실제 파일 CID
+        Content  string       `json:"content"` // actual file CID
     }{
         Metadata: metadata,
     }
 
-    // 실제 파일 저장
+    // Store actual file
     fileCID, err := ufs.Put(ctx, file)
     if err != nil {
         return cid.Undef, err
@@ -768,25 +768,25 @@ func putFileWithMetadata(ufs *UnixFsWrapper, file files.File,
 
     wrapper.Content = fileCID.String()
 
-    // 래퍼 저장
+    // Store wrapper
     wrapperData, _ := json.Marshal(wrapper)
     wrapperFile := files.NewBytesFile(wrapperData)
     return ufs.Put(ctx, wrapperFile)
 }
 ```
 
-## 📊 성능 최적화
+## 📊 Performance Optimization
 
-### 1. 병렬 청킹
+### 1. Parallel Chunking
 
 ```go
-// ✅ 병렬 청크 처리
+// ✅ Parallel chunk processing
 func putFileParallel(ufs *UnixFsWrapper, file files.File) (cid.Cid, error) {
     const workers = 4
     chunkQueue := make(chan []byte, workers*2)
     resultQueue := make(chan chunkResult, workers*2)
 
-    // 워커 시작
+    // Start workers
     for i := 0; i < workers; i++ {
         go func() {
             for chunk := range chunkQueue {
@@ -797,7 +797,7 @@ func putFileParallel(ufs *UnixFsWrapper, file files.File) (cid.Cid, error) {
         }()
     }
 
-    // 청킹 및 큐에 전송
+    // Chunking and queue sending
     chunker := chunk.NewSizeSplitter(file, int64(ufs.maxChunkSize))
     var chunkCount int
 
@@ -817,7 +817,7 @@ func putFileParallel(ufs *UnixFsWrapper, file files.File) (cid.Cid, error) {
         }
     }()
 
-    // 결과 수집
+    // Collect results
     var links []*format.Link
     for i := 0; i < chunkCount; i++ {
         result := <-resultQueue
@@ -827,33 +827,33 @@ func putFileParallel(ufs *UnixFsWrapper, file files.File) (cid.Cid, error) {
         links = append(links, &format.Link{Cid: result.cid})
     }
 
-    // 루트 노드 생성
+    // Create root node
     return createRootNode(links)
 }
 ```
 
-### 2. 지능형 캐싱
+### 2. Intelligent Caching
 
 ```go
-// ✅ LRU 캐시로 자주 접근하는 파일 캐싱
+// ✅ Cache frequently accessed files with LRU cache
 type CachedUnixFS struct {
     *UnixFsWrapper
     cache *lru.Cache
 }
 
 func (cufs *CachedUnixFS) Get(ctx context.Context, c cid.Cid) (files.Node, error) {
-    // 캐시 확인
+    // Check cache
     if cached, ok := cufs.cache.Get(c.String()); ok {
         return cached.(files.Node), nil
     }
 
-    // 캐시 미스 시 실제 조회
+    // Cache miss - perform actual lookup
     node, err := cufs.UnixFsWrapper.Get(ctx, c)
     if err != nil {
         return nil, err
     }
 
-    // 캐시에 저장 (크기 제한)
+    // Store in cache (with size limit)
     if estimatedSize(node) < MaxCacheNodeSize {
         cufs.cache.Add(c.String(), node)
     }
@@ -862,17 +862,17 @@ func (cufs *CachedUnixFS) Get(ctx context.Context, c cid.Cid) (files.Node, error
 }
 ```
 
-### 3. 압축 지원
+### 3. Compression Support
 
 ```go
-// ✅ 자동 압축으로 저장 공간 절약
+// ✅ Auto-compression to save storage space
 func putFileWithCompression(ufs *UnixFsWrapper, file files.File,
                           compress bool) (cid.Cid, error) {
     if !compress {
         return ufs.Put(ctx, file)
     }
 
-    // gzip 압축 적용
+    // Apply gzip compression
     var buf bytes.Buffer
     gzipWriter := gzip.NewWriter(&buf)
 
@@ -886,7 +886,7 @@ func putFileWithCompression(ufs *UnixFsWrapper, file files.File,
         return cid.Undef, err
     }
 
-    // 압축된 데이터를 메타데이터와 함께 저장
+    // Store compressed data with metadata
     compressed := CompressedFile{
         Data:             buf.Bytes(),
         OriginalSize:     getFileSize(file),
@@ -900,34 +900,34 @@ func putFileWithCompression(ufs *UnixFsWrapper, file files.File,
 }
 ```
 
-## 📚 추가 학습 자료
+## 📚 Additional Learning Resources
 
-### 관련 문서
+### Related Documentation
 - [UnixFS Specification](https://github.com/ipfs/specs/blob/master/UNIXFS.md)
 - [IPFS File API](https://docs.ipfs.io/reference/kubo/rpc/#api-v0-add)
 - [Merkle DAG Structure](https://docs.ipfs.io/concepts/merkle-dag/)
 - [Chunking Strategies](https://docs.ipfs.io/concepts/file-systems/#chunking)
 
-### 다음 단계
-1. **04-network-bitswap**: P2P 네트워크에서 파일 블록 교환
-2. **05-pin-gc**: 파일 생명주기 관리와 가비지 컬렉션
-3. **06-gateway**: HTTP를 통한 파일 웹 접근
+### Next Steps
+1. **04-network-bitswap**: File block exchange in P2P networks
+2. **05-pin-gc**: File lifecycle management and garbage collection
+3. **06-gateway**: HTTP access to files via web
 
-## 🎓 연습 문제
+## 🎓 Practice Exercises
 
-### 기초 연습
-1. 다양한 크기의 파일을 저장하고 청킹 결과를 비교해보세요
-2. 디렉터리 구조를 만들고 경로를 통해 파일에 접근해보세요
-3. 같은 파일을 다른 청크 크기로 저장했을 때 CID 차이를 확인해보세요
+### Basic Exercises
+1. Store files of various sizes and compare chunking results
+2. Create directory structures and access files through paths
+3. Store the same file with different chunk sizes and verify CID differences
 
-### 심화 연습
-1. 이미지 파일을 저장하고 썸네일 생성 시스템을 만들어보세요
-2. 텍스트 파일의 버전 관리 시스템을 구현해보세요
-3. 대용량 로그 파일을 효율적으로 저장하고 검색하는 시스템을 설계해보세요
+### Advanced Exercises
+1. Store image files and create a thumbnail generation system
+2. Implement a version control system for text files
+3. Design a system for efficiently storing and searching large log files
 
-### 실전 과제
-1. 정적 웹사이트 호스팅 시스템을 만들어보세요
-2. 파일 백업 및 복원 도구를 구현해보세요
-3. 미디어 스트리밍 서비스의 기본 구조를 설계해보세요
+### Practical Projects
+1. Create a static website hosting system
+2. Implement a file backup and restore tool
+3. Design the basic structure of a media streaming service
 
-이제 IPFS에서 파일과 디렉터리를 어떻게 효율적으로 다루는지 이해하셨을 것입니다. 다음 모듈에서는 P2P 네트워크에서 이러한 데이터를 어떻게 공유하는지 학습하겠습니다! 🚀
+Now you understand how to efficiently handle files and directories in IPFS. In the next module, we'll learn how to share this data in P2P networks! 🚀

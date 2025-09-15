@@ -1,1064 +1,1134 @@
-# 06-gateway: IPFS HTTP 게이트웨이 구현
+# 06-gateway: HTTP Gateway and Web Integration
 
-## 🎯 학습 목표
-- HTTP 게이트웨이를 통해 IPFS 콘텐츠에 웹 접근하는 방법 이해
-- UnixFS 파일 시스템과 웹 인터페이스 통합
-- 디렉터리 리스팅과 콘텐츠 타입 처리
-- RESTful API 엔드포인트 설계 및 구현
-- 실제 웹 애플리케이션에서 IPFS 데이터 활용
+## 🎯 Learning Objectives
 
-## 📋 사전 요구사항
-- **이전 챕터**: 00-block-cid, 01-persistent, 02-dag-ipld, 03-unixfs 완료
-- **기술 지식**: HTTP 프로토콜, RESTful API, HTML/CSS 기초
-- **Go 지식**: HTTP 서버, 템플릿, JSON 처리
+Through this module, you will learn:
+- The concept of **IPFS HTTP Gateway** and principles of web integration
+- **Path resolution** mechanisms (/ipfs/ and /ipns/ paths)
+- **HTTP request handling** and RESTful API design patterns
+- **Content-Type detection** and appropriate response header configuration
+- **Static website hosting** and web application deployment
+- **Performance optimization** and caching strategies for gateways
 
-## 🔑 핵심 개념
+## 📋 Prerequisites
 
-### IPFS HTTP 게이트웨이란?
-IPFS HTTP 게이트웨이는 분산 파일 시스템의 콘텐츠를 기존 웹 브라우저와 HTTP 클라이언트에서 접근할 수 있게 하는 브릿지입니다.
+- **00-block-cid** module completed (understanding Blocks and CIDs)
+- **01-persistent** module completed (understanding data persistence)
+- **02-dag-ipld** module completed (understanding DAG and IPLD)
+- **03-unixfs** module completed (understanding file systems and chunking)
+- **04-pin-gc** module completed (understanding pin management)
+- Basic concepts of HTTP protocols and web servers
+- Understanding of web development and REST APIs
 
-#### 게이트웨이의 역할
-- **프로토콜 변환**: IPFS 네이티브 프로토콜 ↔ HTTP/HTTPS
-- **콘텐츠 해석**: CID를 통한 데이터 검색 및 웹 형식으로 제공
-- **메타데이터 처리**: 파일 타입 감지 및 적절한 HTTP 헤더 설정
-- **디렉터리 네비게이션**: UnixFS 디렉터리 구조를 HTML로 렌더링
+## 🔑 Core Concepts
 
-### 게이트웨이 URL 패턴
+### What is an IPFS Gateway?
+
+An **IPFS Gateway** provides HTTP access to IPFS content, bridging the IPFS network and the traditional web:
+
 ```
-# CID 기반 접근
-http://localhost:8080/ipfs/{CID}
-http://localhost:8080/ipfs/{CID}/path/to/file
-
-# API 엔드포인트
-http://localhost:8080/api/v0/add
-http://localhost:8080/api/v0/get/{CID}
-http://localhost:8080/api/v0/ls/{CID}
+Web Browser  →  HTTP Request   →  IPFS Gateway  →  IPFS Network
+             ←  HTTP Response  ←                ←
 ```
 
-## 💻 코드 분석
+### Gateway Types
 
-### 1. Gateway 구조체 설계
+| Type | Description | Usage |
+|------|-------------|--------|
+| **Public Gateway** | Open access gateway | ipfs.io, dweb.link |
+| **Private Gateway** | Access-controlled gateway | Internal services, paid services |
+| **Local Gateway** | Individual node gateway | localhost:8080 |
+| **Subdomain Gateway** | Subdomain-based routing | {cid}.ipfs.dweb.link |
+
+### Path Resolution
+
+```
+/ipfs/QmHash.../path/to/file   → Content-addressed static content
+/ipns/domain.com/path          → DNS-linked dynamic content
+/ipns/QmPeerID.../path         → IPNS record-based content
+```
+
+### HTTP Integration Advantages
+
+1. **Universal Access**: Accessible from any web browser
+2. **SEO Compatibility**: Searchable and indexable content
+3. **CDN Integration**: Cacheable static content
+4. **Standard Protocols**: Leverages existing web infrastructure
+
+## 💻 Code Analysis
+
+### 1. Gateway Server Structure
+
 ```go
+// pkg/gateway.go:25-45
 type Gateway struct {
-    dagWrapper *dag.DAGWrapper
+    dagWrapper    *dag.DagWrapper
     unixfsWrapper *unixfs.UnixFsWrapper
-    server *http.Server
+    pinManager    *pin.PinManager
+    server        *http.Server
+    config        GatewayConfig
 }
-```
 
-**설계 결정**:
-- `dagWrapper`: 저수준 블록 및 DAG 데이터 접근
-- `unixfsWrapper`: 파일 시스템 추상화
-- `server`: HTTP 서버 인스턴스 관리
-
-### 2. HTTP 라우터 구성
-```go
-func (gw *Gateway) setupRoutes() {
-    http.HandleFunc("/", gw.homepageHandler)
-    http.HandleFunc("/ipfs/", gw.ipfsHandler)
-    http.HandleFunc("/api/v0/add", gw.apiAddHandler)
-    http.HandleFunc("/api/v0/get/", gw.apiGetHandler)
-    http.HandleFunc("/api/v0/ls/", gw.apiListHandler)
+type GatewayConfig struct {
+    Port            string        `json:"port"`
+    Host            string        `json:"host"`
+    ReadTimeout     time.Duration `json:"read_timeout"`
+    WriteTimeout    time.Duration `json:"write_timeout"`
+    MaxRequestSize  int64         `json:"max_request_size"`
+    EnableCORS      bool          `json:"enable_cors"`
+    AllowedOrigins  []string      `json:"allowed_origins"`
 }
-```
 
-**라우팅 전략**:
-- `/`: 게이트웨이 홈페이지 (사용법 안내)
-- `/ipfs/{CID}`: 콘텐츠 직접 접근
-- `/api/v0/*`: RESTful API 엔드포인트
-
-### 3. 콘텐츠 타입 감지
-```go
-func detectContentType(data []byte, filename string) string {
-    if contentType := http.DetectContentType(data); contentType != "application/octet-stream" {
-        return contentType
+func NewGateway(dagWrapper *dag.DagWrapper, config GatewayConfig) (*Gateway, error) {
+    unixfsWrapper, err := unixfs.New(dagWrapper)
+    if err != nil {
+        return nil, err
     }
 
-    // 파일 확장자 기반 감지
-    ext := strings.ToLower(filepath.Ext(filename))
-    switch ext {
-    case ".js":
-        return "application/javascript"
-    case ".css":
-        return "text/css"
-    case ".md":
-        return "text/markdown"
+    return &Gateway{
+        dagWrapper:    dagWrapper,
+        unixfsWrapper: unixfsWrapper,
+        config:        config,
+    }, nil
+}
+```
+
+**Design Features**:
+- **Layered Architecture**: Reuse existing DAG and UnixFS functionality
+- **Configurable Server**: Flexible timeout and CORS settings
+- **Modular Design**: Clear separation of concerns between components
+
+### 2. HTTP Route Handler
+
+```go
+// pkg/gateway.go:75-110
+func (gw *Gateway) setupRoutes() {
+    mux := http.NewServeMux()
+
+    // 1. IPFS content routes
+    mux.HandleFunc("/ipfs/", gw.handleIPFS)
+    mux.HandleFunc("/ipns/", gw.handleIPNS)
+
+    // 2. API routes
+    mux.HandleFunc("/api/v0/add", gw.handleAdd)
+    mux.HandleFunc("/api/v0/cat", gw.handleCat)
+    mux.HandleFunc("/api/v0/ls", gw.handleList)
+
+    // 3. Gateway info routes
+    mux.HandleFunc("/api/v0/version", gw.handleVersion)
+    mux.HandleFunc("/api/v0/id", gw.handleNodeInfo)
+
+    // 4. Static file serving (for web UI)
+    mux.Handle("/", http.FileServer(http.Dir("./webui/")))
+
+    // 5. Apply middleware
+    handler := gw.corsMiddleware(mux)
+    handler = gw.loggingMiddleware(handler)
+    handler = gw.authMiddleware(handler)
+
+    gw.server.Handler = handler
+}
+```
+
+### 3. IPFS Path Resolution
+
+```go
+// pkg/gateway.go:140-185
+func (gw *Gateway) handleIPFS(w http.ResponseWriter, r *http.Request) {
+    // 1. Extract path components
+    path := strings.TrimPrefix(r.URL.Path, "/ipfs/")
+    pathComponents := strings.Split(path, "/")
+
+    if len(pathComponents) == 0 {
+        http.Error(w, "Invalid IPFS path", http.StatusBadRequest)
+        return
+    }
+
+    // 2. Parse CID
+    cidStr := pathComponents[0]
+    rootCID, err := cid.Decode(cidStr)
+    if err != nil {
+        http.Error(w, fmt.Sprintf("Invalid CID: %s", err), http.StatusBadRequest)
+        return
+    }
+
+    // 3. Resolve sub-path if exists
+    var node files.Node
+    if len(pathComponents) > 1 {
+        subPath := "/" + strings.Join(pathComponents[1:], "/")
+        node, err = gw.unixfsWrapper.GetPath(r.Context(), rootCID, subPath)
+    } else {
+        node, err = gw.unixfsWrapper.Get(r.Context(), rootCID)
+    }
+
+    if err != nil {
+        if strings.Contains(err.Error(), "not found") {
+            http.NotFound(w, r)
+        } else {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+        }
+        return
+    }
+
+    // 4. Serve content based on type
+    switch n := node.(type) {
+    case files.File:
+        gw.serveFile(w, r, n, path)
+    case files.Directory:
+        gw.serveDirectory(w, r, n, path)
     default:
+        http.Error(w, "Unsupported content type", http.StatusInternalServerError)
+    }
+}
+```
+
+### 4. File Serving with Content-Type Detection
+
+```go
+// pkg/gateway.go:190-240
+func (gw *Gateway) serveFile(w http.ResponseWriter, r *http.Request,
+                            file files.File, path string) {
+    // 1. Detect content type
+    contentType := gw.detectContentType(file, path)
+    w.Header().Set("Content-Type", contentType)
+
+    // 2. Set cache headers
+    w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+    w.Header().Set("ETag", fmt.Sprintf("W/\"%s\"", path))
+
+    // 3. Handle range requests for large files
+    if gw.supportsRangeRequests(r) {
+        gw.serveFileRange(w, r, file)
+        return
+    }
+
+    // 4. Stream file content
+    defer file.Close()
+    size, err := file.Size()
+    if err == nil {
+        w.Header().Set("Content-Length", fmt.Sprintf("%d", size))
+    }
+
+    // 5. Copy file data to response
+    _, err = io.Copy(w, file)
+    if err != nil {
+        log.Printf("Error serving file: %v", err)
+        return
+    }
+
+    log.Printf("Served file: %s (%s, %d bytes)", path, contentType, size)
+}
+
+func (gw *Gateway) detectContentType(file files.File, path string) string {
+    // 1. Try extension-based detection first
+    ext := filepath.Ext(path)
+    if mimeType := mime.TypeByExtension(ext); mimeType != "" {
+        return mimeType
+    }
+
+    // 2. Content-based detection for unknown extensions
+    buffer := make([]byte, 512)
+    n, err := file.Read(buffer)
+    if err != nil && err != io.EOF {
         return "application/octet-stream"
     }
+
+    // Reset file position
+    if seeker, ok := file.(io.Seeker); ok {
+        seeker.Seek(0, io.SeekStart)
+    }
+
+    contentType := http.DetectContentType(buffer[:n])
+
+    // 3. Special handling for text files
+    if strings.HasPrefix(contentType, "text/plain") {
+        if strings.Contains(path, ".md") {
+            return "text/markdown; charset=utf-8"
+        }
+        if strings.Contains(path, ".json") {
+            return "application/json; charset=utf-8"
+        }
+    }
+
+    return contentType
 }
 ```
 
-## 🏃‍♂️ 실습 가이드
+### 5. Directory Listing with HTML Generation
 
-### 단계 1: 게이트웨이 서버 시작
+```go
+// pkg/gateway.go:280-340
+func (gw *Gateway) serveDirectory(w http.ResponseWriter, r *http.Request,
+                                 dir files.Directory, path string) {
+    // 1. Set HTML content type
+    w.Header().Set("Content-Type", "text/html; charset=utf-8")
+    w.Header().Set("Cache-Control", "public, max-age=3600")
+
+    // 2. Generate directory listing HTML
+    html := gw.generateDirectoryHTML(dir, path)
+
+    // 3. Write HTML response
+    w.WriteHeader(http.StatusOK)
+    w.Write([]byte(html))
+
+    log.Printf("Served directory listing: %s", path)
+}
+
+func (gw *Gateway) generateDirectoryHTML(dir files.Directory, path string) string {
+    var html strings.Builder
+
+    // HTML document header
+    html.WriteString(`<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Directory: ` + html.EscapeString(path) + `</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        h1 { border-bottom: 1px solid #ddd; padding-bottom: 10px; }
+        .entry { padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+        .entry:hover { background-color: #f8f8f8; }
+        .dir { font-weight: bold; }
+        .file { color: #666; }
+        .size { float: right; color: #999; font-size: 0.9em; }
+        .parent { color: #0066cc; }
+    </style>
+</head>
+<body>`)
+
+    // Directory title
+    html.WriteString(fmt.Sprintf(`<h1>📁 Directory: %s</h1>`,
+                     html.EscapeString(path)))
+
+    // Parent directory link
+    if path != "/" {
+        parentPath := filepath.Dir(path)
+        html.WriteString(fmt.Sprintf(`<div class="entry parent">
+            <a href="%s">📁 ../</a> (parent directory)
+        </div>`, parentPath))
+    }
+
+    // Directory entries
+    entries := dir.Entries()
+    for entries.Next() {
+        name := entries.Name()
+        node := entries.Node()
+
+        // Determine entry type and icon
+        var icon, class, sizeInfo string
+        switch node.(type) {
+        case files.Directory:
+            icon = "📁"
+            class = "dir"
+            sizeInfo = "(directory)"
+        case files.File:
+            icon = "📄"
+            class = "file"
+            if file, ok := node.(files.File); ok {
+                if size, err := file.Size(); err == nil {
+                    sizeInfo = gw.formatSize(size)
+                }
+            }
+        default:
+            icon = "❓"
+            class = "file"
+            sizeInfo = "(unknown)"
+        }
+
+        // Generate entry HTML
+        entryPath := filepath.Join(path, name)
+        html.WriteString(fmt.Sprintf(`<div class="entry %s">
+            <a href="%s">%s %s</a>
+            <span class="size">%s</span>
+        </div>`, class, entryPath, icon, html.EscapeString(name), sizeInfo))
+    }
+
+    // Footer
+    html.WriteString(`
+    <hr>
+    <footer style="margin-top: 20px; font-size: 0.9em; color: #666;">
+        <p>Powered by IPFS Gateway</p>
+    </footer>
+</body>
+</html>`)
+
+    return html.String()
+}
+
+func (gw *Gateway) formatSize(size int64) string {
+    const unit = 1024
+    if size < unit {
+        return fmt.Sprintf("%d B", size)
+    }
+    div, exp := int64(unit), 0
+    for n := size / unit; n >= unit; n /= unit {
+        div *= unit
+        exp++
+    }
+    return fmt.Sprintf("%.1f %cB", float64(size)/float64(div), "KMGTPE"[exp])
+}
+```
+
+## 🏃‍♂️ Hands-on Guide
+
+### 1. Basic Execution
+
 ```bash
 cd 06-gateway
 go run main.go
 ```
 
-### 단계 2: 웹 브라우저에서 접근
-1. http://localhost:8080 방문 (홈페이지)
-2. 샘플 파일 업로드 및 CID 확인
+**Expected Output**:
+```
+=== IPFS HTTP Gateway Demo ===
 
-### 단계 3: 콘텐츠 접근 테스트
+1. Setting up gateway server:
+   ✅ DAG service initialized
+   ✅ UnixFS wrapper ready
+   ✅ Gateway configured (port: 8080)
+
+2. Starting HTTP server:
+   🌐 Gateway server starting on http://localhost:8080
+   ✅ Server ready to handle requests
+
+3. Available endpoints:
+   📁 /ipfs/{CID}           - IPFS content access
+   🔗 /ipns/{name}          - IPNS name resolution
+   📄 /api/v0/add          - Upload content
+   🔍 /api/v0/cat          - View content
+   📋 /api/v0/ls           - List directory
+   ℹ️  /api/v0/version      - Gateway version
+   🏠 /                    - Gateway web UI
+
+4. Test content added:
+   📄 Text file: http://localhost:8080/ipfs/bafkreigh2ak...
+   📁 Directory: http://localhost:8080/ipfs/bafybeigdyr...
+   🖼️ Image file: http://localhost:8080/ipfs/bafkreihwd...
+
+5. Server status:
+   ⏱️  Request timeout: 30s
+   📝 CORS enabled for: *
+   🔒 Authentication: disabled (demo mode)
+   📊 Max request size: 32MB
+
+Access the gateway at: http://localhost:8080
+```
+
+### 2. Web Browser Testing
+
+Open your web browser and test the following URLs:
+
 ```bash
-# 파일 추가
-curl -X POST -F file=@test.txt http://localhost:8080/api/v0/add
+# View text file
+http://localhost:8080/ipfs/bafkreigh2akiscaiaanfkiuokmv4ooqlm5u7r22krvotqm7uhtgvowim2i
 
-# 반환된 CID로 접근
-curl http://localhost:8080/ipfs/{CID}
+# Browse directory
+http://localhost:8080/ipfs/bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi
 
-# 디렉터리 리스팅
-curl http://localhost:8080/api/v0/ls/{DIR_CID}
+# View image file
+http://localhost:8080/ipfs/bafkreihwdcxzvn353r4l5iy67q7vnk2ute6x6l7l5j3eeqrbzt5j7xqb7q
+
+# IPNS resolution (if configured)
+http://localhost:8080/ipns/example.com
 ```
 
-### 예상 결과
-- **홈페이지**: HTML 인터페이스로 게이트웨이 기능 소개
-- **파일 접근**: 브라우저에서 직접 파일 내용 표시
-- **디렉터리**: HTML 테이블로 파일 목록 표시
-- **API**: JSON 형식의 구조화된 응답
+### 3. API Testing with curl
 
-## 🚀 고급 활용 사례
+```bash
+# Upload file via API
+curl -X POST -F "file=@test.txt" http://localhost:8080/api/v0/add
 
-### 1. 정적 웹사이트 호스팅
-UnixFS 디렉터리에 웹사이트를 저장하고 게이트웨이로 서빙:
-```go
-// index.html, style.css, script.js를 포함한 디렉터리 생성
-dirCID := addWebsiteToIPFS("./website/")
-fmt.Printf("웹사이트 접근: http://localhost:8080/ipfs/%s\n", dirCID)
+# Retrieve file content
+curl "http://localhost:8080/api/v0/cat?arg=QmHashFromAbove"
+
+# List directory contents
+curl "http://localhost:8080/api/v0/ls?arg=QmDirectoryHash"
+
+# Check gateway version
+curl "http://localhost:8080/api/v0/version"
 ```
 
-### 2. 대용량 미디어 스트리밍
-청킹된 파일의 부분 요청 처리:
-```go
-func (gw *Gateway) handleRangeRequest(w http.ResponseWriter, r *http.Request, data []byte) {
-    rangeHeader := r.Header.Get("Range")
-    if rangeHeader != "" {
-        // HTTP Range 요청 처리
-        // 부분 콘텐츠 응답
-    }
-}
+### 4. Running Tests
+
+```bash
+go test -v ./...
 ```
 
-### 3. 캐싱 전략
-자주 접근되는 콘텐츠의 성능 최적화:
+**Key Test Cases**:
+- ✅ HTTP route handling
+- ✅ IPFS path resolution
+- ✅ Content-type detection
+- ✅ Directory listing generation
+- ✅ Error handling and status codes
+
+## 🔍 Advanced Use Cases
+
+### 1. Static Website Hosting
+
 ```go
-type CachedGateway struct {
+type WebsiteGateway struct {
     *Gateway
-    cache map[string][]byte
-    cacheMutex sync.RWMutex
+    domains map[string]string // domain -> IPFS hash mapping
+}
+
+func (wg *WebsiteGateway) handleCustomDomain(w http.ResponseWriter, r *http.Request) {
+    host := r.Host
+
+    // 1. Check if it's a registered domain
+    if ipfsHash, exists := wg.domains[host]; exists {
+        // Redirect to IPFS path
+        targetPath := "/ipfs/" + ipfsHash + r.URL.Path
+        r.URL.Path = targetPath
+        wg.handleIPFS(w, r)
+        return
+    }
+
+    // 2. Try subdomain gateway pattern
+    if strings.Contains(host, ".ipfs.") {
+        parts := strings.Split(host, ".")
+        if len(parts) >= 3 && parts[1] == "ipfs" {
+            cid := parts[0]
+            targetPath := "/ipfs/" + cid + r.URL.Path
+            r.URL.Path = targetPath
+            wg.handleIPFS(w, r)
+            return
+        }
+    }
+
+    // 3. Default handling
+    wg.Gateway.handleIPFS(w, r)
+}
+
+func (wg *WebsiteGateway) RegisterDomain(domain, ipfsHash string) {
+    if wg.domains == nil {
+        wg.domains = make(map[string]string)
+    }
+    wg.domains[domain] = ipfsHash
+    log.Printf("Registered domain: %s -> %s", domain, ipfsHash)
 }
 ```
 
-## 🔧 최적화 및 보안
-
-### 성능 최적화
-- **Connection Pooling**: HTTP 클라이언트 재사용
-- **Response Compression**: gzip 압축 적용
-- **Static Asset Caching**: CDN과 유사한 캐싱 헤더
-
-### 보안 고려사항
-- **CORS 설정**: 크로스 오리진 요청 제어
-- **Rate Limiting**: 과도한 요청 방지
-- **Content Validation**: 악성 콘텐츠 검증
-
-## 🐛 트러블슈팅
-
-### 문제 1: CID를 찾을 수 없음
-**증상**: `404 Not Found` 에러
-**해결책**:
-```bash
-# CID 유효성 검증
-curl http://localhost:8080/api/v0/get/{CID}
-```
-
-### 문제 2: 잘못된 콘텐츠 타입
-**증상**: 브라우저에서 파일이 제대로 렌더링되지 않음
-**해결책**: `detectContentType` 함수 확장
-
-### 문제 3: 서버 성능 저하
-**증상**: 느린 응답 시간
-**해결책**:
-- 캐싱 레이어 추가
-- 고루틴 기반 동시 처리
-- 메모리 사용량 모니터링
-
-## 🔗 연계 학습
-- **다음 단계**: 07-ipns (동적 콘텐츠 업데이트)
-- **고급 주제**:
-  - HTTPS 인증서 관리
-  - 로드 밸런싱
-  - CDN 통합
-
-## 📚 참고 자료
-- [IPFS HTTP Gateway Specification](https://docs.ipfs.tech/concepts/ipfs-gateway/)
-- [Go HTTP Server Best Practices](https://golang.org/doc/articles/wiki/)
-- [UnixFS Specification](https://github.com/ipfs/specs/blob/main/UNIXFS.md)
-
----
-
-# 🍳 실전 쿡북: 바로 쓸 수 있는 코드
-
-## 1. 📺 미디어 스트리밍 게이트웨이
-
-완전한 미디어 스트리밍 서버를 만들어보세요.
+### 2. API Gateway with Rate Limiting
 
 ```go
-package main
-
-import (
-    "fmt"
-    "io"
-    "net/http"
-    "strconv"
-    "strings"
-    "context"
-    "os"
-
-    "github.com/ipfs/go-cid"
-    dag "github.com/sonheesung/boxo-starter-kit/02-dag-ipld/pkg"
-    unixfs "github.com/sonheesung/boxo-starter-kit/03-unixfs/pkg"
-)
-
-type MediaGateway struct {
-    dagWrapper    *dag.DAGWrapper
-    unixfsWrapper *unixfs.UnixFsWrapper
+type APIGateway struct {
+    *Gateway
+    rateLimiter map[string]*rate.Limiter
+    mutex       sync.RWMutex
 }
 
-func NewMediaGateway() (*MediaGateway, error) {
-    dagWrapper, err := dag.New(nil, "")
-    if err != nil {
-        return nil, err
-    }
+func (ag *APIGateway) rateLimitMiddleware(next http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        // 1. Get client IP
+        clientIP := ag.getClientIP(r)
 
-    unixfsWrapper, err := unixfs.New(dagWrapper)
-    if err != nil {
-        return nil, err
-    }
+        // 2. Get or create rate limiter for this IP
+        ag.mutex.RLock()
+        limiter, exists := ag.rateLimiter[clientIP]
+        ag.mutex.RUnlock()
 
-    return &MediaGateway{
-        dagWrapper:    dagWrapper,
-        unixfsWrapper: unixfsWrapper,
-    }, nil
-}
+        if !exists {
+            // Create new rate limiter: 10 requests per second, burst of 20
+            limiter = rate.NewLimiter(10, 20)
+            ag.mutex.Lock()
+            ag.rateLimiter[clientIP] = limiter
+            ag.mutex.Unlock()
+        }
 
-func (mg *MediaGateway) StreamHandler(w http.ResponseWriter, r *http.Request) {
-    // CID 추출
-    path := strings.TrimPrefix(r.URL.Path, "/stream/")
-    c, err := cid.Decode(path)
-    if err != nil {
-        http.Error(w, "Invalid CID", http.StatusBadRequest)
-        return
-    }
-
-    // 파일 데이터 가져오기
-    ctx := context.Background()
-    data, err := mg.unixfsWrapper.GetFile(ctx, c.String())
-    if err != nil {
-        http.Error(w, "File not found", http.StatusNotFound)
-        return
-    }
-
-    // Range 요청 처리 (스트리밍 지원)
-    rangeHeader := r.Header.Get("Range")
-    if rangeHeader != "" {
-        mg.handleRangeRequest(w, r, data, rangeHeader)
-        return
-    }
-
-    // 전체 파일 제공
-    w.Header().Set("Content-Type", "video/mp4")
-    w.Header().Set("Accept-Ranges", "bytes")
-    w.Header().Set("Content-Length", strconv.Itoa(len(data)))
-    w.Write(data)
-}
-
-func (mg *MediaGateway) handleRangeRequest(w http.ResponseWriter, r *http.Request, data []byte, rangeHeader string) {
-    // Range: bytes=0-1023 파싱
-    ranges := strings.Replace(rangeHeader, "bytes=", "", 1)
-    parts := strings.Split(ranges, "-")
-
-    start, _ := strconv.Atoi(parts[0])
-    end := len(data) - 1
-    if parts[1] != "" {
-        end, _ = strconv.Atoi(parts[1])
-    }
-
-    if start > end || start >= len(data) {
-        w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
-        return
-    }
-
-    if end >= len(data) {
-        end = len(data) - 1
-    }
-
-    w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, len(data)))
-    w.Header().Set("Content-Length", strconv.Itoa(end-start+1))
-    w.Header().Set("Content-Type", "video/mp4")
-    w.WriteHeader(http.StatusPartialContent)
-    w.Write(data[start : end+1])
-}
-
-func main() {
-    mg, err := NewMediaGateway()
-    if err != nil {
-        panic(err)
-    }
-
-    http.HandleFunc("/stream/", mg.StreamHandler)
-
-    // 샘플 비디오 추가
-    if videoData, err := os.ReadFile("sample.mp4"); err == nil {
-        ctx := context.Background()
-        cid, _ := mg.unixfsWrapper.AddFile(ctx, "sample.mp4", videoData)
-        fmt.Printf("비디오 스트리밍 URL: http://localhost:8080/stream/%s\n", cid.String())
-    }
-
-    fmt.Println("미디어 스트리밍 게이트웨이 시작됨 :8080")
-    http.ListenAndServe(":8080", nil)
-}
-```
-
-## 2. 🎨 이미지 갤러리 게이트웨이
-
-자동 썸네일 생성과 갤러리 UI를 제공하는 게이트웨이입니다.
-
-```go
-package main
-
-import (
-    "html/template"
-    "net/http"
-    "strings"
-    "context"
-    "path/filepath"
-    "fmt"
-
-    "github.com/ipfs/go-cid"
-    dag "github.com/sonheesung/boxo-starter-kit/02-dag-ipld/pkg"
-    unixfs "github.com/sonheesung/boxo-starter-kit/03-unixfs/pkg"
-)
-
-type GalleryGateway struct {
-    dagWrapper    *dag.DAGWrapper
-    unixfsWrapper *unixfs.UnixFsWrapper
-}
-
-type GalleryImage struct {
-    CID      string
-    Filename string
-    Size     string
-    IsImage  bool
-}
-
-func NewGalleryGateway() (*GalleryGateway, error) {
-    dagWrapper, err := dag.New(nil, "")
-    if err != nil {
-        return nil, err
-    }
-
-    unixfsWrapper, err := unixfs.New(dagWrapper)
-    if err != nil {
-        return nil, err
-    }
-
-    return &GalleryGateway{
-        dagWrapper:    dagWrapper,
-        unixfsWrapper: unixfsWrapper,
-    }, nil
-}
-
-func (gg *GalleryGateway) GalleryHandler(w http.ResponseWriter, r *http.Request) {
-    // 갤러리 디렉터리 CID 추출
-    path := strings.TrimPrefix(r.URL.Path, "/gallery/")
-    if path == "" {
-        gg.showUploadForm(w, r)
-        return
-    }
-
-    c, err := cid.Decode(path)
-    if err != nil {
-        http.Error(w, "Invalid CID", http.StatusBadRequest)
-        return
-    }
-
-    ctx := context.Background()
-    entries, err := gg.unixfsWrapper.ListDir(ctx, c.String())
-    if err != nil {
-        http.Error(w, "Directory not found", http.StatusNotFound)
-        return
-    }
-
-    // 이미지 파일만 필터링
-    var images []GalleryImage
-    for _, entry := range entries {
-        ext := strings.ToLower(filepath.Ext(entry.Name))
-        isImage := ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".gif"
-
-        images = append(images, GalleryImage{
-            CID:      entry.Hash,
-            Filename: entry.Name,
-            Size:     fmt.Sprintf("%.1f KB", float64(entry.Size)/1024),
-            IsImage:  isImage,
-        })
-    }
-
-    gg.renderGallery(w, images)
-}
-
-func (gg *GalleryGateway) showUploadForm(w http.ResponseWriter, r *http.Request) {
-    tmpl := `<!DOCTYPE html>
-<html>
-<head>
-    <title>IPFS 이미지 갤러리</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; }
-        .upload-form { border: 2px dashed #ccc; padding: 20px; text-align: center; }
-        .upload-form:hover { border-color: #007cba; }
-    </style>
-</head>
-<body>
-    <h1>🎨 IPFS 이미지 갤러리</h1>
-
-    <div class="upload-form">
-        <h3>이미지 업로드</h3>
-        <form action="/upload" method="post" enctype="multipart/form-data">
-            <input type="file" name="images" multiple accept="image/*" required>
-            <br><br>
-            <button type="submit">갤러리 생성</button>
-        </form>
-    </div>
-
-    <h3>샘플 갤러리</h3>
-    <p>이미지들을 업로드하면 디렉터리 CID가 생성됩니다.</p>
-    <p>예: <code>/gallery/{CID}</code></p>
-</body>
-</html>`
-
-    w.Header().Set("Content-Type", "text/html")
-    w.Write([]byte(tmpl))
-}
-
-func (gg *GalleryGateway) renderGallery(w http.ResponseWriter, images []GalleryImage) {
-    tmpl := template.Must(template.New("gallery").Parse(`<!DOCTYPE html>
-<html>
-<head>
-    <title>IPFS 이미지 갤러리</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
-        .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
-        .image-card { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        .image-card img { width: 100%; height: 200px; object-fit: cover; }
-        .image-info { padding: 15px; }
-        .filename { font-weight: bold; margin-bottom: 5px; }
-        .size { color: #666; font-size: 0.9em; }
-        .cid { font-family: monospace; font-size: 0.8em; color: #007cba; word-break: break-all; }
-        h1 { text-align: center; color: #333; }
-    </style>
-</head>
-<body>
-    <h1>🎨 IPFS 이미지 갤러리</h1>
-
-    <div class="gallery">
-        {{range .}}
-        <div class="image-card">
-            {{if .IsImage}}
-            <img src="/ipfs/{{.CID}}" alt="{{.Filename}}" loading="lazy">
-            {{else}}
-            <div style="height: 200px; display: flex; align-items: center; justify-content: center; background: #eee;">
-                <span>📄 {{.Filename}}</span>
-            </div>
-            {{end}}
-            <div class="image-info">
-                <div class="filename">{{.Filename}}</div>
-                <div class="size">{{.Size}}</div>
-                <div class="cid">{{.CID}}</div>
-            </div>
-        </div>
-        {{end}}
-    </div>
-</body>
-</html>`))
-
-    w.Header().Set("Content-Type", "text/html")
-    tmpl.Execute(w, images)
-}
-
-func main() {
-    gg, err := NewGalleryGateway()
-    if err != nil {
-        panic(err)
-    }
-
-    http.HandleFunc("/gallery/", gg.GalleryHandler)
-    http.HandleFunc("/ipfs/", func(w http.ResponseWriter, r *http.Request) {
-        // 간단한 IPFS 파일 서빙
-        path := strings.TrimPrefix(r.URL.Path, "/ipfs/")
-        c, _ := cid.Decode(path)
-
-        ctx := context.Background()
-        data, err := gg.unixfsWrapper.GetFile(ctx, c.String())
-        if err != nil {
-            http.NotFound(w, r)
+        // 3. Check rate limit
+        if !limiter.Allow() {
+            w.Header().Set("Retry-After", "1")
+            http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
             return
         }
 
-        w.Write(data)
+        next.ServeHTTP(w, r)
     })
+}
 
-    fmt.Println("이미지 갤러리 게이트웨이 시작됨 :8080")
-    fmt.Println("방문: http://localhost:8080/gallery/")
-    http.ListenAndServe(":8080", nil)
+func (ag *APIGateway) getClientIP(r *http.Request) string {
+    // Check X-Forwarded-For header first
+    if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+        parts := strings.Split(xff, ",")
+        return strings.TrimSpace(parts[0])
+    }
+
+    // Check X-Real-IP header
+    if xri := r.Header.Get("X-Real-IP"); xri != "" {
+        return xri
+    }
+
+    // Fall back to remote address
+    host, _, _ := net.SplitHostPort(r.RemoteAddr)
+    return host
 }
 ```
 
-## 3. 📚 문서 뷰어 게이트웨이
-
-마크다운, PDF, 텍스트 파일을 웹에서 보기 좋게 렌더링하는 게이트웨이입니다.
+### 3. Content Delivery Network (CDN)
 
 ```go
-package main
-
-import (
-    "html/template"
-    "net/http"
-    "strings"
-    "context"
-    "path/filepath"
-    "fmt"
-
-    "github.com/ipfs/go-cid"
-    dag "github.com/sonheesung/boxo-starter-kit/02-dag-ipld/pkg"
-    unixfs "github.com/sonheesung/boxo-starter-kit/03-unixfs/pkg"
-)
-
-type DocGateway struct {
-    dagWrapper    *dag.DAGWrapper
-    unixfsWrapper *unixfs.UnixFsWrapper
+type CDNGateway struct {
+    *Gateway
+    cache        *lru.Cache
+    cacheTTL     time.Duration
+    edgeNodes    []string
+    loadBalancer *LoadBalancer
 }
 
-func NewDocGateway() (*DocGateway, error) {
-    dagWrapper, err := dag.New(nil, "")
-    if err != nil {
-        return nil, err
+func (cg *CDNGateway) handleWithCaching(w http.ResponseWriter, r *http.Request) {
+    cacheKey := r.URL.Path
+
+    // 1. Check cache first
+    if cached, ok := cg.cache.Get(cacheKey); ok {
+        if entry, valid := cached.(*CacheEntry); valid && !entry.IsExpired() {
+            // Serve from cache
+            cg.serveCachedContent(w, r, entry)
+            return
+        }
     }
 
-    unixfsWrapper, err := unixfs.New(dagWrapper)
-    if err != nil {
-        return nil, err
-    }
+    // 2. If not in cache or expired, fetch from IPFS
+    recorder := &ResponseRecorder{ResponseWriter: w}
+    cg.Gateway.handleIPFS(recorder, r)
 
-    return &DocGateway{
-        dagWrapper:    dagWrapper,
-        unixfsWrapper: unixfsWrapper,
-    }, nil
+    // 3. Cache successful responses
+    if recorder.StatusCode == 200 {
+        entry := &CacheEntry{
+            Content:     recorder.Body.Bytes(),
+            ContentType: recorder.Header().Get("Content-Type"),
+            CachedAt:    time.Now(),
+            TTL:         cg.cacheTTL,
+        }
+        cg.cache.Add(cacheKey, entry)
+    }
 }
 
-func (dg *DocGateway) DocHandler(w http.ResponseWriter, r *http.Request) {
-    path := strings.TrimPrefix(r.URL.Path, "/doc/")
-    parts := strings.SplitN(path, "/", 2)
-    if len(parts) < 1 {
-        http.Error(w, "CID required", http.StatusBadRequest)
+func (cg *CDNGateway) serveCachedContent(w http.ResponseWriter, r *http.Request,
+                                        entry *CacheEntry) {
+    // Set cache headers
+    w.Header().Set("Content-Type", entry.ContentType)
+    w.Header().Set("X-Cache", "HIT")
+    w.Header().Set("Cache-Control", "public, max-age=3600")
+
+    // Serve content
+    w.WriteHeader(http.StatusOK)
+    w.Write(entry.Content)
+
+    log.Printf("Served from cache: %s", r.URL.Path)
+}
+```
+
+### 4. Media Streaming Gateway
+
+```go
+type StreamingGateway struct {
+    *Gateway
+    transcoder *VideoTranscoder
+}
+
+func (sg *StreamingGateway) handleVideoStream(w http.ResponseWriter, r *http.Request) {
+    // 1. Parse streaming parameters
+    quality := r.URL.Query().Get("quality")  // 720p, 1080p, etc.
+    format := r.URL.Query().Get("format")    // mp4, webm, hls
+    startTime := r.URL.Query().Get("t")      // seek time
+
+    // 2. Get video file from IPFS
+    videoPath := strings.TrimPrefix(r.URL.Path, "/stream/ipfs/")
+    parts := strings.Split(videoPath, "/")
+    if len(parts) == 0 {
+        http.Error(w, "Invalid video path", http.StatusBadRequest)
         return
     }
 
     cidStr := parts[0]
-    filename := ""
-    if len(parts) > 1 {
-        filename = parts[1]
-    }
-
-    c, err := cid.Decode(cidStr)
+    videoCID, err := cid.Decode(cidStr)
     if err != nil {
         http.Error(w, "Invalid CID", http.StatusBadRequest)
         return
     }
 
-    ctx := context.Background()
-    data, err := dg.unixfsWrapper.GetFile(ctx, c.String())
+    // 3. Get video file
+    node, err := sg.unixfsWrapper.Get(r.Context(), videoCID)
     if err != nil {
-        http.Error(w, "File not found", http.StatusNotFound)
+        http.Error(w, err.Error(), http.StatusNotFound)
         return
     }
 
-    // 파일 타입별 렌더링
-    ext := strings.ToLower(filepath.Ext(filename))
-    switch ext {
-    case ".md", ".markdown":
-        dg.renderMarkdown(w, string(data), filename)
-    case ".txt", ".log":
-        dg.renderText(w, string(data), filename)
-    case ".json":
-        dg.renderJSON(w, string(data), filename)
-    case ".go", ".js", ".py", ".java":
-        dg.renderCode(w, string(data), filename, ext[1:])
+    videoFile, ok := node.(files.File)
+    if !ok {
+        http.Error(w, "Not a video file", http.StatusBadRequest)
+        return
+    }
+
+    // 4. Handle different streaming formats
+    switch format {
+    case "hls":
+        sg.serveHLS(w, r, videoFile, quality)
+    case "dash":
+        sg.serveDASH(w, r, videoFile, quality)
     default:
-        dg.renderRaw(w, data, filename)
+        sg.serveProgressiveVideo(w, r, videoFile, startTime)
     }
 }
 
-func (dg *DocGateway) renderMarkdown(w http.ResponseWriter, content, filename string) {
-    tmpl := template.Must(template.New("markdown").Parse(`<!DOCTYPE html>
-<html>
-<head>
-    <title>{{.Filename}} - IPFS 문서 뷰어</title>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 20px; }
-        .header { border-bottom: 1px solid #eee; margin-bottom: 20px; padding-bottom: 10px; }
-        .content { white-space: pre-wrap; }
-        code { background: #f1f1f1; padding: 2px 4px; border-radius: 3px; }
-        pre { background: #f8f8f8; padding: 15px; border-radius: 5px; overflow-x: auto; }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>📄 {{.Filename}}</h1>
-        <small>IPFS 분산 문서</small>
-    </div>
-    <div class="content">{{.Content}}</div>
-</body>
-</html>`))
+func (sg *StreamingGateway) serveHLS(w http.ResponseWriter, r *http.Request,
+                                   video files.File, quality string) {
+    // Generate HLS manifest
+    manifest := sg.transcoder.GenerateHLSManifest(video, quality)
 
-    data := struct {
-        Filename string
-        Content  string
-    }{
-        Filename: filename,
-        Content:  content,
-    }
-
-    w.Header().Set("Content-Type", "text/html")
-    tmpl.Execute(w, data)
+    w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
+    w.Header().Set("Access-Control-Allow-Origin", "*")
+    w.WriteHeader(http.StatusOK)
+    w.Write([]byte(manifest))
 }
 
-func (dg *DocGateway) renderCode(w http.ResponseWriter, content, filename, lang string) {
-    tmpl := template.Must(template.New("code").Parse(`<!DOCTYPE html>
-<html>
-<head>
-    <title>{{.Filename}} - IPFS 코드 뷰어</title>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; background: #2d3748; color: #e2e8f0; }
-        .header { background: #1a202c; padding: 15px 20px; border-bottom: 1px solid #4a5568; }
-        .code-container { font-family: 'Monaco', 'Menlo', monospace; }
-        .line-numbers { background: #1a202c; color: #718096; padding: 15px 10px; display: inline-block; vertical-align: top; min-width: 50px; text-align: right; border-right: 1px solid #4a5568; }
-        .code-content { padding: 15px 20px; display: inline-block; white-space: pre; overflow-x: auto; width: calc(100% - 90px); }
-        .lang-badge { background: #4299e1; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h2>💻 {{.Filename}} <span class="lang-badge">{{.Lang}}</span></h2>
-    </div>
-    <div class="code-container">
-        <div class="line-numbers">{{range $i, $line := .Lines}}{{add $i 1}}
-{{end}}</div><div class="code-content">{{.Content}}</div>
-    </div>
-</body>
-</html>`))
+func (sg *StreamingGateway) serveProgressiveVideo(w http.ResponseWriter, r *http.Request,
+                                                video files.File, startTime string) {
+    // Handle HTTP range requests for video seeking
+    size, _ := video.Size()
+    rangeHeader := r.Header.Get("Range")
 
-    lines := strings.Split(content, "\n")
-    data := struct {
-        Filename string
-        Lang     string
-        Content  string
-        Lines    []string
-    }{
-        Filename: filename,
-        Lang:     lang,
-        Content:  content,
-        Lines:    lines,
+    if rangeHeader != "" {
+        // Parse range request
+        ranges, err := parseRangeHeader(rangeHeader, size)
+        if err != nil {
+            http.Error(w, "Invalid range", http.StatusRequestedRangeNotSatisfiable)
+            return
+        }
+
+        // Serve partial content
+        for _, r := range ranges {
+            sg.serveVideoRange(w, video, r.start, r.end, size)
+        }
+    } else {
+        // Serve entire video
+        w.Header().Set("Content-Type", "video/mp4")
+        w.Header().Set("Content-Length", fmt.Sprintf("%d", size))
+        io.Copy(w, video)
     }
-
-    funcMap := template.FuncMap{
-        "add": func(a, b int) int { return a + b },
-    }
-
-    tmpl = tmpl.Funcs(funcMap)
-    w.Header().Set("Content-Type", "text/html")
-    tmpl.Execute(w, data)
-}
-
-func (dg *DocGateway) renderText(w http.ResponseWriter, content, filename string) {
-    tmpl := template.Must(template.New("text").Parse(`<!DOCTYPE html>
-<html>
-<head>
-    <title>{{.Filename}} - IPFS 텍스트 뷰어</title>
-    <style>
-        body { font-family: 'Monaco', 'Menlo', monospace; line-height: 1.5; margin: 0; background: #1e1e1e; color: #d4d4d4; }
-        .header { background: #333; padding: 15px 20px; border-bottom: 1px solid #555; }
-        .content { padding: 20px; white-space: pre-wrap; }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h2>📝 {{.Filename}}</h2>
-    </div>
-    <div class="content">{{.Content}}</div>
-</body>
-</html>`))
-
-    data := struct {
-        Filename string
-        Content  string
-    }{
-        Filename: filename,
-        Content:  content,
-    }
-
-    w.Header().Set("Content-Type", "text/html")
-    tmpl.Execute(w, data)
-}
-
-func (dg *DocGateway) renderJSON(w http.ResponseWriter, content, filename string) {
-    // JSON 포맷팅 및 하이라이팅
-    dg.renderCode(w, content, filename, "json")
-}
-
-func (dg *DocGateway) renderRaw(w http.ResponseWriter, data []byte, filename string) {
-    w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
-    w.Write(data)
-}
-
-func main() {
-    dg, err := NewDocGateway()
-    if err != nil {
-        panic(err)
-    }
-
-    http.HandleFunc("/doc/", dg.DocHandler)
-
-    fmt.Println("문서 뷰어 게이트웨이 시작됨 :8080")
-    fmt.Println("사용법: /doc/{CID}/{filename}")
-    http.ListenAndServe(":8080", nil)
 }
 ```
 
-## 4. 🔄 실시간 동기화 게이트웨이
+## ⚠️ Best Practices and Security Considerations
 
-파일 변경을 감지하고 자동으로 IPFS에 업데이트하는 실시간 동기화 게이트웨이입니다.
+### 1. Security Headers
+
+```go
+// ✅ Essential security headers
+func (gw *Gateway) securityMiddleware(next http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        // Prevent clickjacking
+        w.Header().Set("X-Frame-Options", "DENY")
+
+        // Prevent MIME type sniffing
+        w.Header().Set("X-Content-Type-Options", "nosniff")
+
+        // XSS protection
+        w.Header().Set("X-XSS-Protection", "1; mode=block")
+
+        // HTTPS enforcement
+        if gw.config.ForceHTTPS {
+            w.Header().Set("Strict-Transport-Security",
+                          "max-age=31536000; includeSubDomains")
+        }
+
+        // Content Security Policy
+        w.Header().Set("Content-Security-Policy",
+                      "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'")
+
+        next.ServeHTTP(w, r)
+    })
+}
+```
+
+### 2. Input Validation and Sanitization
+
+```go
+// ✅ Path validation
+func (gw *Gateway) validatePath(path string) error {
+    // Prevent path traversal attacks
+    if strings.Contains(path, "..") {
+        return fmt.Errorf("invalid path: contains path traversal")
+    }
+
+    // Limit path length
+    if len(path) > 1000 {
+        return fmt.Errorf("path too long")
+    }
+
+    // Validate CID format
+    parts := strings.Split(strings.TrimPrefix(path, "/"), "/")
+    if len(parts) == 0 {
+        return fmt.Errorf("empty path")
+    }
+
+    _, err := cid.Decode(parts[0])
+    return err
+}
+```
+
+### 3. Performance Optimization
+
+```go
+// ✅ Connection pooling and keep-alive
+func (gw *Gateway) optimizedTransport() *http.Transport {
+    return &http.Transport{
+        MaxIdleConns:        100,
+        MaxIdleConnsPerHost: 100,
+        IdleConnTimeout:     90 * time.Second,
+        TLSHandshakeTimeout: 10 * time.Second,
+        DisableCompression:  false,
+
+        // Connection pooling for IPFS requests
+        DialContext: (&net.Dialer{
+            Timeout:   30 * time.Second,
+            KeepAlive: 30 * time.Second,
+        }).DialContext,
+    }
+}
+```
+
+### 4. Error Handling and Monitoring
+
+```go
+// ✅ Comprehensive error handling
+func (gw *Gateway) errorHandler(w http.ResponseWriter, r *http.Request, err error) {
+    // Log error for monitoring
+    log.Printf("Gateway error: %s %s - %v", r.Method, r.URL.Path, err)
+
+    // Increment error metrics
+    gw.metrics.ErrorCount.Inc()
+
+    // Determine appropriate status code
+    var statusCode int
+    var message string
+
+    switch {
+    case strings.Contains(err.Error(), "not found"):
+        statusCode = http.StatusNotFound
+        message = "Content not found"
+    case strings.Contains(err.Error(), "timeout"):
+        statusCode = http.StatusGatewayTimeout
+        message = "Request timeout"
+    case strings.Contains(err.Error(), "invalid"):
+        statusCode = http.StatusBadRequest
+        message = "Invalid request"
+    default:
+        statusCode = http.StatusInternalServerError
+        message = "Internal server error"
+    }
+
+    // Return structured error response
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(statusCode)
+    json.NewEncoder(w).Encode(map[string]interface{}{
+        "error":   true,
+        "message": message,
+        "code":    statusCode,
+    })
+}
+```
+
+## 🔧 Troubleshooting
+
+### Issue 1: "connection refused" error
+
+**Cause**: Gateway server not running or port conflict
+```bash
+# Solution: Check port availability and start server
+netstat -an | grep 8080
+sudo lsof -i :8080
+
+# Change port if needed
+GATEWAY_PORT=8081 go run main.go
+```
+
+### Issue 2: "not found" error for valid content
+
+**Cause**: Content not pinned or network connectivity issues
+```go
+// Solution: Verify content exists and is accessible
+func (gw *Gateway) debugContentAccess(ctx context.Context, c cid.Cid) {
+    // Check if content exists locally
+    node, err := gw.dagWrapper.Get(ctx, c)
+    if err != nil {
+        log.Printf("Content not found locally: %v", err)
+        // Try to fetch from network
+        gw.dagWrapper.FetchFromNetwork(ctx, c)
+    } else {
+        log.Printf("Content found locally: %s", c)
+    }
+}
+```
+
+### Issue 3: CORS errors in browser
+
+**Cause**: Cross-origin requests blocked
+```go
+// Solution: Configure CORS properly
+func (gw *Gateway) corsMiddleware(next http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+        w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+        if r.Method == "OPTIONS" {
+            w.WriteHeader(http.StatusOK)
+            return
+        }
+
+        next.ServeHTTP(w, r)
+    })
+}
+```
+
+## 📚 Additional Learning Resources
+
+### Related Documentation
+- [IPFS HTTP Gateway Specification](https://specs.ipfs.tech/http-gateways/)
+- [Gateway Implementation Guide](https://docs.ipfs.io/how-to/configure-gateway/)
+- [Web Integration Patterns](https://docs.ipfs.io/how-to/websites-on-ipfs/)
+
+### Next Steps
+1. **08-ipns**: Dynamic naming and mutable content
+2. **99-kubo-api-demo**: Full IPFS network integration
+
+## 🍳 Cookbook - Ready-to-use Code
+
+### 🌐 Complete Website Gateway
 
 ```go
 package main
 
 import (
-    "encoding/json"
     "fmt"
     "html/template"
     "net/http"
-    "os"
     "path/filepath"
     "strings"
     "time"
-    "context"
-    "sync"
 
-    "github.com/fsnotify/fsnotify"
-    dag "github.com/sonheesung/boxo-starter-kit/02-dag-ipld/pkg"
-    unixfs "github.com/sonheesung/boxo-starter-kit/03-unixfs/pkg"
+    gateway "github.com/your-org/boxo-starter-kit/07-gateway/pkg"
+    dag "github.com/your-org/boxo-starter-kit/02-dag-ipld/pkg"
 )
 
-type SyncGateway struct {
-    dagWrapper    *dag.DAGWrapper
-    unixfsWrapper *unixfs.UnixFsWrapper
-    watchers      map[string]*fsnotify.Watcher
-    syncStatus    map[string]*SyncInfo
-    mutex         sync.RWMutex
+// Complete website hosting gateway
+type WebsiteGateway struct {
+    *gateway.Gateway
+    templates map[string]*template.Template
+    config    WebsiteConfig
 }
 
-type SyncInfo struct {
-    Path        string    `json:"path"`
-    CID         string    `json:"cid"`
-    LastSync    time.Time `json:"last_sync"`
-    Status      string    `json:"status"` // "syncing", "synced", "error"
-    FileCount   int       `json:"file_count"`
-    TotalSize   int64     `json:"total_size"`
+type WebsiteConfig struct {
+    DefaultIndex   string            // Default index file
+    ErrorPages     map[int]string    // Error page mappings
+    RedirectRules  map[string]string // Redirect rules
+    CustomDomains  map[string]string // Domain to IPFS hash mapping
 }
 
-func NewSyncGateway() (*SyncGateway, error) {
-    dagWrapper, err := dag.New(nil, "")
+func NewWebsiteGateway(dagWrapper *dag.DagWrapper) (*WebsiteGateway, error) {
+    baseGateway, err := gateway.NewGateway(dagWrapper, gateway.GatewayConfig{
+        Port:         ":8080",
+        ReadTimeout:  30 * time.Second,
+        WriteTimeout: 30 * time.Second,
+    })
     if err != nil {
         return nil, err
     }
 
-    unixfsWrapper, err := unixfs.New(dagWrapper)
-    if err != nil {
-        return nil, err
-    }
-
-    return &SyncGateway{
-        dagWrapper:    dagWrapper,
-        unixfsWrapper: unixfsWrapper,
-        watchers:      make(map[string]*fsnotify.Watcher),
-        syncStatus:    make(map[string]*SyncInfo),
+    return &WebsiteGateway{
+        Gateway:   baseGateway,
+        templates: make(map[string]*template.Template),
+        config: WebsiteConfig{
+            DefaultIndex: "index.html",
+            ErrorPages: map[int]string{
+                404: "404.html",
+                500: "500.html",
+            },
+            RedirectRules:  make(map[string]string),
+            CustomDomains: make(map[string]string),
+        },
     }, nil
 }
 
-func (sg *SyncGateway) AddWatchPath(localPath string) error {
-    sg.mutex.Lock()
-    defer sg.mutex.Unlock()
-
-    watcher, err := fsnotify.NewWatcher()
-    if err != nil {
-        return err
+// Custom routing for websites
+func (wg *WebsiteGateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+    // 1. Handle custom domains
+    if wg.handleCustomDomain(w, r) {
+        return
     }
 
-    // 디렉터리 재귀적으로 감시 추가
-    err = filepath.Walk(localPath, func(path string, info os.FileInfo, err error) error {
-        if err != nil {
-            return err
-        }
-        if info.IsDir() {
-            return watcher.Add(path)
-        }
-        return nil
-    })
-
-    if err != nil {
-        watcher.Close()
-        return err
+    // 2. Apply redirect rules
+    if wg.applyRedirectRules(w, r) {
+        return
     }
 
-    sg.watchers[localPath] = watcher
-    sg.syncStatus[localPath] = &SyncInfo{
-        Path:     localPath,
-        Status:   "watching",
-        LastSync: time.Now(),
+    // 3. Handle special routes
+    switch r.URL.Path {
+    case "/health":
+        wg.handleHealthCheck(w, r)
+        return
+    case "/metrics":
+        wg.handleMetrics(w, r)
+        return
     }
 
-    // 초기 동기화
-    go sg.syncPath(localPath)
-
-    // 파일 변경 감시
-    go sg.watchChanges(localPath, watcher)
-
-    return nil
+    // 4. Handle regular IPFS content
+    wg.Gateway.ServeHTTP(w, r)
 }
 
-func (sg *SyncGateway) watchChanges(localPath string, watcher *fsnotify.Watcher) {
-    for {
-        select {
-        case event, ok := <-watcher.Events:
-            if !ok {
-                return
+func (wg *WebsiteGateway) handleCustomDomain(w http.ResponseWriter, r *http.Request) bool {
+    host := strings.Split(r.Host, ":")[0] // Remove port
+
+    if ipfsHash, exists := wg.config.CustomDomains[host]; exists {
+        // Rewrite request to point to IPFS content
+        originalPath := r.URL.Path
+        if originalPath == "/" {
+            originalPath = "/" + wg.config.DefaultIndex
+        }
+
+        r.URL.Path = "/ipfs/" + ipfsHash + originalPath
+        wg.Gateway.ServeHTTP(w, r)
+        return true
+    }
+
+    return false
+}
+
+func (wg *WebsiteGateway) applyRedirectRules(w http.ResponseWriter, r *http.Request) bool {
+    if target, exists := wg.config.RedirectRules[r.URL.Path]; exists {
+        http.Redirect(w, r, target, http.StatusMovedPermanently)
+        return true
+    }
+
+    return false
+}
+
+// Enhanced error page handling
+func (wg *WebsiteGateway) handleError(w http.ResponseWriter, r *http.Request,
+                                     statusCode int, err error) {
+    if errorPage, exists := wg.config.ErrorPages[statusCode]; exists {
+        // Try to serve custom error page from IPFS
+        if wg.serveCustomErrorPage(w, r, errorPage, statusCode) {
+            return
+        }
+    }
+
+    // Fall back to default error handling
+    wg.serveDefaultError(w, r, statusCode, err)
+}
+
+func (wg *WebsiteGateway) serveCustomErrorPage(w http.ResponseWriter, r *http.Request,
+                                              errorPage string, statusCode int) bool {
+    // Try to get error page from the same site
+    if referer := r.Header.Get("Referer"); referer != "" {
+        // Extract IPFS hash from referer
+        if ipfsHash := wg.extractIPFSHash(referer); ipfsHash != "" {
+            errorPath := "/ipfs/" + ipfsHash + "/" + errorPage
+
+            // Create new request for error page
+            errorReq := &http.Request{
+                Method: "GET",
+                URL:    &url.URL{Path: errorPath},
+                Header: make(http.Header),
             }
+            errorReq = errorReq.WithContext(r.Context())
 
-            if event.Op&fsnotify.Write == fsnotify.Write ||
-               event.Op&fsnotify.Create == fsnotify.Create ||
-               event.Op&fsnotify.Remove == fsnotify.Remove {
+            // Try to serve error page
+            recorder := httptest.NewRecorder()
+            wg.Gateway.ServeHTTP(recorder, errorReq)
 
-                fmt.Printf("파일 변경 감지: %s\n", event.Name)
-
-                // 디렉터리가 새로 생성된 경우 감시 추가
-                if event.Op&fsnotify.Create == fsnotify.Create {
-                    if info, err := os.Stat(event.Name); err == nil && info.IsDir() {
-                        watcher.Add(event.Name)
-                    }
+            if recorder.Code == 200 {
+                // Copy headers and content
+                for k, v := range recorder.Header() {
+                    w.Header()[k] = v
                 }
-
-                // 잠시 대기 후 동기화 (여러 변경사항을 배치로 처리)
-                time.Sleep(1 * time.Second)
-                go sg.syncPath(localPath)
+                w.WriteHeader(statusCode)
+                w.Write(recorder.Body.Bytes())
+                return true
             }
-
-        case err, ok := <-watcher.Errors:
-            if !ok {
-                return
-            }
-            fmt.Printf("감시 에러: %v\n", err)
         }
     }
+
+    return false
 }
 
-func (sg *SyncGateway) syncPath(localPath string) {
-    sg.mutex.Lock()
-    info := sg.syncStatus[localPath]
-    info.Status = "syncing"
-    sg.mutex.Unlock()
-
-    ctx := context.Background()
-
-    // 디렉터리 전체를 IPFS에 추가
-    cid, fileCount, totalSize, err := sg.addDirectoryToIPFS(ctx, localPath)
-
-    sg.mutex.Lock()
-    if err != nil {
-        info.Status = "error"
-        fmt.Printf("동기화 실패: %v\n", err)
-    } else {
-        info.CID = cid
-        info.Status = "synced"
-        info.LastSync = time.Now()
-        info.FileCount = fileCount
-        info.TotalSize = totalSize
-        fmt.Printf("동기화 완료: %s -> %s\n", localPath, cid)
+// Health check endpoint
+func (wg *WebsiteGateway) handleHealthCheck(w http.ResponseWriter, r *http.Request) {
+    status := map[string]interface{}{
+        "status":    "healthy",
+        "timestamp": time.Now().Unix(),
+        "version":   "1.0.0",
     }
-    sg.mutex.Unlock()
-}
-
-func (sg *SyncGateway) addDirectoryToIPFS(ctx context.Context, dirPath string) (string, int, int64, error) {
-    var files []unixfs.FileInfo
-    var totalSize int64
-
-    err := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
-        if err != nil {
-            return err
-        }
-
-        if !info.IsDir() {
-            data, err := os.ReadFile(path)
-            if err != nil {
-                return err
-            }
-
-            // 상대 경로 계산
-            relPath, err := filepath.Rel(dirPath, path)
-            if err != nil {
-                return err
-            }
-
-            files = append(files, unixfs.FileInfo{
-                Name: relPath,
-                Data: data,
-            })
-
-            totalSize += int64(len(data))
-        }
-        return nil
-    })
-
-    if err != nil {
-        return "", 0, 0, err
-    }
-
-    dirName := filepath.Base(dirPath)
-    cid, err := sg.unixfsWrapper.CreateDir(ctx, dirName, files)
-    if err != nil {
-        return "", 0, 0, err
-    }
-
-    return cid.String(), len(files), totalSize, nil
-}
-
-func (sg *SyncGateway) StatusHandler(w http.ResponseWriter, r *http.Request) {
-    sg.mutex.RLock()
-    statuses := make([]*SyncInfo, 0, len(sg.syncStatus))
-    for _, info := range sg.syncStatus {
-        statuses = append(statuses, info)
-    }
-    sg.mutex.RUnlock()
 
     w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(statuses)
+    json.NewEncoder(w).Encode(status)
 }
 
-func (sg *SyncGateway) DashboardHandler(w http.ResponseWriter, r *http.Request) {
-    tmpl := template.Must(template.New("dashboard").Parse(`<!DOCTYPE html>
-<html>
-<head>
-    <title>IPFS 실시간 동기화 대시보드</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        .status-card { background: white; border-radius: 8px; padding: 20px; margin: 10px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .status-synced { border-left: 4px solid #10b981; }
-        .status-syncing { border-left: 4px solid #f59e0b; }
-        .status-error { border-left: 4px solid #ef4444; }
-        .path { font-weight: bold; margin-bottom: 10px; }
-        .cid { font-family: monospace; background: #f1f1f1; padding: 5px; border-radius: 3px; word-break: break-all; }
-        .stats { display: flex; gap: 20px; margin: 10px 0; }
-        .stat { text-align: center; }
-        .stat-value { font-size: 1.5em; font-weight: bold; }
-        .stat-label { font-size: 0.9em; color: #666; }
-        h1 { text-align: center; color: #333; }
-        .add-form { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-    </style>
-    <script>
-        function refreshStatus() {
-            fetch('/api/status')
-                .then(response => response.json())
-                .then(data => {
-                    // 상태 업데이트 로직
-                    setTimeout(refreshStatus, 5000); // 5초마다 갱신
-                });
-        }
+// Metrics endpoint for monitoring
+func (wg *WebsiteGateway) handleMetrics(w http.ResponseWriter, r *http.Request) {
+    metrics := wg.collectMetrics()
 
-        window.onload = function() {
-            refreshStatus();
-        };
-    </script>
-</head>
-<body>
-    <div class="container">
-        <h1>🔄 IPFS 실시간 동기화 대시보드</h1>
+    w.Header().Set("Content-Type", "text/plain")
+    for key, value := range metrics {
+        fmt.Fprintf(w, "%s %v\n", key, value)
+    }
+}
 
-        <div class="add-form">
-            <h3>새 디렉터리 감시 추가</h3>
-            <form action="/api/watch" method="post">
-                <input type="text" name="path" placeholder="로컬 디렉터리 경로" style="width: 300px; padding: 8px;" required>
-                <button type="submit">감시 시작</button>
-            </form>
-        </div>
+// Register a website with custom domain
+func (wg *WebsiteGateway) RegisterWebsite(domain, ipfsHash string) {
+    wg.config.CustomDomains[domain] = ipfsHash
+    log.Printf("Registered website: %s -> %s", domain, ipfsHash)
+}
 
-        <div id="status-list">
-            <!-- 동적으로 업데이트됨 -->
-        </div>
-    </div>
-</body>
-</html>`))
-
-    w.Header().Set("Content-Type", "text/html")
-    tmpl.Execute(w, nil)
+// Add redirect rule
+func (wg *WebsiteGateway) AddRedirectRule(from, to string) {
+    wg.config.RedirectRules[from] = to
+    log.Printf("Added redirect rule: %s -> %s", from, to)
 }
 
 func main() {
-    sg, err := NewSyncGateway()
+    // Initialize DAG wrapper
+    dagWrapper, err := dag.New(nil, "")
     if err != nil {
         panic(err)
     }
 
-    http.HandleFunc("/", sg.DashboardHandler)
-    http.HandleFunc("/api/status", sg.StatusHandler)
-    http.HandleFunc("/api/watch", func(w http.ResponseWriter, r *http.Request) {
-        if r.Method != "POST" {
-            http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-            return
-        }
-
-        path := r.FormValue("path")
-        if path == "" {
-            http.Error(w, "Path required", http.StatusBadRequest)
-            return
-        }
-
-        err := sg.AddWatchPath(path)
-        if err != nil {
-            http.Error(w, err.Error(), http.StatusInternalServerError)
-            return
-        }
-
-        http.Redirect(w, r, "/", http.StatusSeeOther)
-    })
-
-    // 샘플 디렉터리 감시 시작
-    if _, err := os.Stat("./sample"); err == nil {
-        sg.AddWatchPath("./sample")
+    // Create website gateway
+    websiteGateway, err := NewWebsiteGateway(dagWrapper)
+    if err != nil {
+        panic(err)
     }
 
-    fmt.Println("실시간 동기화 게이트웨이 시작됨 :8080")
-    fmt.Println("대시보드: http://localhost:8080")
-    http.ListenAndServe(":8080", nil)
+    // Register sample websites
+    websiteGateway.RegisterWebsite("example.com", "QmExampleSiteHash123")
+    websiteGateway.RegisterWebsite("blog.example.com", "QmBlogSiteHash456")
+
+    // Add redirect rules
+    websiteGateway.AddRedirectRule("/old-path", "/new-path")
+    websiteGateway.AddRedirectRule("/docs", "/ipfs/QmDocsHash789")
+
+    // Start server
+    fmt.Println("🌐 Website Gateway starting on :8080")
+    fmt.Println("📝 Access websites:")
+    fmt.Println("   - http://example.com:8080")
+    fmt.Println("   - http://blog.example.com:8080")
+    fmt.Println("   - http://localhost:8080/ipfs/{hash}")
+
+    server := &http.Server{
+        Addr:    ":8080",
+        Handler: websiteGateway,
+
+        // Production-ready timeouts
+        ReadTimeout:  15 * time.Second,
+        WriteTimeout: 15 * time.Second,
+        IdleTimeout:  60 * time.Second,
+    }
+
+    if err := server.ListenAndServe(); err != nil {
+        log.Fatal("Server failed to start:", err)
+    }
 }
 ```
 
----
-
-이 쿡북의 예제들을 사용하면 다음과 같은 실용적인 IPFS 게이트웨이를 구축할 수 있습니다:
-
-1. **미디어 스트리밍**: HTTP Range 요청을 지원하는 비디오 스트리밍 서버
-2. **이미지 갤러리**: 자동 썸네일 생성과 반응형 갤러리 UI
-3. **문서 뷰어**: 다양한 파일 형식의 웹 기반 뷰어
-4. **실시간 동기화**: 파일 시스템 변경을 자동으로 IPFS에 동기화
-
-각 예제는 완전한 실행 가능한 코드로, 실제 프로덕션 환경에서 사용할 수 있도록 에러 처리와 사용자 경험을 고려하여 작성되었습니다.
+Now you have a complete understanding of HTTP Gateway implementation and web integration! 🌐

@@ -1,63 +1,63 @@
-# 00-block-cid: IPFS의 기초 - Block과 CID
+# 00-block-cid: IPFS Fundamentals - Blocks and CIDs
 
-## 🎯 학습 목표
+## 🎯 Learning Objectives
 
-이 모듈을 통해 다음을 학습할 수 있습니다:
-- IPFS의 핵심 개념인 **Content Addressing** 이해
-- **Block**과 **CID(Content Identifier)**의 역할과 구조
-- **CID v0**와 **CID v1**의 차이점과 사용 시나리오
-- 다양한 **해시 알고리즘**(SHA2-256, BLAKE3 등)의 특성
-- **Blockstore**를 통한 데이터 저장 및 검색 방법
+Through this module, you will learn:
+- Understanding **Content Addressing**, the core concept of IPFS
+- The role and structure of **Blocks** and **CIDs (Content Identifiers)**
+- Differences between **CID v0** and **CID v1** and their usage scenarios
+- Characteristics of various **hash algorithms** (SHA2-256, BLAKE3, etc.)
+- Data storage and retrieval methods through **Blockstore**
 
-## 📋 사전 요구사항
+## 📋 Prerequisites
 
-- Go 프로그래밍 기초 지식
-- 암호학적 해시 함수의 기본 개념
-- JSON 데이터 구조에 대한 이해
+- Basic knowledge of Go programming
+- Basic concepts of cryptographic hash functions
+- Understanding of JSON data structures
 
-## 🔑 핵심 개념
+## 🔑 Key Concepts
 
-### Content Addressing이란?
+### What is Content Addressing?
 
-기존 파일시스템에서는 **위치 기반 주소**(예: `/home/user/document.txt`)를 사용합니다. 반면 IPFS는 **내용 기반 주소**를 사용합니다.
+Traditional file systems use **location-based addressing** (e.g., `/home/user/document.txt`). In contrast, IPFS uses **content-based addressing**.
 
 ```
-기존 방식: "어디에 있는가?" → /path/to/file.txt
-IPFS 방식: "무엇인가?" → QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG
+Traditional approach: "Where is it?" → /path/to/file.txt
+IPFS approach: "What is it?" → QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG
 ```
 
-### Block이란?
+### What is a Block?
 
-**Block**은 IPFS에서 데이터를 저장하는 기본 단위입니다:
+**Block** is the fundamental unit for storing data in IPFS:
 
 ```go
 type Block interface {
-    RawData() []byte    // 실제 데이터
-    Cid() cid.Cid      // 이 블록의 고유 식별자
+    RawData() []byte    // Actual data
+    Cid() cid.Cid      // Unique identifier for this block
 }
 ```
 
-### CID(Content Identifier)란?
+### What is a CID (Content Identifier)?
 
-**CID**는 IPFS에서 콘텐츠를 식별하는 고유한 주소입니다:
+**CID** is a unique address for identifying content in IPFS:
 
 ```
-CID 구조: <version><codec><multihash>
-예시: QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG
+CID structure: <version><codec><multihash>
+Example: QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG
 ```
 
 #### CID v0 vs v1
 
-| 특성 | CID v0 | CID v1 |
-|------|--------|--------|
-| 형식 | Base58 | Multibase (base32, base64 등) |
-| 예시 | `QmYwAPJ...` | `bafybeig...` |
-| 코덱 | DAG-PB 고정 | 다양한 코덱 지원 |
-| 사용처 | 레거시 호환성 | 최신 애플리케이션 |
+| Feature | CID v0 | CID v1 |
+|---------|--------|---------|
+| Format | Base58 | Multibase (base32, base64, etc.) |
+| Example | `QmYwAPJ...` | `bafybeig...` |
+| Codec | DAG-PB fixed | Various codec support |
+| Usage | Legacy compatibility | Modern applications |
 
-## 💻 코드 분석
+## 💻 Code Analysis
 
-### 1. Block Wrapper 구현
+### 1. Block Wrapper Implementation
 
 ```go
 // pkg/block.go:19-30
@@ -73,35 +73,35 @@ func New(bs blockstore.Blockstore) *BlockWrapper {
 }
 ```
 
-**설계 결정**:
-- `blockstore`가 nil인 경우 메모리 기반 저장소 자동 생성
-- 의존성 주입을 통한 유연한 저장소 선택 가능
+**Design Decisions**:
+- Automatically creates memory-based storage if `blockstore` is nil
+- Flexible storage selection through dependency injection
 
-### 2. 데이터 저장 및 CID 생성
+### 2. Data Storage and CID Generation
 
 ```go
 // pkg/block.go:33-46
 func (bw *BlockWrapper) Put(ctx context.Context, data []byte) (cid.Cid, error) {
-    // 1. 해시 계산
+    // 1. Hash calculation
     hash := sha256.Sum256(data)
     mhash, err := multihash.Encode(hash[:], multihash.SHA2_256)
 
-    // 2. CID 생성 (v1, raw codec)
+    // 2. CID generation (v1, raw codec)
     c := cid.NewCidV1(cid.Raw, mhash)
 
-    // 3. Block 생성 및 저장
+    // 3. Block creation and storage
     block, err := blocks.NewBlockWithCid(data, c)
     return c, bw.blockstore.Put(ctx, block)
 }
 ```
 
-**핵심 과정**:
-1. **해시 계산**: SHA2-256으로 데이터의 지문 생성
-2. **Multihash 인코딩**: 해시 알고리즘 정보 포함
-3. **CID 생성**: v1 + Raw 코덱 조합
-4. **Block 저장**: Blockstore에 영구 보관
+**Core Process**:
+1. **Hash Calculation**: Generate data fingerprint with SHA2-256
+2. **Multihash Encoding**: Include hash algorithm information
+3. **CID Generation**: v1 + Raw codec combination
+4. **Block Storage**: Permanent storage in Blockstore
 
-### 3. 다양한 해시 알고리즘 지원
+### 3. Various Hash Algorithm Support
 
 ```go
 // pkg/block.go:85-102
@@ -121,14 +121,14 @@ func (bw *BlockWrapper) PutWithHash(ctx context.Context, data []byte, hashType u
 }
 ```
 
-**해시 알고리즘 비교**:
+**Hash Algorithm Comparison**:
 
-| 알고리즘 | 속도 | 보안성 | 사용 사례 |
-|----------|------|--------|-----------|
-| SHA2-256 | 보통 | 높음 | 기본 권장 |
-| BLAKE3 | 빠름 | 높음 | 성능 중요 시 |
+| Algorithm | Speed | Security | Use Case |
+|-----------|-------|----------|----------|
+| SHA2-256 | Medium | High | Default recommendation |
+| BLAKE3 | Fast | High | When performance matters |
 
-### 4. CID v0 호환성
+### 4. CID v0 Compatibility
 
 ```go
 // pkg/block.go:149-163
@@ -136,7 +136,7 @@ func (bw *BlockWrapper) PutCIDv0(ctx context.Context, data []byte) (cid.Cid, err
     hash := sha256.Sum256(data)
     mhash, err := multihash.Encode(hash[:], multihash.SHA2_256)
 
-    // CID v0: DAG-PB 코덱 사용
+    // CID v0: Uses DAG-PB codec
     c := cid.NewCidV0(mhash)
 
     block, err := blocks.NewBlockWithCid(data, c)
@@ -144,16 +144,16 @@ func (bw *BlockWrapper) PutCIDv0(ctx context.Context, data []byte) (cid.Cid, err
 }
 ```
 
-## 🏃‍♂️ 실습 가이드
+## 🏃‍♂️ Practice Guide
 
-### 1. 기본 실행
+### 1. Basic Execution
 
 ```bash
 cd 00-block-cid
 go run main.go
 ```
 
-**예상 출력**:
+**Expected Output**:
 ```
 === Block and CID Demo ===
 
@@ -169,13 +169,13 @@ go run main.go
    🔍 Both CIDs point to same data: true
 ```
 
-### 2. 해시 알고리즘 비교 실험
+### 2. Hash Algorithm Comparison Experiment
 
-코드에서 다음 부분을 관찰하세요:
+Observe this part in the code:
 
 ```go
 // main.go:111-125
-// 같은 데이터, 다른 해시 알고리즘
+// Same data, different hash algorithms
 data := []byte("Hash algorithm comparison")
 
 sha256CID, _ := blockWrapper.PutWithHash(ctx, data, multihash.SHA2_256)
@@ -185,152 +185,152 @@ fmt.Printf("   SHA2-256: %s\n", sha256CID.String()[:25]+"...")
 fmt.Printf("   BLAKE3:   %s\n", blake3CID.String()[:25]+"...")
 ```
 
-### 3. 코덱 영향 실험
+### 3. Codec Impact Experiment
 
 ```go
 // main.go:135-149
-// 같은 데이터, 다른 코덱
+// Same data, different codecs
 rawCID, _ := blockWrapper.PutWithCodec(ctx, data, cid.Raw)
 dagPBCID, _ := blockWrapper.PutWithCodec(ctx, data, cid.DagProtobuf)
 
-// 결과: 다른 CID가 생성됨
+// Result: Different CIDs are generated
 ```
 
-**학습 포인트**: 같은 데이터라도 코덱이 다르면 다른 CID가 생성됩니다.
+**Learning Point**: The same data generates different CIDs when using different codecs.
 
-### 4. 테스트 실행
+### 4. Running Tests
 
 ```bash
 go test -v ./...
 ```
 
-**주요 테스트 케이스**:
-- ✅ 기본 저장/검색 기능
-- ✅ CID v0/v1 호환성
-- ✅ 다양한 해시 알고리즘
-- ✅ 에러 처리 (존재하지 않는 CID)
+**Key Test Cases**:
+- ✅ Basic store/retrieve functionality
+- ✅ CID v0/v1 compatibility
+- ✅ Various hash algorithms
+- ✅ Error handling (non-existent CID)
 
-## 🔗 실제 활용 사례
+## 🔗 Real-World Use Cases
 
-### 1. 파일 무결성 검증
+### 1. File Integrity Verification
 
 ```go
-// 파일 업로드 시 무결성 보장
+// Ensuring integrity when uploading files
 originalCID, _ := blockWrapper.Put(ctx, fileData)
 
-// 나중에 다운로드 시 검증
+// Verification when downloading later
 retrievedData, _ := blockWrapper.Get(ctx, originalCID)
-// retrievedData == fileData 보장됨
+// retrievedData == fileData is guaranteed
 ```
 
-### 2. 중복 제거 (Deduplication)
+### 2. Deduplication
 
 ```go
-// 같은 내용의 파일은 같은 CID 생성
+// Files with same content generate same CID
 file1CID, _ := blockWrapper.Put(ctx, []byte("Hello"))
 file2CID, _ := blockWrapper.Put(ctx, []byte("Hello"))
-// file1CID == file2CID (자동 중복 제거)
+// file1CID == file2CID (automatic deduplication)
 ```
 
-### 3. 버전 관리
+### 3. Version Control
 
 ```go
-// 문서의 각 버전이 고유한 CID를 가짐
+// Each version of document has unique CID
 v1CID, _ := blockWrapper.Put(ctx, []byte("Document v1"))
 v2CID, _ := blockWrapper.Put(ctx, []byte("Document v2"))
-// 변경사항 추적 가능
+// Change tracking possible
 ```
 
-## ⚠️ 주의사항 및 모범 사례
+## ⚠️ Cautions and Best Practices
 
-### 1. CID 버전 선택 가이드
+### 1. CID Version Selection Guide
 
 ```go
-// ✅ 권장: 새로운 애플리케이션
+// ✅ Recommended: New applications
 cid := cid.NewCidV1(cid.Raw, mhash)
 
-// ⚠️ 주의: 레거시 호환성이 필요한 경우만
+// ⚠️ Caution: Only when legacy compatibility needed
 cid := cid.NewCidV0(mhash)
 ```
 
-### 2. 해시 알고리즘 선택
+### 2. Hash Algorithm Selection
 
 ```go
-// ✅ 범용: SHA2-256 (기본 권장)
+// ✅ General purpose: SHA2-256 (default recommendation)
 hashType := multihash.SHA2_256
 
-// ✅ 성능 중요: BLAKE3
+// ✅ Performance critical: BLAKE3
 hashType := multihash.BLAKE3
 
-// ❌ 피하기: MD5, SHA1 (보안 취약)
+// ❌ Avoid: MD5, SHA1 (security vulnerabilities)
 ```
 
-### 3. 에러 처리
+### 3. Error Handling
 
 ```go
-// ✅ 항상 에러 확인
+// ✅ Always check errors
 data, err := blockWrapper.Get(ctx, someCID)
 if err != nil {
     if err == blockstore.ErrNotFound {
-        // 블록이 존재하지 않음
+        // Block doesn't exist
     }
     return err
 }
 ```
 
-## 🔧 트러블슈팅
+## 🔧 Troubleshooting
 
-### 문제 1: "block not found" 에러
+### Problem 1: "block not found" Error
 
-**원인**: 존재하지 않는 CID로 데이터 요청
+**Cause**: Requesting data with non-existent CID
 ```go
-// 해결: 먼저 존재 여부 확인
+// Solution: Check existence first
 exists, err := blockWrapper.Has(ctx, someCID)
 if !exists {
     log.Printf("Block %s does not exist", someCID)
 }
 ```
 
-### 문제 2: 메모리 사용량 증가
+### Problem 2: Memory Usage Increase
 
-**원인**: 대용량 데이터를 메모리 blockstore에 저장
+**Cause**: Storing large data in memory blockstore
 ```go
-// 해결: 영구 저장소 사용 (다음 모듈에서 학습)
-// 01-persistent 모듈 참조
+// Solution: Use persistent storage (learned in next module)
+// Refer to 01-persistent module
 ```
 
-### 문제 3: CID 형식 에러
+### Problem 3: CID Format Error
 
-**원인**: 잘못된 CID 문자열 파싱
+**Cause**: Invalid CID string parsing
 ```go
-// 해결: CID 유효성 검사
+// Solution: Validate CID
 if !cid.IsValid() {
     return fmt.Errorf("invalid CID format")
 }
 ```
 
-## 📚 추가 학습 자료
+## 📚 Additional Learning Resources
 
-### 관련 문서
+### Related Documentation
 - [IPFS Concepts: Content Addressing](https://docs.ipfs.io/concepts/content-addressing/)
 - [CID Specification](https://github.com/multiformats/cid)
 - [Multihash Specification](https://github.com/multiformats/multihash)
 
-### 다음 단계
-1. **01-persistent**: 다양한 저장소 백엔드 학습
-2. **02-dag-ipld**: 복잡한 데이터 구조와 DAG 학습
-3. **03-unixfs**: 파일시스템 추상화 학습
+### Next Steps
+1. **01-persistent**: Learn various storage backends
+2. **02-dag-ipld**: Learn complex data structures and DAG
+3. **03-unixfs**: Learn file system abstraction
 
-## 🎓 연습 문제
+## 🎓 Practice Problems
 
-### 기초 연습
-1. 문자열 "Hello IPFS!"를 저장하고 CID를 출력하세요
-2. 같은 데이터를 SHA2-256과 BLAKE3로 저장했을 때 CID 차이를 확인하세요
-3. 존재하지 않는 CID로 데이터를 조회할 때의 에러를 처리하세요
+### Basic Exercises
+1. Store the string "Hello IPFS!" and output its CID
+2. Check CID differences when storing same data with SHA2-256 and BLAKE3
+3. Handle errors when querying with non-existent CID
 
-### 심화 연습
-1. JSON 객체를 직렬화하여 저장하고 다시 역직렬화하는 함수를 작성하세요
-2. 파일의 CID를 계산하여 무결성을 검증하는 유틸리티를 만들어보세요
-3. CID v0를 v1으로 변환하는 함수를 구현해보세요
+### Advanced Exercises
+1. Write a function that serializes JSON objects for storage and deserializes them back
+2. Create a utility that calculates file CID for integrity verification
+3. Implement a function that converts CID v0 to v1
 
-이제 IPFS의 기초인 Block과 CID에 대해 이해하셨을 것입니다. 다음 모듈에서는 이 데이터를 영구적으로 저장하는 방법을 학습하겠습니다! 🚀
+Now you should understand the fundamentals of IPFS - Blocks and CIDs. In the next module, we'll learn how to store this data persistently! 🚀

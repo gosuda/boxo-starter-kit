@@ -1,27 +1,27 @@
-# 02-dag-ipld: 분산 데이터 구조와 IPLD
+# 04-dag-ipld: Distributed Data Structures with IPLD
 
-## 🎯 학습 목표
+## 🎯 Learning Objectives
 
-이 모듈을 통해 다음을 학습할 수 있습니다:
-- **DAG(Directed Acyclic Graph)**의 개념과 IPFS에서의 활용
-- **IPLD(InterPlanetary Linked Data)** 데이터 모델의 이해
-- **복잡한 데이터 구조**를 IPFS에 저장하고 탐색하는 방법
-- **Path Resolution**을 통한 연결된 데이터 접근
-- **DAGService** 인터페이스의 구현과 활용
-- **코덱(Codec)**을 통한 다양한 데이터 형식 지원
+Through this module, you will learn:
+- **DAG (Directed Acyclic Graph)** concepts and their application in IPFS
+- **IPLD (InterPlanetary Linked Data)** data model understanding
+- How to store and explore **complex data structures** in IPFS
+- **Path Resolution** for accessing linked data
+- **DAGService** interface implementation and utilization
+- Support for various data formats through **Codecs**
 
-## 📋 사전 요구사항
+## 📋 Prerequisites
 
-- **00-block-cid** 모듈 완료 (Block과 CID 이해)
-- **01-persistent** 모듈 완료 (데이터 영속성 이해)
-- JSON 데이터 구조에 대한 이해
-- 그래프 이론의 기본 개념 (노드, 엣지, 사이클)
+- **00-block-cid** module completion (Understanding Blocks and CIDs)
+- **01-persistent** module completion (Understanding data persistence)
+- Understanding of JSON data structures
+- Basic concepts of graph theory (nodes, edges, cycles)
 
-## 🔑 핵심 개념
+## 🔑 Key Concepts
 
-### DAG(Directed Acyclic Graph)란?
+### What is a DAG (Directed Acyclic Graph)?
 
-**DAG**는 방향성이 있고 사이클이 없는 그래프입니다:
+A **DAG** is a graph with directed edges and no cycles:
 
 ```
      A
@@ -31,22 +31,22 @@
   D  →  E
 ```
 
-**특징**:
-- **방향성**: 각 연결에 방향이 있음
-- **비순환**: 출발점으로 돌아오는 경로가 없음
-- **불변성**: 한번 생성된 노드는 변경되지 않음
+**Characteristics**:
+- **Directional**: Each connection has a direction
+- **Acyclic**: No path leads back to the starting point
+- **Immutable**: Once created, nodes never change
 
-### IPLD(InterPlanetary Linked Data)란?
+### What is IPLD (InterPlanetary Linked Data)?
 
-**IPLD**는 다양한 분산 시스템에서 데이터를 연결하고 탐색할 수 있는 데이터 모델입니다:
+**IPLD** is a data model for linking and traversing data across various distributed systems:
 
 ```json
 {
   "name": "Alice",
   "age": 30,
   "friends": [
-    {"/": "bafkreiabcd..."}, // CID 링크
-    {"/": "bafkreiefgh..."}  // CID 링크
+    {"/": "bafkreiabcd..."}, // CID link
+    {"/": "bafkreiefgh..."}  // CID link
   ],
   "profile": {
     "bio": "Software Engineer",
@@ -57,17 +57,17 @@
 
 ### Path Resolution
 
-IPLD는 **경로 기반 접근**을 지원합니다:
+IPLD supports **path-based access**:
 
 ```
 /profile/bio           → "Software Engineer"
-/friends/0             → {다른 사용자 객체}
-/profile/avatar        → {이미지 데이터}
+/friends/0             → {other user object}
+/profile/avatar        → {image data}
 ```
 
-## 💻 코드 분석
+## 💻 Code Analysis
 
-### 1. DAG Wrapper 설계
+### 1. DAG Wrapper Design
 
 ```go
 // pkg/dag.go:24-32
@@ -78,33 +78,33 @@ type DagWrapper struct {
 }
 
 func New(pw *persistent.PersistentWrapper, datastorePath string) (*DagWrapper, error) {
-    // DAGService 초기화 및 IPLD 지원 설정
+    // DAGService initialization and IPLD support setup
 }
 ```
 
-**설계 특징**:
-- **persistent.PersistentWrapper** 재사용으로 저장소 추상화
-- **format.DAGService** 인터페이스로 IPLD 표준 준수
-- **다중 코덱** 지원을 위한 유연한 아키텍처
+**Design Features**:
+- **Storage abstraction** through persistent.PersistentWrapper reuse
+- **IPLD standard compliance** via format.DAGService interface
+- **Flexible architecture** supporting multiple codecs
 
-### 2. 복잡한 데이터 구조 저장
+### 2. Storing Complex Data Structures
 
 ```go
 // pkg/dag.go:88-110
 func (dw *DagWrapper) PutAny(ctx context.Context, data any) (cid.Cid, error) {
-    // 1. JSON 직렬화
+    // 1. JSON serialization
     jsonData, err := json.Marshal(data)
     if err != nil {
         return cid.Undef, fmt.Errorf("failed to marshal data: %w", err)
     }
 
-    // 2. DAG-JSON 코덱으로 노드 생성
+    // 2. Create node with DAG-JSON codec
     node, err := dagJSON.Decode(dagJSON.DecodeOptions{}, bytes.NewReader(jsonData))
     if err != nil {
         return cid.Undef, fmt.Errorf("failed to decode as DAG-JSON: %w", err)
     }
 
-    // 3. DAG에 추가
+    // 3. Add to DAG
     err = dw.dagService.Add(ctx, node)
     if err != nil {
         return cid.Undef, fmt.Errorf("failed to add node to DAG: %w", err)
@@ -114,12 +114,12 @@ func (dw *DagWrapper) PutAny(ctx context.Context, data any) (cid.Cid, error) {
 }
 ```
 
-**핵심 과정**:
-1. **직렬화**: Go 구조체 → JSON
-2. **IPLD 변환**: JSON → IPLD 노드
-3. **DAG 저장**: 노드를 DAG에 추가
+**Core Process**:
+1. **Serialization**: Go struct → JSON
+2. **IPLD Conversion**: JSON → IPLD node
+3. **DAG Storage**: Add node to DAG
 
-### 3. Path Resolution 구현
+### 3. Path Resolution Implementation
 
 ```go
 // pkg/dag.go:113-142
@@ -128,24 +128,24 @@ func (dw *DagWrapper) GetPath(ctx context.Context, rootCID cid.Cid, path string)
         return dw.GetAny(ctx, rootCID)
     }
 
-    // 1. 루트 노드 조회
+    // 1. Retrieve root node
     rootNode, err := dw.dagService.Get(ctx, rootCID)
     if err != nil {
         return nil, fmt.Errorf("failed to get root node: %w", err)
     }
 
-    // 2. 경로 파싱 및 탐색
+    // 2. Parse path and traverse
     pathSegments := strings.Split(strings.Trim(path, "/"), "/")
     currentNode := rootNode
 
     for _, segment := range pathSegments {
-        // 3. 각 세그먼트별 노드 탐색
+        // 3. Traverse each path segment
         nextNode, _, err := currentNode.Resolve([]string{segment})
         if err != nil {
             return nil, fmt.Errorf("failed to resolve path segment '%s': %w", segment, err)
         }
 
-        // 4. CID 링크인 경우 실제 노드 로드
+        // 4. Load actual node if it's a CID link
         if nextCID, ok := nextNode.(cid.Cid); ok {
             currentNode, err = dw.dagService.Get(ctx, nextCID)
             if err != nil {
@@ -158,14 +158,14 @@ func (dw *DagWrapper) GetPath(ctx context.Context, rootCID cid.Cid, path string)
 }
 ```
 
-### 4. 연결된 데이터 구조 생성
+### 4. Creating Linked Data Structures
 
 ```go
 // main.go:95-115
 func createLinkedData(ctx context.Context, dw *dag.DagWrapper) map[string]cid.Cid {
     cids := make(map[string]cid.Cid)
 
-    // 1. 개별 객체들 생성
+    // 1. Create individual objects
     profileCID, _ := dw.PutAny(ctx, map[string]any{
         "bio":      "IPFS Developer",
         "location": "Distributed Web",
@@ -178,12 +178,12 @@ func createLinkedData(ctx context.Context, dw *dag.DagWrapper) map[string]cid.Ci
         "country": "Internet",
     })
 
-    // 2. 연결된 사용자 객체 생성
+    // 2. Create linked user object
     userCID, _ := dw.PutAny(ctx, map[string]any{
         "name":    "Alice",
         "age":     30,
-        "profile": map[string]string{"/": profileCID.String()}, // CID 링크
-        "address": map[string]string{"/": addressCID.String()}, // CID 링크
+        "profile": map[string]string{"/": profileCID.String()}, // CID link
+        "address": map[string]string{"/": addressCID.String()}, // CID link
         "metadata": map[string]any{
             "created": time.Now().Format(time.RFC3339),
             "version": "1.0",
@@ -198,31 +198,31 @@ func createLinkedData(ctx context.Context, dw *dag.DagWrapper) map[string]cid.Ci
 }
 ```
 
-**데이터 연결 구조**:
+**Data Link Structure**:
 ```
 User
 ├─ name: "Alice"
 ├─ age: 30
-├─ profile → (CID링크) → Profile
+├─ profile → (CID link) → Profile
 │   ├─ bio: "IPFS Developer"
 │   ├─ location: "Distributed Web"
 │   └─ skills: ["Go", "IPFS", "Blockchain"]
-└─ address → (CID링크) → Address
+└─ address → (CID link) → Address
     ├─ street: "123 Blockchain Ave"
     ├─ city: "Decentralized City"
     └─ country: "Internet"
 ```
 
-## 🏃‍♂️ 실습 가이드
+## 🏃‍♂️ Hands-on Guide
 
-### 1. 기본 실행
+### 1. Basic Execution
 
 ```bash
-cd 02-dag-ipld
+cd 04-dag-ipld
 go run main.go
 ```
 
-**예상 출력**:
+**Expected Output**:
 ```
 === DAG and IPLD Demo ===
 
@@ -253,18 +253,18 @@ go run main.go
    ✅ Profile creation time: 2024-01-15T10:30:00Z
 ```
 
-### 2. Path Resolution 실험
+### 2. Path Resolution Experiments
 
-코드를 수정하여 다양한 경로를 테스트해보세요:
+Modify the code to test various paths:
 
 ```go
-// 테스트할 경로들
+// Paths to test
 paths := []string{
-    "/name",                    // 직접 필드
-    "/profile/bio",             // 링크된 객체의 필드
-    "/profile/skills/1",        // 배열 인덱스
-    "/address/street",          // 중첩된 링크
-    "/metadata/created",        // 메타데이터
+    "/name",                    // Direct field
+    "/profile/bio",             // Field in linked object
+    "/profile/skills/1",        // Array index
+    "/address/street",          // Nested link
+    "/metadata/created",        // Metadata
 }
 
 for _, path := range paths {
@@ -277,9 +277,9 @@ for _, path := range paths {
 }
 ```
 
-### 3. 데이터 구조 시각화
+### 3. Data Structure Visualization
 
-DAG 구조를 이해하기 위해 연결 관계를 출력:
+Print connection relationships to understand DAG structure:
 
 ```go
 func printDAGStructure(ctx context.Context, dw *dag.DagWrapper, rootCID cid.Cid, depth int) {
@@ -297,7 +297,7 @@ func printDAGStructure(ctx context.Context, dw *dag.DagWrapper, rootCID cid.Cid,
         for key, value := range dataMap {
             fmt.Printf("%s├─ %s: %v\n", indent, key, value)
 
-            // CID 링크인 경우 재귀적으로 탐색
+            // Recursively explore if it's a CID link
             if linkMap, ok := value.(map[string]any); ok {
                 if cidStr, exists := linkMap["/"]; exists {
                     if linkedCID, err := cid.Parse(cidStr.(string)); err == nil {
@@ -310,22 +310,22 @@ func printDAGStructure(ctx context.Context, dw *dag.DagWrapper, rootCID cid.Cid,
 }
 ```
 
-### 4. 테스트 실행
+### 4. Running Tests
 
 ```bash
 go test -v ./...
 ```
 
-**주요 테스트 케이스**:
-- ✅ 단순 객체 저장/검색
-- ✅ 복잡한 중첩 구조
-- ✅ Path resolution 기능
-- ✅ CID 링크 해결
-- ✅ 에러 처리 (잘못된 경로)
+**Key Test Cases**:
+- ✅ Simple object storage/retrieval
+- ✅ Complex nested structures
+- ✅ Path resolution functionality
+- ✅ CID link resolution
+- ✅ Error handling (invalid paths)
 
-## 🔍 고급 활용 사례
+## 🔍 Advanced Use Cases
 
-### 1. 버전 관리 시스템
+### 1. Version Management System
 
 ```go
 type Document struct {
@@ -333,7 +333,7 @@ type Document struct {
     Content   string            `json:"content"`
     Author    string            `json:"author"`
     Version   int               `json:"version"`
-    Parent    map[string]string `json:"parent,omitempty"` // 이전 버전 링크
+    Parent    map[string]string `json:"parent,omitempty"` // Link to previous version
     Created   string            `json:"created"`
 }
 
@@ -348,10 +348,10 @@ func createVersionedDocument(ctx context.Context, dw *dag.DagWrapper,
     }
 
     if parentCID != nil {
-        // 이전 버전에 링크
+        // Link to previous version
         doc.Parent = map[string]string{"/": parentCID.String()}
 
-        // 버전 번호 증가
+        // Increment version number
         if parentDoc, err := dw.GetAny(ctx, *parentCID); err == nil {
             if parent, ok := parentDoc.(map[string]any); ok {
                 if v, exists := parent["version"]; exists {
@@ -365,50 +365,50 @@ func createVersionedDocument(ctx context.Context, dw *dag.DagWrapper,
 }
 ```
 
-### 2. 소셜 그래프 구현
+### 2. Social Graph Implementation
 
 ```go
 type User struct {
     Name      string              `json:"name"`
     Bio       string              `json:"bio"`
-    Following []map[string]string `json:"following"` // CID 링크 배열
-    Followers []map[string]string `json:"followers"` // CID 링크 배열
-    Posts     []map[string]string `json:"posts"`     // 게시글 CID 링크
+    Following []map[string]string `json:"following"` // CID link array
+    Followers []map[string]string `json:"followers"` // CID link array
+    Posts     []map[string]string `json:"posts"`     // Post CID links
 }
 
 func followUser(ctx context.Context, dw *dag.DagWrapper,
                followerCID, targetCID cid.Cid) error {
-    // 1. 팔로워 사용자 정보 조회
+    // 1. Retrieve follower user info
     followerData, err := dw.GetAny(ctx, followerCID)
     if err != nil {
         return err
     }
 
-    // 2. following 목록에 추가
+    // 2. Add to following list
     follower := followerData.(map[string]any)
     following := follower["following"].([]any)
     following = append(following, map[string]string{"/": targetCID.String()})
     follower["following"] = following
 
-    // 3. 업데이트된 사용자 정보 저장
+    // 3. Store updated user info
     _, err = dw.PutAny(ctx, follower)
     return err
 }
 ```
 
-### 3. 파일 시스템 트리
+### 3. File System Tree
 
 ```go
 type FileNode struct {
     Name     string              `json:"name"`
     Type     string              `json:"type"`     // "file" or "directory"
     Size     int64               `json:"size,omitempty"`
-    Children []map[string]string `json:"children,omitempty"` // 디렉터리인 경우
-    Content  map[string]string   `json:"content,omitempty"`  // 파일인 경우
+    Children []map[string]string `json:"children,omitempty"` // For directories
+    Content  map[string]string   `json:"content,omitempty"`  // For files
 }
 
 func createFileTree(ctx context.Context, dw *dag.DagWrapper) (cid.Cid, error) {
-    // 파일들 생성
+    // Create files
     file1CID, _ := dw.PutAny(ctx, FileNode{
         Name: "README.md",
         Type: "file",
@@ -423,7 +423,7 @@ func createFileTree(ctx context.Context, dw *dag.DagWrapper) (cid.Cid, error) {
         Content: map[string]string{"/": "bafkreifile2content..."},
     })
 
-    // 디렉터리 생성
+    // Create directory
     return dw.PutAny(ctx, FileNode{
         Name: "project",
         Type: "directory",
@@ -435,23 +435,23 @@ func createFileTree(ctx context.Context, dw *dag.DagWrapper) (cid.Cid, error) {
 }
 ```
 
-## ⚠️ 주의사항 및 모범 사례
+## ⚠️ Cautions and Best Practices
 
-### 1. CID 링크 생성
+### 1. CID Link Creation
 
 ```go
-// ✅ 올바른 CID 링크 형식
+// ✅ Correct CID link format
 link := map[string]string{"/": targetCID.String()}
 
-// ❌ 잘못된 형식
+// ❌ Incorrect formats
 link := map[string]string{"cid": targetCID.String()}
-link := targetCID.String() // 문자열로만 저장
+link := targetCID.String() // Only storing as string
 ```
 
-### 2. Path Resolution 에러 처리
+### 2. Path Resolution Error Handling
 
 ```go
-// ✅ 경로별 세밀한 에러 처리
+// ✅ Detailed error handling per path
 result, err := dw.GetPath(ctx, rootCID, "/profile/skills/10")
 if err != nil {
     if strings.Contains(err.Error(), "index out of range") {
@@ -464,10 +464,10 @@ if err != nil {
 }
 ```
 
-### 3. 메모리 효율적인 대용량 데이터 처리
+### 3. Memory-Efficient Large Data Processing
 
 ```go
-// ✅ 스트리밍 방식으로 대용량 데이터 처리
+// ✅ Process large data with streaming approach
 func processLargeDataset(ctx context.Context, dw *dag.DagWrapper,
                         dataStream <-chan map[string]any) error {
     for data := range dataStream {
@@ -476,17 +476,17 @@ func processLargeDataset(ctx context.Context, dw *dag.DagWrapper,
             return err
         }
 
-        // 처리 완료된 데이터는 메모리에서 해제
+        // Release processed data from memory
         log.Printf("Processed: %s", cid)
     }
     return nil
 }
 ```
 
-### 4. 순환 참조 방지
+### 4. Preventing Circular References
 
 ```go
-// ✅ 깊이 제한으로 순환 참조 방지
+// ✅ Prevent circular references with depth limits
 func traverseDAG(ctx context.Context, dw *dag.DagWrapper,
                 rootCID cid.Cid, maxDepth int) error {
     visited := make(map[string]bool)
@@ -502,22 +502,22 @@ func traverseDAGRecursive(ctx context.Context, dw *dag.DagWrapper,
 
     cidStr := currentCID.String()
     if visited[cidStr] {
-        return nil // 이미 방문한 노드
+        return nil // Already visited node
     }
     visited[cidStr] = true
 
-    // 노드 처리 로직...
+    // Node processing logic...
     return nil
 }
 ```
 
-## 🔧 트러블슈팅
+## 🔧 Troubleshooting
 
-### 문제 1: "path not found" 에러
+### Issue 1: "path not found" Error
 
-**원인**: 잘못된 경로 또는 존재하지 않는 필드
+**Cause**: Invalid path or non-existent field
 ```go
-// 해결: 경로 유효성 검사
+// Solution: Path validation
 func validatePath(ctx context.Context, dw *dag.DagWrapper,
                   rootCID cid.Cid, path string) error {
     pathSegments := strings.Split(strings.Trim(path, "/"), "/")
@@ -533,11 +533,11 @@ func validatePath(ctx context.Context, dw *dag.DagWrapper,
 }
 ```
 
-### 문제 2: "node not found" 에러
+### Issue 2: "node not found" Error
 
-**원인**: CID 링크가 가리키는 노드가 존재하지 않음
+**Cause**: Node referenced by CID link does not exist
 ```go
-// 해결: 링크 무결성 검사
+// Solution: Link integrity validation
 func validateLinks(ctx context.Context, dw *dag.DagWrapper,
                   data map[string]any) error {
     for key, value := range data {
@@ -560,19 +560,19 @@ func validateLinks(ctx context.Context, dw *dag.DagWrapper,
 }
 ```
 
-### 문제 3: JSON 직렬화 에러
+### Issue 3: JSON Serialization Error
 
-**원인**: 직렬화할 수 없는 데이터 타입 포함
+**Cause**: Contains non-serializable data types
 ```go
-// 해결: 직렬화 가능한 데이터로 변환
+// Solution: Convert to serializable data
 func sanitizeForJSON(data any) any {
     switch v := data.(type) {
     case time.Time:
         return v.Format(time.RFC3339)
     case func():
-        return nil // 함수는 제거
+        return nil // Remove functions
     case chan interface{}:
-        return nil // 채널은 제거
+        return nil // Remove channels
     case map[string]any:
         result := make(map[string]any)
         for k, val := range v {
@@ -587,22 +587,22 @@ func sanitizeForJSON(data any) any {
 }
 ```
 
-## 📊 성능 최적화
+## 📊 Performance Optimization
 
-### 1. 배치 처리
+### 1. Batch Processing
 
 ```go
-// ✅ 여러 노드를 배치로 처리
+// ✅ Process multiple nodes in batches
 func putBatch(ctx context.Context, dw *dag.DagWrapper,
              items []any) ([]cid.Cid, error) {
     var cids []cid.Cid
 
-    // 병렬 처리를 위한 워커 풀
+    // Worker pool for parallel processing
     const workers = 4
     jobs := make(chan any, len(items))
     results := make(chan struct{cid cid.Cid; err error}, len(items))
 
-    // 워커 시작
+    // Start workers
     for i := 0; i < workers; i++ {
         go func() {
             for item := range jobs {
@@ -612,13 +612,13 @@ func putBatch(ctx context.Context, dw *dag.DagWrapper,
         }()
     }
 
-    // 작업 전송
+    // Send jobs
     for _, item := range items {
         jobs <- item
     }
     close(jobs)
 
-    // 결과 수집
+    // Collect results
     for i := 0; i < len(items); i++ {
         result := <-results
         if result.err != nil {
@@ -631,61 +631,61 @@ func putBatch(ctx context.Context, dw *dag.DagWrapper,
 }
 ```
 
-### 2. 캐싱 전략
+### 2. Caching Strategy
 
 ```go
-// ✅ LRU 캐시로 성능 향상
+// ✅ Improve performance with LRU cache
 type CachedDagWrapper struct {
     *DagWrapper
     cache *lru.Cache
 }
 
 func (cdw *CachedDagWrapper) GetAny(ctx context.Context, c cid.Cid) (any, error) {
-    // 캐시 확인
+    // Check cache
     if cached, ok := cdw.cache.Get(c.String()); ok {
         return cached, nil
     }
 
-    // 캐시 미스 시 실제 조회
+    // Cache miss - fetch from storage
     result, err := cdw.DagWrapper.GetAny(ctx, c)
     if err != nil {
         return nil, err
     }
 
-    // 캐시에 저장
+    // Store in cache
     cdw.cache.Add(c.String(), result)
     return result, nil
 }
 ```
 
-## 📚 추가 학습 자료
+## 📚 Additional Learning Resources
 
-### 관련 문서
+### Related Documentation
 - [IPLD Specification](https://ipld.io/docs/)
 - [DAG-JSON Codec](https://ipld.io/docs/codecs/dag-json/)
 - [IPFS DAG API](https://docs.ipfs.io/reference/kubo/rpc/#api-v0-dag)
 - [Graph Theory Basics](https://en.wikipedia.org/wiki/Directed_acyclic_graph)
 
-### 다음 단계
-1. **03-unixfs**: 파일 및 디렉터리 구조의 IPLD 표현
-2. **04-network-bitswap**: 분산 네트워크에서 DAG 노드 교환
-3. **07-ipns**: 변경 가능한 포인터로 DAG 루트 업데이트
+### Next Steps
+1. **05-unixfs**: IPLD representation of file and directory structures
+2. **03-bitswap**: DAG node exchange in distributed networks
+3. **08-ipns**: Updating DAG roots with mutable pointers
 
-## 🎓 연습 문제
+## 🎓 Practice Problems
 
-### 기초 연습
-1. 간단한 사용자 프로필을 IPLD로 저장하고 경로로 접근해보세요
-2. 두 객체 간 상호 참조를 만들고 링크를 따라가 보세요
-3. 배열 인덱스를 사용한 path resolution을 테스트해보세요
+### Basic Exercises
+1. Store a simple user profile in IPLD and access it via paths
+2. Create mutual references between two objects and follow the links
+3. Test path resolution using array indices
 
-### 심화 연습
-1. 블로그 시스템을 설계하여 게시글 간 링크 구조를 만들어보세요
-2. 파일 시스템 트리를 구현하고 디렉터리 탐색을 구현해보세요
-3. Git과 유사한 커밋 히스토리를 DAG로 표현해보세요
+### Advanced Exercises
+1. Design a blog system with linked post structures
+2. Implement a file system tree and directory traversal
+3. Represent Git-like commit history as a DAG
 
-### 실전 과제
-1. 소셜 네트워크의 팔로우 관계를 DAG로 모델링하고 추천 알고리즘을 구현해보세요
-2. 문서 버전 관리 시스템을 만들어 변경 이력을 추적해보세요
-3. 분산 데이터베이스의 스키마를 IPLD로 설계하고 쿼리 시스템을 구현해보세요
+### Real-world Projects
+1. Model social network follow relationships as a DAG and implement a recommendation algorithm
+2. Create a document version management system to track change history
+3. Design distributed database schemas with IPLD and implement a query system
 
-이제 복잡한 데이터 구조를 IPFS에서 어떻게 다루는지 이해하셨을 것입니다. 다음 모듈에서는 실제 파일과 디렉터리를 다루는 방법을 학습하겠습니다! 🚀
+Now you understand how to handle complex data structures in IPFS. In the next module, you'll learn how to work with actual files and directories! 🚀
