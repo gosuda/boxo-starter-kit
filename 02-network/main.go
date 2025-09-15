@@ -6,9 +6,8 @@ import (
 	"log"
 	"time"
 
+	host "github.com/gosuda/boxo-starter-kit/02-network/pkg"
 	"github.com/ipfs/go-cid"
-
-	bitswap "github.com/gosuda/boxo-starter-kit/04-network-bitswap/pkg"
 )
 
 func main() {
@@ -21,7 +20,7 @@ func main() {
 	fmt.Println("\n1. Creating bitswap nodes:")
 
 	// Create bitswap nodes
-	node1, err := bitswap.NewBitswapNode(nil, &bitswap.NodeConfig{
+	node1, err := host.New(&host.NodeConfig{
 		ListenAddrs: []string{"/ip4/127.0.0.1/tcp/0"},
 	})
 	if err != nil {
@@ -29,7 +28,7 @@ func main() {
 	}
 	defer node1.Close()
 
-	node2, err := bitswap.NewBitswapNode(nil, &bitswap.NodeConfig{
+	node2, err := host.New(&host.NodeConfig{
 		ListenAddrs: []string{"/ip4/127.0.0.1/tcp/0"},
 	})
 	if err != nil {
@@ -58,11 +57,11 @@ func main() {
 	// Demo 3: Store content in node 1
 	fmt.Println("\n3. Storing content in Node 1:")
 	testContent := []byte("Hello, Bitswap World! This is a test message for P2P block exchange.")
-	contentCID, err := node1.PutBlock(ctx, testContent)
+	c, err := node1.Send(ctx, testContent, "")
 	if err != nil {
 		log.Fatalf("Failed to store content: %v", err)
 	}
-	fmt.Printf("   ✅ Content stored with CID: %s\n", contentCID.String()[:20]+"...")
+	fmt.Printf("   ✅ Content stored...\n")
 
 	// Demo 4: Retrieve content from node 2 (should fetch from node 1)
 	fmt.Println("\n4. Retrieving content from Node 2 (via bitswap):")
@@ -70,7 +69,7 @@ func main() {
 	// Give some time for the network to propagate
 	time.Sleep(1 * time.Second)
 
-	retrievedContent, err := node2.GetBlock(ctx, contentCID)
+	_, retrievedContent, err := node2.Receive(ctx, c)
 	if err != nil {
 		log.Printf("Failed to retrieve content: %v", err)
 		fmt.Printf("   ❌ Content retrieval failed (this is expected in demo mode)\n")
@@ -107,7 +106,7 @@ func main() {
 
 	// Store multiple blocks in node 1
 	for i, message := range testMessages {
-		c, err := node1.PutBlock(ctx, []byte(message))
+		c, err := node1.Send(ctx, []byte(message), "")
 		if err != nil {
 			log.Printf("Failed to store block %d: %v", i, err)
 			continue
@@ -119,7 +118,7 @@ func main() {
 	// Try to retrieve from node 2
 	fmt.Println("\n   Attempting to retrieve blocks from Node 2:")
 	for i, c := range cids {
-		content, err := node2.GetBlock(ctx, c)
+		_, content, err := node2.Receive(ctx, c)
 		if err != nil {
 			fmt.Printf("   ❌ Failed to retrieve block %d: %v\n", i+1, err)
 		} else {

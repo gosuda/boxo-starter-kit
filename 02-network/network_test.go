@@ -5,21 +5,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	dag "github.com/gosuda/boxo-starter-kit/02-dag-ipld/pkg"
-	bitswap "github.com/gosuda/boxo-starter-kit/04-network-bitswap/pkg"
+	network "github.com/gosuda/boxo-starter-kit/02-network/pkg"
 )
 
-func TestBitswapNode(t *testing.T) {
+func TestHost(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	t.Run("Node Creation", func(t *testing.T) {
 		// Create bitswap node
-		node, err := bitswap.NewBitswapNode(nil, &bitswap.NodeConfig{
+		node, err := network.New(&network.NodeConfig{
 			ListenAddrs: []string{"/ip4/127.0.0.1/tcp/0"},
 		})
 		require.NoError(t, err)
@@ -36,40 +34,16 @@ func TestBitswapNode(t *testing.T) {
 		assert.Greater(t, len(fullAddrs), 0, "Node should have full addresses with peer ID")
 	})
 
-	t.Run("Block Storage and Retrieval", func(t *testing.T) {
-		// Create bitswap node
-		node, err := bitswap.NewBitswapNode(nil, &bitswap.NodeConfig{
-			ListenAddrs: []string{"/ip4/127.0.0.1/tcp/0"},
-		})
-		require.NoError(t, err)
-		defer node.Close()
-		// Store a block
-		testData := []byte("Test block data for bitswap")
-		cid, err := node.PutBlock(ctx, testData)
-		require.NoError(t, err)
-		assert.True(t, cid.Defined(), "CID should be valid")
-
-		// Retrieve the block locally (from own store)
-		retrievedData, err := node.GetBlock(ctx, cid)
-		require.NoError(t, err)
-		assert.Equal(t, testData, retrievedData, "Retrieved data should match original")
-
-		// Check stats
-		stats := node.GetStats()
-		assert.Greater(t, stats.BlocksSent, int64(0), "Should have sent at least one block")
-		assert.Greater(t, stats.BlocksReceived, int64(0), "Should have received at least one block")
-	})
-
 	t.Run("Two Node Connection", func(t *testing.T) {
 		// Create first node
-		node1, err := bitswap.NewBitswapNode(nil, &bitswap.NodeConfig{
+		node1, err := network.New(&network.NodeConfig{
 			ListenAddrs: []string{"/ip4/127.0.0.1/tcp/0"},
 		})
 		require.NoError(t, err)
 		defer node1.Close()
 
 		// Create second node
-		node2, err := bitswap.NewBitswapNode(nil, &bitswap.NodeConfig{
+		node2, err := network.New(&network.NodeConfig{
 			ListenAddrs: []string{"/ip4/127.0.0.1/tcp/0"},
 		})
 		require.NoError(t, err)
@@ -94,64 +68,73 @@ func TestBitswapNode(t *testing.T) {
 		assert.Contains(t, peers2, node1.GetID(), "Node 2 should see Node 1 as connected")
 	})
 
-	t.Run("Error Handling", func(t *testing.T) {
-		// Test with nil DAG wrapper
-		_, err := bitswap.NewBitswapNode(nil, &bitswap.NodeConfig{})
-		assert.Error(t, err, "Should fail with nil DAG wrapper")
+	t.Run("Two Nodes Connection: Send/Receive", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
 
-		// Create valid node for other error tests
-		dagWrapper, err := dag.New(nil, "")
-		require.NoError(t, err)
-		defer dagWrapper.Close()
-		node, err := bitswap.NewBitswapNode(dagWrapper, &bitswap.NodeConfig{
+		node1, _ := network.New(&network.NodeConfig{
 			ListenAddrs: []string{"/ip4/127.0.0.1/tcp/0"},
 		})
+		defer node1.Close()
+		node2, _ := network.New(&network.NodeConfig{
+			ListenAddrs: []string{"/ip4/127.0.0.1/tcp/0"},
+		})
+		defer node2.Close()
+
+		require.NoError(t, node2.ConnectToPeer(ctx, node1.GetFullAddresses()[0]))
+
+		payload := []byte("hi data")
+		cid, err := node2.Send(ctx, payload, node1.GetID())
 		require.NoError(t, err)
-		defer node.Close()
 
-		// Test with empty data
-		_, err = node.PutBlock(ctx, []byte{})
-		assert.Error(t, err, "Should fail with empty data")
-
-		// Test with invalid CID
-		_, err = node.GetBlock(ctx, cid.Undef)
-		assert.Error(t, err, "Should fail with undefined CID")
+		from, got, err := node1.Receive(ctx, cid)
+		require.NoError(t, err)
+		assert.Equal(t, node2.GetID(), from)
+		assert.Equal(t, payload, got)
 	})
 
 	t.Run("Statistics Tracking", func(t *testing.T) {
-		// Create bitswap node
-		node, err := bitswap.NewBitswapNode(nil, &bitswap.NodeConfig{
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		node1, _ := network.New(&network.NodeConfig{
 			ListenAddrs: []string{"/ip4/127.0.0.1/tcp/0"},
 		})
-		require.NoError(t, err)
-		defer node.Close()
+		defer node1.Close()
+		node2, _ := network.New(&network.NodeConfig{
+			ListenAddrs: []string{"/ip4/127.0.0.1/tcp/0"},
+		})
+		defer node2.Close()
+
+		require.NoError(t, node2.ConnectToPeer(ctx, node1.GetFullAddresses()[0]))
 
 		// Initial stats
-		initialStats := node.GetStats()
+		initialStats := node1.GetStats()
 		assert.Equal(t, int64(0), initialStats.BlocksSent)
 		assert.Equal(t, int64(0), initialStats.BlocksReceived)
 		assert.NotEmpty(t, initialStats.NodeID)
 
 		// Store a block
 		testData := []byte("Statistics test data")
-		cid, err := node.PutBlock(ctx, testData)
+		cid, err := node2.Send(ctx, testData, "")
 		require.NoError(t, err)
 
 		// Retrieve the block
-		_, err = node.GetBlock(ctx, cid)
+		_, _, err = node1.Receive(ctx, cid)
 		require.NoError(t, err)
 
 		// Check updated stats
-		finalStats := node.GetStats()
-		assert.Greater(t, finalStats.BlocksSent, initialStats.BlocksSent, "Blocks sent should increase")
+		finalStats := node1.GetStats()
+		finalStats2 := node2.GetStats()
 		assert.Greater(t, finalStats.BlocksReceived, initialStats.BlocksReceived, "Blocks received should increase")
+		assert.Greater(t, finalStats2.BlocksSent, initialStats.BlocksSent, "Blocks sent should increase")
 	})
 }
 
-func TestBitswapNodeConfig(t *testing.T) {
+func TestConfig(t *testing.T) {
 	t.Run("Default Configuration", func(t *testing.T) {
 		// Test with empty config (should use defaults)
-		node, err := bitswap.NewBitswapNode(nil, &bitswap.NodeConfig{})
+		node, err := network.New(&network.NodeConfig{})
 		require.NoError(t, err)
 		defer node.Close()
 
@@ -160,7 +143,7 @@ func TestBitswapNodeConfig(t *testing.T) {
 	})
 
 	t.Run("Custom Listen Addresses", func(t *testing.T) {
-		node, err := bitswap.NewBitswapNode(nil, &bitswap.NodeConfig{
+		node, err := network.New(&network.NodeConfig{
 			ListenAddrs: []string{
 				"/ip4/127.0.0.1/tcp/0",
 				"/ip6/::1/tcp/0",
@@ -174,7 +157,7 @@ func TestBitswapNodeConfig(t *testing.T) {
 	})
 
 	t.Run("Invalid Listen Address", func(t *testing.T) {
-		_, err := bitswap.NewBitswapNode(nil, &bitswap.NodeConfig{
+		_, err := network.New(&network.NodeConfig{
 			ListenAddrs: []string{"invalid-address"},
 		})
 		assert.Error(t, err, "Should fail with invalid address")

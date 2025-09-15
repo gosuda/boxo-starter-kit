@@ -53,7 +53,7 @@ func (s *BlockWrapper) PutV1Cid(ctx context.Context, data []byte, prefix *cid.Pr
 		// default to v1, raw, sha2-256
 		prefix = NewV1Prefix(0, 0, 0)
 	}
-	c, err := prefix.Sum(data)
+	c, err := ComputeCID(data, prefix)
 	if err != nil {
 		return cid.Undef, err
 	}

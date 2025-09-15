@@ -24,3 +24,11 @@ func NewV1Prefix(mcType mc.Code, mhType uint64, mhLength int) *cid.Prefix {
 		MhLength: mhLength,
 	}
 }
+
+func ComputeCID(data []byte, prefix *cid.Prefix) (cid.Cid, error) {
+	if prefix == nil {
+		// default to v1, raw, sha2-256
+		prefix = NewV1Prefix(0, 0, 0)
+	}
+	return prefix.Sum(data)
+}
