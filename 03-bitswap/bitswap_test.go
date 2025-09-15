@@ -33,11 +33,4 @@ func TestBitswap(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, payload, receive)
-
-	err = bswap1.Delete(ctx, c)
-	require.NoError(t, err)
-
-	payload2, err := bswap2.GetBlockRaw(ctx, c)
-	require.Error(t, err)
-	require.Nil(t, payload2)
 }

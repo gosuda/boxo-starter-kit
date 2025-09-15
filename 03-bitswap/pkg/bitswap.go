@@ -21,8 +21,8 @@ var _ exchange.Interface = (*BitswapWrapper)(nil)
 // BitswapWrapper represents a simplified IPFS node with block exchange capability
 // This is an educational implementation focusing on core P2P concepts
 type BitswapWrapper struct {
-	*network.HostWrapper
-	*persistent.PersistentWrapper
+	HostWrapper       *network.HostWrapper
+	PersistentWrapper *persistent.PersistentWrapper
 	*bitswap.Bitswap
 }
 
