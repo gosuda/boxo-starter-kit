@@ -8,8 +8,8 @@ import (
 
 	"github.com/ipfs/go-cid"
 
-	dag "github.com/gosuda/boxo-starter-kit/02-dag-ipld/pkg"
-	pin "github.com/gosuda/boxo-starter-kit/05-pin-gc/pkg"
+	dag "github.com/gosuda/boxo-starter-kit/04-dag-ipld/pkg"
+	pin "github.com/gosuda/boxo-starter-kit/06-pin-gc/pkg"
 )
 
 func main() {

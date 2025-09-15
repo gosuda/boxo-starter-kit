@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	persistent "github.com/gosuda/boxo-starter-kit/01-persistent/pkg"
-	dag "github.com/gosuda/boxo-starter-kit/02-dag-ipld/pkg"
+	dag "github.com/gosuda/boxo-starter-kit/04-dag-ipld/pkg"
 )
 
 func TestDagServiceAddGet(t *testing.T) {

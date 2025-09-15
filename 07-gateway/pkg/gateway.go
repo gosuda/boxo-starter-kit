@@ -16,8 +16,8 @@ import (
 	"github.com/ipfs/boxo/files"
 	"github.com/ipfs/go-cid"
 
-	dag "github.com/gosuda/boxo-starter-kit/02-dag-ipld/pkg"
-	unixfs "github.com/gosuda/boxo-starter-kit/03-unixfs/pkg"
+	dag "github.com/gosuda/boxo-starter-kit/04-dag-ipld/pkg"
+	unixfs "github.com/gosuda/boxo-starter-kit/05-unixfs/pkg"
 )
 
 // Gateway represents an HTTP gateway for IPFS content

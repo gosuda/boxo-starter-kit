@@ -8,7 +8,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 
-	dag "github.com/gosuda/boxo-starter-kit/02-dag-ipld/pkg"
+	dag "github.com/gosuda/boxo-starter-kit/04-dag-ipld/pkg"
 )
 
 // PinType represents different types of pins

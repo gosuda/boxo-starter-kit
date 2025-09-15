@@ -13,7 +13,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
 
-	dag "github.com/gosuda/boxo-starter-kit/02-dag-ipld/pkg"
+	dag "github.com/gosuda/boxo-starter-kit/04-dag-ipld/pkg"
 )
 
 // IPNSManager manages IPNS records and name resolution

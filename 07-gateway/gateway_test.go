@@ -16,9 +16,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	dag "github.com/gosuda/boxo-starter-kit/02-dag-ipld/pkg"
-	unixfs "github.com/gosuda/boxo-starter-kit/03-unixfs/pkg"
-	gateway "github.com/gosuda/boxo-starter-kit/06-gateway/pkg"
+	dag "github.com/gosuda/boxo-starter-kit/04-dag-ipld/pkg"
+	unixfs "github.com/gosuda/boxo-starter-kit/05-unixfs/pkg"
+	gateway "github.com/gosuda/boxo-starter-kit/07-gateway/pkg"
 )
 
 func TestGateway(t *testing.T) {
