@@ -169,7 +169,7 @@ func (d *IpldWrapper) PutAny(ctx context.Context, data any) (cid.Cid, error) {
 }
 
 func (d *IpldWrapper) GetIPLD(ctx context.Context, c cid.Cid) (datamodel.Node, error) {
-	b, err := d.BlockService.GetBlock(ctx, c)
+	b, err := d.BlockServiceWrapper.GetBlock(ctx, c)
 	if err != nil {
 		return nil, err
 	}
