@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/ipfs/boxo/files"
 	"github.com/ipfs/go-cid"
@@ -14,7 +15,9 @@ import (
 )
 
 func TestUnixFsBytes(t *testing.T) {
-	ctx := context.TODO()
+	ctx, timeout := context.WithTimeout(context.Background(), 15*time.Second)
+	defer timeout()
+
 	ufs, err := unixfs.New(0, nil)
 	require.NoError(t, err)
 
@@ -28,7 +31,9 @@ func TestUnixFsBytes(t *testing.T) {
 }
 
 func TestUnixFsFiles(t *testing.T) {
-	ctx := context.TODO()
+	ctx, timeout := context.WithTimeout(context.Background(), 15*time.Second)
+	defer timeout()
+
 	ufs, err := unixfs.New(0, nil)
 	require.NoError(t, err)
 
@@ -56,7 +61,9 @@ func TestUnixFsFiles(t *testing.T) {
 }
 
 func TestUnixFsDirs(t *testing.T) {
-	ctx := context.TODO()
+	ctx, timeout := context.WithTimeout(context.Background(), 15*time.Second)
+	defer timeout()
+
 	ufs, err := unixfs.New(0, nil)
 	require.NoError(t, err)
 
@@ -89,7 +96,8 @@ func TestUnixFsDirs(t *testing.T) {
 }
 
 func TestCar(t *testing.T) {
-	ctx := context.TODO()
+	ctx, timeout := context.WithTimeout(context.Background(), 15*time.Second)
+	defer timeout()
 
 	tmp := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(tmp, "x.txt"), []byte("X"), 0o644))
