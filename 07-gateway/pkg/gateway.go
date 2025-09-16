@@ -22,7 +22,7 @@ import (
 
 // Gateway represents an HTTP gateway for IPFS content
 type Gateway struct {
-	dagWrapper   *dag.DagWrapper
+	dagWrapper   *dag.IpldWrapper
 	unixfsSystem *unixfs.UnixFsWrapper
 	port         int
 	server       *http.Server
@@ -34,7 +34,7 @@ type GatewayConfig struct {
 }
 
 // NewGateway creates a new HTTP gateway
-func NewGateway(dagWrapper *dag.DagWrapper, unixfsSystem *unixfs.UnixFsWrapper, config GatewayConfig) *Gateway {
+func NewGateway(dagWrapper *dag.IpldWrapper, unixfsSystem *unixfs.UnixFsWrapper, config GatewayConfig) *Gateway {
 	if config.Port == 0 {
 		config.Port = 8080
 	}
@@ -174,7 +174,7 @@ func (g *Gateway) handleIPFS(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Check if CID exists
-	exists, err := g.dagWrapper.Has(ctx, c)
+	exists, err := g.dagWrapper.HasBlock(ctx, c)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to check CID: %s", err), http.StatusInternalServerError)
 		return
@@ -239,7 +239,7 @@ func (g *Gateway) handleRawContent(w http.ResponseWriter, r *http.Request, c cid
 	ctx := r.Context()
 
 	// Get raw data
-	data, err := g.dagWrapper.GetRaw(ctx, c)
+	data, err := g.dagWrapper.GetBlockRaw(ctx, c)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to get content: %s", err), http.StatusInternalServerError)
 		return
@@ -540,7 +540,7 @@ func (g *Gateway) handleAPIAdd(w http.ResponseWriter, r *http.Request) {
 		fileNode := files.NewReaderFile(fileReader)
 		c, err = g.unixfsSystem.Put(ctx, fileNode)
 	} else {
-		c, err = g.dagWrapper.PersistentWrapper.PutRaw(ctx, data)
+		c, err = g.dagWrapper.BlockServiceWrapper.AddBlockRaw(ctx, data)
 	}
 
 	if err != nil {
@@ -575,7 +575,7 @@ func (g *Gateway) handleAPIObjectStat(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Check if exists
-	exists, err := g.dagWrapper.Has(ctx, c)
+	exists, err := g.dagWrapper.HasBlock(ctx, c)
 	if err != nil {
 		http.Error(w, "Failed to check CID", http.StatusInternalServerError)
 		return
@@ -586,7 +586,7 @@ func (g *Gateway) handleAPIObjectStat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get object info
-	data, err := g.dagWrapper.GetRaw(ctx, c)
+	data, err := g.dagWrapper.GetBlockRaw(ctx, c)
 	if err != nil {
 		http.Error(w, "Failed to get object", http.StatusInternalServerError)
 		return

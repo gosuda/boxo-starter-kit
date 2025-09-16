@@ -43,7 +43,7 @@ type PinInfo struct {
 
 // PinManager manages pins and garbage collection using a simple in-memory approach
 type PinManager struct {
-	dagWrapper *dag.DagWrapper
+	dagWrapper *dag.IpldWrapper
 	mutex      sync.RWMutex
 
 	// Simple in-memory pin tracking
@@ -66,7 +66,7 @@ type PinOptions struct {
 }
 
 // NewPinManager creates a new pin manager
-func NewPinManager(dagWrapper *dag.DagWrapper) (*PinManager, error) {
+func NewPinManager(dagWrapper *dag.IpldWrapper) (*PinManager, error) {
 	if dagWrapper == nil {
 		return nil, fmt.Errorf("dag wrapper cannot be nil")
 	}
@@ -102,7 +102,7 @@ func (pm *PinManager) Pin(ctx context.Context, c cid.Cid, opts PinOptions) error
 	_, err := pm.dagWrapper.Get(ctx, c)
 	if err != nil {
 		// If DAG service fails (e.g., for DAG-CBOR), try direct block access
-		_, err2 := pm.dagWrapper.GetRaw(ctx, c)
+		_, err2 := pm.dagWrapper.GetBlockRaw(ctx, c)
 		if err2 != nil {
 			return fmt.Errorf("content not found for CID %s: %w (also tried raw access: %w)", c.String(), err, err2)
 		}

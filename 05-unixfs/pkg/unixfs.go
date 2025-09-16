@@ -21,28 +21,23 @@ import (
 
 type UnixFsWrapper struct {
 	defaultChunkSize int64
-	*dag.DagWrapper
+	*dag.IpldWrapper
 }
 
-func New(defaultChunkSize int64, dagWrapper *dag.DagWrapper) (*UnixFsWrapper, error) {
+func New(defaultChunkSize int64, dagWrapper *dag.IpldWrapper) (*UnixFsWrapper, error) {
 	var err error
 	if defaultChunkSize <= 0 {
 		defaultChunkSize = 1024 * 256
 	}
 	if dagWrapper == nil {
-		dagWrapper, err = dag.New(nil, "")
+		dagWrapper, err = dag.NewIpldWrapper(nil, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create DAG wrapper: %w", err)
 		}
 	}
-
-	dag, err := dag.New(nil, "")
-	if err != nil {
-		return nil, err
-	}
 	return &UnixFsWrapper{
 		defaultChunkSize: defaultChunkSize,
-		DagWrapper:       dag,
+		IpldWrapper:      dagWrapper,
 	}, nil
 }
 
@@ -64,7 +59,7 @@ func (u *UnixFsWrapper) putFile(ctx context.Context, file files.File) (cid.Cid, 
 	}
 	splitter := chunk.NewSizeSplitter(file, GetChunkSize(int(size), u.defaultChunkSize))
 
-	nd, err := importer.BuildDagFromReader(u.DagWrapper, splitter)
+	nd, err := importer.BuildDagFromReader(u.IpldWrapper, splitter)
 	if err != nil {
 		return cid.Undef, fmt.Errorf("build dag from file: %w", err)
 	}
@@ -105,7 +100,7 @@ func (u *UnixFsWrapper) putDir(ctx context.Context, d files.Directory) (cid.Cid,
 	sort.Slice(children, func(i, j int) bool { return children[i].name < children[j].name })
 
 	for _, c := range children {
-		childNode, err := u.DagWrapper.Get(ctx, c.cid)
+		childNode, err := u.IpldWrapper.Get(ctx, c.cid)
 		if err != nil {
 			return cid.Undef, fmt.Errorf("get child %q (%s): %w", c.name, c.cid, err)
 		}
@@ -114,7 +109,7 @@ func (u *UnixFsWrapper) putDir(ctx context.Context, d files.Directory) (cid.Cid,
 		}
 	}
 
-	if err := u.DagWrapper.Add(ctx, root); err != nil {
+	if err := u.IpldWrapper.Add(ctx, root); err != nil {
 		return cid.Undef, fmt.Errorf("dag add dir root: %w", err)
 	}
 	return root.Cid(), nil
@@ -150,12 +145,12 @@ func (u *UnixFsWrapper) PutPath(ctx context.Context, path string) (cid.Cid, erro
 }
 
 func (u *UnixFsWrapper) Get(ctx context.Context, c cid.Cid) (files.Node, error) {
-	nd, err := u.DagWrapper.Get(ctx, c)
+	nd, err := u.IpldWrapper.Get(ctx, c)
 	if err != nil {
 		return nil, err
 	}
 
-	return uio.NewUnixfsFile(ctx, u.DagWrapper, nd)
+	return uio.NewUnixfsFile(ctx, u.IpldWrapper, nd)
 }
 
 func (u *UnixFsWrapper) GetBytes(ctx context.Context, c cid.Cid) ([]byte, error) {

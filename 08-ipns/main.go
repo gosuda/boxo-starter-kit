@@ -21,7 +21,7 @@ func main() {
 	fmt.Println("\n1. Setting up IPNS manager:")
 
 	// Create DAG wrapper for content storage
-	dagWrapper, err := dag.New(nil, "")
+	dagWrapper, err := dag.NewIpldWrapper(nil, nil)
 	if err != nil {
 		log.Fatalf("Failed to create DAG wrapper: %v", err)
 	}
@@ -164,7 +164,7 @@ func main() {
 	fmt.Println("  • Statistics and monitoring")
 }
 
-func createSampleContent(ctx context.Context, dagWrapper *dag.DagWrapper) map[string]cid.Cid {
+func createSampleContent(ctx context.Context, dagWrapper *dag.IpldWrapper) map[string]cid.Cid {
 	cids := make(map[string]cid.Cid)
 
 	// Create sample content for demonstration
