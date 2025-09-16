@@ -136,12 +136,12 @@ func (d *IpldWrapper) GetMany(ctx context.Context, cs []cid.Cid) <-chan *format.
 }
 
 func (d *IpldWrapper) Remove(ctx context.Context, c cid.Cid) error {
-	return d.BlockService.DeleteBlock(ctx, c)
+	return d.BlockServiceWrapper.DeleteBlock(ctx, c)
 }
 
 func (d *IpldWrapper) RemoveMany(ctx context.Context, cs []cid.Cid) error {
 	for _, c := range cs {
-		if err := d.BlockService.DeleteBlock(ctx, c); err != nil {
+		if err := d.BlockServiceWrapper.DeleteBlock(ctx, c); err != nil {
 			return err
 		}
 	}
