@@ -7,6 +7,8 @@ import (
 
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
+	_ "github.com/ipld/go-ipld-prime/codec/dagcbor"
+	_ "github.com/ipld/go-ipld-prime/codec/dagjson"
 	"github.com/ipld/go-ipld-prime/datamodel"
 	"github.com/ipld/go-ipld-prime/linking"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
@@ -38,7 +40,7 @@ func NewIpldWrapper(prefix *cid.Prefix, blockserviceWrapper *bitswap.BlockServic
 		}
 	}
 
-	dagServiceWrapper, err := NewDagServiceWrapper(blockserviceWrapper)
+	dagServiceWrapper, err := NewDagServiceWrapper(nil, blockserviceWrapper)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create DAGService wrapper: %w", err)
 	}

@@ -3,42 +3,45 @@ package dag_test
 import (
 	"context"
 	"testing"
+	"time"
 
-	"github.com/ipfs/boxo/ipld/merkledag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	block "github.com/gosuda/boxo-starter-kit/00-block-cid/pkg"
 	dag "github.com/gosuda/boxo-starter-kit/04-dag-ipld/pkg"
 )
 
 func TestDagServiceAddGet(t *testing.T) {
-	ctx := context.TODO()
-	d, err := dag.NewDagServiceWrapper(nil)
+	ctx, timeout := context.WithTimeout(context.Background(), time.Second*5)
+	defer timeout()
+
+	d, err := dag.NewDagServiceWrapper(nil, nil)
 	require.NoError(t, err)
 
 	// make a dag-pb node
-	pn := merkledag.NodeWithData([]byte("hello dag-pb"))
-	pn.SetCidBuilder(block.NewV1Prefix(0, 0, 0))
-	err = d.Add(ctx, pn)
+	payload := []byte("hello dag-pb")
+
+	cid, err := d.AddRaw(ctx, payload)
 	require.NoError(t, err)
 
 	// get back
-	got, err := d.Get(ctx, pn.Cid())
+	got, err := d.Get(ctx, cid)
 	require.NoError(t, err)
-	assert.Equal(t, pn.Cid(), got.Cid())
-	assert.Equal(t, pn.RawData(), got.RawData())
+	assert.Equal(t, cid, got.Cid())
+	assert.Equal(t, payload, got.RawData())
 
 	// clean up
-	err = d.Remove(ctx, pn.Cid())
+	err = d.Remove(ctx, cid)
 	require.NoError(t, err)
 
-	_, err = d.Get(ctx, pn.Cid())
+	_, err = d.Get(ctx, cid)
 	assert.Error(t, err, "must error after delete")
 }
 
 func TestDagIPLDSingle(t *testing.T) {
-	ctx := context.TODO()
+	ctx, timeout := context.WithTimeout(context.Background(), time.Second*5)
+	defer timeout()
+
 	d, err := dag.NewIpldWrapper(nil, nil)
 	require.NoError(t, err)
 
@@ -66,7 +69,9 @@ func TestDagIPLDSingle(t *testing.T) {
 }
 
 func TestDagIPLDNestedLinks(t *testing.T) {
-	ctx := context.TODO()
+	ctx, timeout := context.WithTimeout(context.Background(), time.Second*5)
+	defer timeout()
+
 	d, err := dag.NewIpldWrapper(nil, nil)
 	require.NoError(t, err)
 
