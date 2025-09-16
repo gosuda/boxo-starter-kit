@@ -18,7 +18,7 @@ func main() {
 	ctx := context.Background()
 
 	// Create DAG wrapper (this will create persistent storage)
-	dagWrapper, err := dag.New(nil, "")
+	dagWrapper, err := dag.NewIpldWrapper(nil, nil)
 	if err != nil {
 		log.Fatalf("Failed to create DAG wrapper: %v", err)
 	}
@@ -118,7 +118,7 @@ func main() {
 	// Demo 7: Verify pinned content still exists
 	fmt.Println("\n7. Verifying pinned content still exists:")
 	for _, pinInfo := range pins {
-		exists, err := dagWrapper.Has(ctx, pinInfo.CID)
+		exists, err := dagWrapper.HasBlock(ctx, pinInfo.CID)
 		if err != nil {
 			log.Printf("Failed to check existence of %s: %v", pinInfo.CID.String(), err)
 			continue
@@ -154,7 +154,7 @@ func main() {
 	fmt.Println("\n=== Demo completed! ===")
 }
 
-func createSampleContent(ctx context.Context, dagWrapper *dag.DagWrapper) []cid.Cid {
+func createSampleContent(ctx context.Context, dagWrapper *dag.IpldWrapper) []cid.Cid {
 	var cids []cid.Cid
 
 	// Create various types of content

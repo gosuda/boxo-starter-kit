@@ -16,7 +16,7 @@ func TestPinManager(t *testing.T) {
 	ctx := context.Background()
 
 	// Create DAG wrapper for testing
-	dagWrapper, err := dag.New(nil, "")
+	dagWrapper, err := dag.NewIpldWrapper(nil, nil)
 	require.NoError(t, err)
 	defer dagWrapper.Close()
 
@@ -153,7 +153,7 @@ func TestPinManager(t *testing.T) {
 		require.NoError(t, err)
 
 		// Verify unpinned content exists before GC
-		unpinnedExists, err := dagWrapper.Has(ctx, unpinnedCID)
+		unpinnedExists, err := dagWrapper.HasBlock(ctx, unpinnedCID)
 		require.NoError(t, err)
 		assert.True(t, unpinnedExists, "Unpinned content should exist before GC")
 
@@ -170,7 +170,7 @@ func TestPinManager(t *testing.T) {
 		assert.GreaterOrEqual(t, result.Duration, time.Duration(0))
 
 		// Pinned content should still exist
-		exists, err := dagWrapper.Has(ctx, pinnedCID)
+		exists, err := dagWrapper.HasBlock(ctx, pinnedCID)
 		require.NoError(t, err)
 		assert.True(t, exists, "Pinned content should survive GC")
 
@@ -208,7 +208,7 @@ func TestPinTypes(t *testing.T) {
 func TestErrorHandling(t *testing.T) {
 	ctx := context.Background()
 
-	dagWrapper, err := dag.New(nil, "")
+	dagWrapper, err := dag.NewIpldWrapper(nil, nil)
 	require.NoError(t, err)
 	defer dagWrapper.Close()
 

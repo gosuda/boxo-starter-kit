@@ -18,7 +18,7 @@ import (
 
 // IPNSManager manages IPNS records and name resolution
 type IPNSManager struct {
-	dagWrapper *dag.DagWrapper
+	dagWrapper *dag.IpldWrapper
 	records    map[string]*IPNSRecord
 	keys       map[string]crypto.PrivKey
 	mutex      sync.RWMutex
@@ -36,7 +36,7 @@ type IPNSRecord struct {
 }
 
 // NewIPNSManager creates a new IPNS manager
-func NewIPNSManager(dagWrapper *dag.DagWrapper) *IPNSManager {
+func NewIPNSManager(dagWrapper *dag.IpldWrapper) *IPNSManager {
 	return &IPNSManager{
 		dagWrapper: dagWrapper,
 		records:    make(map[string]*IPNSRecord),

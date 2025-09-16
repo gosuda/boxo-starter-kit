@@ -94,3 +94,7 @@ func (b *BlockServiceWrapper) AddBlocks(ctx context.Context, blocks []blocks.Blo
 func (b *BlockServiceWrapper) DeleteBlock(ctx context.Context, cid cid.Cid) error {
 	return b.BlockService.DeleteBlock(ctx, cid)
 }
+
+func (b *BlockServiceWrapper) HasBlock(ctx context.Context, cid cid.Cid) (bool, error) {
+	return b.Blockstore().Has(ctx, cid)
+}

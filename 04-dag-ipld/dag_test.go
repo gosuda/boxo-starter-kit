@@ -8,13 +8,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	persistent "github.com/gosuda/boxo-starter-kit/01-persistent/pkg"
 	dag "github.com/gosuda/boxo-starter-kit/04-dag-ipld/pkg"
 )
 
 func TestDagServiceAddGet(t *testing.T) {
 	ctx := context.TODO()
-	d, err := dag.New(nil, persistent.Memory)
+	d, err := dag.NewDagServiceWrapper(nil)
 	require.NoError(t, err)
 
 	// make a dag-pb node
@@ -29,7 +28,7 @@ func TestDagServiceAddGet(t *testing.T) {
 	assert.Equal(t, pn.RawData(), got.RawData())
 
 	// clean up
-	err = d.Delete(ctx, pn.Cid())
+	err = d.Remove(ctx, pn.Cid())
 	require.NoError(t, err)
 
 	_, err = d.Get(ctx, pn.Cid())
@@ -38,7 +37,7 @@ func TestDagServiceAddGet(t *testing.T) {
 
 func TestDagIPLDSingle(t *testing.T) {
 	ctx := context.TODO()
-	d, err := dag.New(nil, persistent.Memory)
+	d, err := dag.NewIpldWrapper(nil, nil)
 	require.NoError(t, err)
 
 	c1, err := d.PutAny(ctx, map[string]any{"name": "bob", "age": 30})
@@ -66,7 +65,7 @@ func TestDagIPLDSingle(t *testing.T) {
 
 func TestDagIPLDNestedLinks(t *testing.T) {
 	ctx := context.TODO()
-	d, err := dag.New(nil, persistent.Memory)
+	d, err := dag.NewIpldWrapper(nil, nil)
 	require.NoError(t, err)
 
 	c1, err := d.PutAny(ctx, map[string]any{"name": "bob", "age": 30})

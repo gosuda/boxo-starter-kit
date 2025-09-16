@@ -26,7 +26,7 @@ func TestGateway(t *testing.T) {
 	defer cancel()
 
 	// Setup
-	dagWrapper, err := dag.New(nil, "")
+	dagWrapper, err := dag.NewIpldWrapper(nil, nil)
 	require.NoError(t, err)
 	defer dagWrapper.Close()
 
@@ -57,16 +57,16 @@ func TestGateway(t *testing.T) {
 	t.Run("Raw Content Storage and Retrieval", func(t *testing.T) {
 		// Store test content
 		testData := []byte("Hello, Gateway World!")
-		testCID, err := dagWrapper.PersistentWrapper.PutRaw(ctx, testData)
+		testCID, err := dagWrapper.BlockServiceWrapper.AddBlockRaw(ctx, testData)
 		require.NoError(t, err)
 
 		// Verify content exists
-		exists, err := dagWrapper.Has(ctx, testCID)
+		exists, err := dagWrapper.HasBlock(ctx, testCID)
 		require.NoError(t, err)
 		assert.True(t, exists, "Content should exist")
 
 		// Retrieve content
-		retrievedData, err := dagWrapper.GetRaw(ctx, testCID)
+		retrievedData, err := dagWrapper.GetBlockRaw(ctx, testCID)
 		require.NoError(t, err)
 		assert.Equal(t, testData, retrievedData, "Retrieved data should match original")
 	})
@@ -177,7 +177,7 @@ func TestGatewayAPI(t *testing.T) {
 	defer cancel()
 
 	// Setup
-	dagWrapper, err := dag.New(nil, "")
+	dagWrapper, err := dag.NewIpldWrapper(nil, nil)
 	require.NoError(t, err)
 	defer dagWrapper.Close()
 
@@ -212,7 +212,7 @@ func TestGatewayAPI(t *testing.T) {
 	t.Run("API Object Stat Simulation", func(t *testing.T) {
 		// Store test content
 		testData := []byte("Test data for object stat")
-		testCID, err := dagWrapper.PersistentWrapper.PutRaw(ctx, testData)
+		testCID, err := dagWrapper.BlockServiceWrapper.AddBlockRaw(ctx, testData)
 		require.NoError(t, err)
 
 		// Simulate object stat response
@@ -231,7 +231,7 @@ func TestGatewayAPI(t *testing.T) {
 }
 
 func TestGatewayConfig(t *testing.T) {
-	dagWrapper, err := dag.New(nil, "")
+	dagWrapper, err := dag.NewIpldWrapper(nil, nil)
 	require.NoError(t, err)
 	defer dagWrapper.Close()
 
