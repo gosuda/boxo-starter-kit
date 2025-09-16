@@ -27,7 +27,8 @@ go test ./00-block-cid/...
 4. [03-bitswap](./03-bitswap): Bitswap protocol for data exchange
 5. [04-dag-ipld](./04-dag-ipld): DagService and IPLD format
 6. [05-unixfs-car](./05-unixfs-car): UnixFS file system and CAR format
-7. [06-pin-gc](./06-pin-gc): Pinning and Garbage Collection
-8. [07-gateway](./07-gateway): Building a read-only HTTP Gateway
-9. [08-ipns](./08-ipns): IPNS and mutable data
-10. [99-kubo-api-demo](./99-kubo-api-demo): Mini Kubo API server
+7. [06-mfs](./06-mfs): Mutable File System (MFS)
+8. [07-pin-gc](./07-pin-gc): Pinning and Garbage Collection
+9. [08-gateway](./08-gateway): Building a read-only HTTP Gateway
+10. [09-ipns](./09-ipns): IPNS and mutable data
+11. [99-kubo-api-demo](./99-kubo-api-demo): Mini Kubo API server

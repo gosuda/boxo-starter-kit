@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	dag "github.com/gosuda/boxo-starter-kit/04-dag-ipld/pkg"
-	pin "github.com/gosuda/boxo-starter-kit/06-pin-gc/pkg"
+	pin "github.com/gosuda/boxo-starter-kit/07-pin-gc/pkg"
 )
 
 func TestPinManager(t *testing.T) {
