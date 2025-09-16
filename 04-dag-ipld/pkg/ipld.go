@@ -93,7 +93,7 @@ func (d *IpldWrapper) Get(ctx context.Context, c cid.Cid) (format.Node, error) {
 
 func (d *IpldWrapper) GetMany(ctx context.Context, cs []cid.Cid) <-chan *format.NodeOption {
 	out := make(chan *format.NodeOption, len(cs))
-	blocks := d.BlockService.GetBlocks(ctx, cs)
+	blocks := d.BlockServiceWrapper.GetBlocks(ctx, cs)
 	var count int
 
 	go func() {
