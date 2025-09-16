@@ -26,8 +26,8 @@ type BitswapWrapper struct {
 	*bitswap.Bitswap
 }
 
-// New creates a new simplified bitswap node for educational purposes
-func New(ctx context.Context, host *network.HostWrapper, persistentWrapper *persistent.PersistentWrapper) (*BitswapWrapper, error) {
+// NewBitswap creates a new simplified bitswap node for educational purposes
+func NewBitswap(ctx context.Context, host *network.HostWrapper, persistentWrapper *persistent.PersistentWrapper) (*BitswapWrapper, error) {
 	var err error
 	if host == nil {
 		host, err = network.New(nil)
@@ -68,6 +68,7 @@ func (b *BitswapWrapper) Close() error {
 	return nil
 }
 
+// It is only used for example, not scoped for production use
 func (b *BitswapWrapper) PutBlockRaw(ctx context.Context, data []byte) (cid.Cid, error) {
 	if len(data) == 0 {
 		return cid.Undef, fmt.Errorf("empty data")
