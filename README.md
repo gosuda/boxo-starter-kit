@@ -32,3 +32,9 @@ go test ./00-block-cid/...
 9. [08-gateway](./08-gateway): Building a read-only HTTP Gateway
 10. [09-ipns](./09-ipns): IPNS and mutable data
 11. [99-kubo-api-demo](./99-kubo-api-demo): Mini Kubo API server
+
+## Contributing
+
+All contributions are welcome!
+
+If you find a bug, have an idea for improvement, or want to add a new chapter, feel free to open an [issue](https://github.com/gosuda/boxo-starter-kit/issues) or submit a [pull request](https://github.com/gosuda/boxo-starter-kit/pulls).
