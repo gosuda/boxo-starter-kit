@@ -31,7 +31,7 @@ func (u *UnixFsWrapper) CarExport(ctx context.Context, roots []cid.Cid, w io.Wri
 		if err != nil {
 			return fmt.Errorf("failed to get root block: %w", err)
 		}
-		if err := writable.Put(ctx, blk.Cid().String(), blk.RawData()); err != nil {
+		if err := writable.Put(ctx, blk.Cid().KeyString(), blk.RawData()); err != nil {
 			return fmt.Errorf("write block %s: %w", blk.Cid(), err)
 		}
 	}
