@@ -1,7 +1,6 @@
 package dag
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"strings"
@@ -77,7 +76,7 @@ func NewIpldWrapper(prefix *cid.Prefix, blockserviceWrapper *bitswap.BlockServic
 // IPLD-prime util methods
 //-------------------------------------------------------------------------------//
 
-func (d *IpldWrapper) PutIPLDPrime(ctx context.Context, n datamodel.Node) (cid.Cid, error) {
+func (d *IpldWrapper) PutIPLD(ctx context.Context, n datamodel.Node) (cid.Cid, error) {
 	lnk, err := d.ls.Store(
 		linking.LinkContext{Ctx: ctx},
 		cidlink.LinkPrototype{Prefix: *d.prefix},
@@ -90,15 +89,15 @@ func (d *IpldWrapper) PutIPLDPrime(ctx context.Context, n datamodel.Node) (cid.C
 	return lnk.(cidlink.Link).Cid, nil
 }
 
-func (d *IpldWrapper) PutIPLDPrimeAny(ctx context.Context, data any) (cid.Cid, error) {
+func (d *IpldWrapper) PutAny(ctx context.Context, data any) (cid.Cid, error) {
 	node, err := AnyToNode(data)
 	if err != nil {
 		return cid.Undef, err
 	}
-	return d.PutIPLDPrime(ctx, node)
+	return d.PutIPLD(ctx, node)
 }
 
-func (d *IpldWrapper) GetIPLDPrime(ctx context.Context, c cid.Cid) (datamodel.Node, error) {
+func (d *IpldWrapper) GetIPLD(ctx context.Context, c cid.Cid) (datamodel.Node, error) {
 	n, err := d.ls.Load(
 		linking.LinkContext{Ctx: ctx},
 		cidlink.Link{Cid: c},
@@ -110,46 +109,6 @@ func (d *IpldWrapper) GetIPLDPrime(ctx context.Context, c cid.Cid) (datamodel.No
 	return n, nil
 }
 
-func (d *IpldWrapper) GetIPLDAny(ctx context.Context, c cid.Cid) (any, error) {
-	node, err := d.GetIPLDPrime(ctx, c)
-	if err != nil {
-		return nil, err
-	}
-	return NodeToAny(node)
-}
-
-//-------------------------------------------------------------------------------//
-// IPLD raw util methods
-//-------------------------------------------------------------------------------//
-
-func (d *IpldWrapper) PutIPLD(ctx context.Context, node datamodel.Node) (cid.Cid, error) {
-	var buf bytes.Buffer
-	if err := d.enc(node, &buf); err != nil {
-		return cid.Undef, err
-	}
-	return d.BlockServiceWrapper.AddBlockRaw(ctx, buf.Bytes())
-}
-
-func (d *IpldWrapper) PutAny(ctx context.Context, data any) (cid.Cid, error) {
-	node, err := AnyToNode(data)
-	if err != nil {
-		return cid.Undef, err
-	}
-	return d.PutIPLD(ctx, node)
-}
-
-func (d *IpldWrapper) GetIPLD(ctx context.Context, c cid.Cid) (datamodel.Node, error) {
-	b, err := d.BlockServiceWrapper.GetBlock(ctx, c)
-	if err != nil {
-		return nil, err
-	}
-	nb := d.proto.NewBuilder()
-	if err := d.dec(nb, bytes.NewReader(b.RawData())); err != nil {
-		return nil, err
-	}
-	return nb.Build(), nil
-}
-
 func (d *IpldWrapper) GetAny(ctx context.Context, c cid.Cid) (any, error) {
 	node, err := d.GetIPLD(ctx, c)
 	if err != nil {
@@ -159,7 +118,7 @@ func (d *IpldWrapper) GetAny(ctx context.Context, c cid.Cid) (any, error) {
 }
 
 func (d *IpldWrapper) ResolvePath(ctx context.Context, root cid.Cid, path string) (datamodel.Node, cid.Cid, error) {
-	cur, err := d.GetIPLDPrime(ctx, root)
+	cur, err := d.GetIPLD(ctx, root)
 	if err != nil {
 		return nil, cid.Undef, err
 	}
