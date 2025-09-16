@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	block "github.com/gosuda/boxo-starter-kit/00-block-cid/pkg"
 	dag "github.com/gosuda/boxo-starter-kit/04-dag-ipld/pkg"
 )
 
@@ -18,6 +19,7 @@ func TestDagServiceAddGet(t *testing.T) {
 
 	// make a dag-pb node
 	pn := merkledag.NodeWithData([]byte("hello dag-pb"))
+	pn.SetCidBuilder(block.NewV1Prefix(0, 0, 0))
 	err = d.Add(ctx, pn)
 	require.NoError(t, err)
 

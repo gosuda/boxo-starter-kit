@@ -1,6 +1,8 @@
 package block
 
 import (
+	blockformat "github.com/ipfs/go-block-format"
+	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
 	mc "github.com/multiformats/go-multicodec"
 	mh "github.com/multiformats/go-multihash"
@@ -31,4 +33,28 @@ func ComputeCID(data []byte, prefix *cid.Prefix) (cid.Cid, error) {
 		prefix = NewV1Prefix(0, 0, 0)
 	}
 	return prefix.Sum(data)
+}
+
+func NewBlock(data []byte, prefix *cid.Prefix) (blocks.Block, error) {
+	c, err := ComputeCID(data, prefix)
+	if err != nil {
+		return nil, err
+	}
+	return blockformat.NewBlockWithCid(data, c)
+}
+
+func ToV1Block(b blocks.Block) (blocks.Block, error) {
+	if b.Cid().Version() == 1 {
+		return b, nil
+	}
+	prefix := NewV1Prefix(
+		mc.Code(b.Cid().Prefix().Codec),
+		b.Cid().Prefix().MhType,
+		b.Cid().Prefix().MhLength,
+	)
+	newCid, err := prefix.Sum(b.RawData())
+	if err != nil {
+		return nil, err
+	}
+	return blockformat.NewBlockWithCid(b.RawData(), newCid)
 }

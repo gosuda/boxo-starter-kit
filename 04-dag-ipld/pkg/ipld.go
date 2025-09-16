@@ -22,7 +22,7 @@ var _ format.DAGService = (*IpldWrapper)(nil)
 
 type IpldWrapper struct {
 	*DagServiceWrapper
-	prefix     *cid.Prefix
+	Prefix     *cid.Prefix
 	linkSystem linking.LinkSystem
 }
 
@@ -52,7 +52,7 @@ func NewIpldWrapper(prefix *cid.Prefix, blockserviceWrapper *bitswap.BlockServic
 
 	return &IpldWrapper{
 		DagServiceWrapper: dagServiceWrapper,
-		prefix:            prefix,
+		Prefix:            prefix,
 		linkSystem:        linkSystem,
 	}, nil
 }
@@ -64,7 +64,7 @@ func NewIpldWrapper(prefix *cid.Prefix, blockserviceWrapper *bitswap.BlockServic
 func (d *IpldWrapper) PutIPLD(ctx context.Context, n datamodel.Node) (cid.Cid, error) {
 	lnk, err := d.linkSystem.Store(
 		linking.LinkContext{Ctx: ctx},
-		cidlink.LinkPrototype{Prefix: *d.prefix},
+		cidlink.LinkPrototype{Prefix: *d.Prefix},
 		n,
 	)
 

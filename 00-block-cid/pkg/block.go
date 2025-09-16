@@ -31,21 +31,13 @@ func (s *BlockWrapper) Put(ctx context.Context, b blocks.Block) error {
 	return s.Blockstore.Put(ctx, b)
 }
 
-func (s *BlockWrapper) PutRaw(ctx context.Context, data []byte) (cid.Cid, error) {
+func (s *BlockWrapper) PutV0Cid(ctx context.Context, data []byte) (cid.Cid, error) {
 	blk := blockformat.NewBlock(data)
-	if err := s.Blockstore.Put(ctx, blk); err != nil {
+	err := s.Blockstore.Put(ctx, blk)
+	if err != nil {
 		return cid.Undef, err
 	}
-
 	return blk.Cid(), nil
-}
-
-func (s *BlockWrapper) PutWithCID(ctx context.Context, data []byte, c cid.Cid) error {
-	blk, err := blockformat.NewBlockWithCid(data, c)
-	if err != nil {
-		return err
-	}
-	return s.Blockstore.Put(ctx, blk)
 }
 
 func (s *BlockWrapper) PutV1Cid(ctx context.Context, data []byte, prefix *cid.Prefix) (cid.Cid, error) {
@@ -62,6 +54,14 @@ func (s *BlockWrapper) PutV1Cid(ctx context.Context, data []byte, prefix *cid.Pr
 		return cid.Undef, err
 	}
 	return c, nil
+}
+
+func (s *BlockWrapper) PutWithCID(ctx context.Context, data []byte, c cid.Cid) error {
+	blk, err := blockformat.NewBlockWithCid(data, c)
+	if err != nil {
+		return err
+	}
+	return s.Blockstore.Put(ctx, blk)
 }
 
 func (s *BlockWrapper) Has(ctx context.Context, c cid.Cid) (bool, error) {
