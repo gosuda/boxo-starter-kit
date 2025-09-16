@@ -59,8 +59,12 @@ func New(ctx context.Context, ufs *unixfs.UnixFsWrapper, c cid.Cid) (*MFSWrapper
 	}, nil
 }
 
+func (m *MFSWrapper) Root() *mfs.Root {
+	return m.root
+}
+
 func (m *MFSWrapper) Mkdir(ctx context.Context, path string, opts mfs.MkdirOpts) error {
-	return mfs.Mkdir(m.root, normPath(path), opts)
+	return mfs.Mkdir(m.root, NormPath(path), opts)
 }
 
 func (w *MFSWrapper) RefreshRootCID(ctx context.Context) error {
@@ -92,8 +96,8 @@ var DefaultWriteOptions = WriteOptions{
 }
 
 func (m *MFSWrapper) WriteBytes(ctx context.Context, dst string, data []byte, trunc bool) error {
-	dirp, _ := path.Split(normPath(dst))
-	if err := mfs.Mkdir(m.root, normPath(dirp), mfs.MkdirOpts{Mkparents: true}); err != nil && !errors.Is(err, os.ErrExist) {
+	dirp, _ := path.Split(NormPath(dst))
+	if err := mfs.Mkdir(m.root, NormPath(dirp), mfs.MkdirOpts{Mkparents: true}); err != nil && !errors.Is(err, os.ErrExist) {
 		return fmt.Errorf("mkdir parents for %s: %w", dst, err)
 	}
 
@@ -106,7 +110,7 @@ func (m *MFSWrapper) WriteBytes(ctx context.Context, dst string, data []byte, tr
 	if err != nil {
 		return fmt.Errorf("load node: %w", err)
 	}
-	if err := mfs.PutNode(m.root, normPath(dst), ipldNode); err != nil {
+	if err := mfs.PutNode(m.root, NormPath(dst), ipldNode); err != nil {
 		return fmt.Errorf("mfs.PutNode(%s): %w", dst, err)
 	}
 
@@ -114,11 +118,11 @@ func (m *MFSWrapper) WriteBytes(ctx context.Context, dst string, data []byte, tr
 }
 
 func (m *MFSWrapper) Move(_ context.Context, src, dst string) error {
-	return mfs.Mv(m.root, normPath(src), normPath(dst))
+	return mfs.Mv(m.root, NormPath(src), NormPath(dst))
 }
 
 func (m *MFSWrapper) Remove(_ context.Context, target string) error {
-	target = normPath(target)
+	target = NormPath(target)
 	dirp, name := path.Split(target)
 	fsn, err := mfs.Lookup(m.root, dirp)
 	if err != nil {
@@ -132,7 +136,7 @@ func (m *MFSWrapper) Remove(_ context.Context, target string) error {
 }
 
 func (m *MFSWrapper) ReadBytes(ctx context.Context, path string) ([]byte, error) {
-	fsn, err := mfs.Lookup(m.root, normPath(path))
+	fsn, err := mfs.Lookup(m.root, NormPath(path))
 	if err != nil {
 		return nil, err
 	}
@@ -159,15 +163,15 @@ func (m *MFSWrapper) ReadBytes(ctx context.Context, path string) ([]byte, error)
 }
 
 func (m *MFSWrapper) Chmod(_ context.Context, path string, mode uint32) error {
-	return mfs.Chmod(m.root, normPath(path), os.FileMode(mode))
+	return mfs.Chmod(m.root, NormPath(path), os.FileMode(mode))
 }
 
 func (m *MFSWrapper) Touch(_ context.Context, path string, ts time.Time) error {
-	return mfs.Touch(m.root, normPath(path), ts)
+	return mfs.Touch(m.root, NormPath(path), ts)
 }
 
 func (m *MFSWrapper) FlushPath(ctx context.Context, path string) (format.Node, error) {
-	return mfs.FlushPath(ctx, m.root, normPath(path))
+	return mfs.FlushPath(ctx, m.root, NormPath(path))
 }
 
 func (m *MFSWrapper) SnapshotCID(ctx context.Context) (cid.Cid, error) {

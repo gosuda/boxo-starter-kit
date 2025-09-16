@@ -1,4 +1,4 @@
-package mfs
+package main
 
 import (
 	"context"

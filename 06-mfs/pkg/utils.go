@@ -8,7 +8,7 @@ import (
 	"github.com/ipfs/go-cid"
 )
 
-func normPath(p string) string {
+func NormPath(p string) string {
 	if p == "" || p == "/" {
 		return "/"
 	}
