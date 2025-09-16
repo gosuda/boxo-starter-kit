@@ -11,6 +11,7 @@ import (
 
 // legacy merkledag service wrapper
 type DagServiceWrapper struct {
+	BlockServiceWrapper *bitswap.BlockServiceWrapper
 	format.DAGService
 }
 
@@ -25,6 +26,7 @@ func NewDagServiceWrapper(blockserviceWrapper *bitswap.BlockServiceWrapper) (*Da
 	merkledagService := merkledag.NewDAGService(blockserviceWrapper)
 
 	return &DagServiceWrapper{
-		DAGService: merkledagService,
+		BlockServiceWrapper: blockserviceWrapper,
+		DAGService:          merkledagService,
 	}, nil
 }

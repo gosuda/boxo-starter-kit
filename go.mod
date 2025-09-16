@@ -12,6 +12,7 @@ require (
 	github.com/ipfs/go-ipfs-api v0.7.0
 	github.com/ipfs/go-ipld-format v0.6.2
 	github.com/ipld/go-ipld-prime v0.21.0
+	github.com/ipld/go-ipld-prime/storage/bsadapter v0.0.0-20250821084354-a425e60cd714
 	github.com/libp2p/go-libp2p v0.43.0
 	github.com/multiformats/go-multiaddr v0.16.1
 	github.com/multiformats/go-multicodec v0.9.2
