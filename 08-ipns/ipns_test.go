@@ -20,7 +20,7 @@ func TestIPNSManager(t *testing.T) {
 	// Setup
 	dagWrapper, err := dag.NewIpldWrapper(nil, nil)
 	require.NoError(t, err)
-	defer dagWrapper.Close()
+	defer dagWrapper.BlockServiceWrapper.Close()
 
 	ipnsManager := ipns.NewIPNSManager(dagWrapper)
 

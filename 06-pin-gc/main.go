@@ -22,7 +22,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create DAG wrapper: %v", err)
 	}
-	defer dagWrapper.Close()
+	defer dagWrapper.BlockServiceWrapper.Close()
 
 	// Create pin manager
 	pinManager, err := pin.NewPinManager(dagWrapper)
@@ -118,7 +118,7 @@ func main() {
 	// Demo 7: Verify pinned content still exists
 	fmt.Println("\n7. Verifying pinned content still exists:")
 	for _, pinInfo := range pins {
-		exists, err := dagWrapper.HasBlock(ctx, pinInfo.CID)
+		exists, err := dagWrapper.BlockServiceWrapper.HasBlock(ctx, pinInfo.CID)
 		if err != nil {
 			log.Printf("Failed to check existence of %s: %v", pinInfo.CID.String(), err)
 			continue

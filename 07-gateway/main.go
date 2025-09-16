@@ -13,7 +13,7 @@ import (
 	"github.com/ipfs/boxo/files"
 
 	dag "github.com/gosuda/boxo-starter-kit/04-dag-ipld/pkg"
-	unixfs "github.com/gosuda/boxo-starter-kit/05-unixfs/pkg"
+	unixfs "github.com/gosuda/boxo-starter-kit/05-unixfs-car/pkg"
 	gateway "github.com/gosuda/boxo-starter-kit/07-gateway/pkg"
 )
 
@@ -30,14 +30,14 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create DAG wrapper: %v", err)
 	}
-	defer dagWrapper.Close()
+	defer dagWrapper.BlockServiceWrapper.Close()
 
 	// Create UnixFS system
 	unixfsSystem, err := unixfs.New(256*1024, nil) // 256KB chunks
 	if err != nil {
 		log.Fatalf("Failed to create UnixFS system: %v", err)
 	}
-	defer unixfsSystem.Close()
+	defer unixfsSystem.BlockServiceWrapper.Close()
 
 	fmt.Printf("   ✅ Storage and UnixFS system ready\n")
 

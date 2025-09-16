@@ -67,20 +67,15 @@ func (b *BlockServiceWrapper) GetBlocks(ctx context.Context, cids []cid.Cid) <-c
 }
 
 func (b *BlockServiceWrapper) AddBlockRaw(ctx context.Context, payload []byte) (cid.Cid, error) {
-	c, err := block.ComputeCID(payload, nil)
+	blk, err := block.NewBlock(payload, nil)
 	if err != nil {
-		return cid.Undef, err
-	}
-
-	blk, err := blocks.NewBlockWithCid(payload, c)
-	if err != nil {
-		return cid.Undef, err
+		return cid.Undef, fmt.Errorf("failed to build block with cid: %w", err)
 	}
 	err = b.AddBlock(ctx, blk)
 	if err != nil {
 		return cid.Undef, err
 	}
-	return c, nil
+	return blk.Cid(), nil
 }
 
 func (b *BlockServiceWrapper) AddBlock(ctx context.Context, block blocks.Block) error {

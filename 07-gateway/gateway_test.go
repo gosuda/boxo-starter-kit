@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	dag "github.com/gosuda/boxo-starter-kit/04-dag-ipld/pkg"
-	unixfs "github.com/gosuda/boxo-starter-kit/05-unixfs/pkg"
+	unixfs "github.com/gosuda/boxo-starter-kit/05-unixfs-car/pkg"
 	gateway "github.com/gosuda/boxo-starter-kit/07-gateway/pkg"
 )
 
@@ -28,11 +28,11 @@ func TestGateway(t *testing.T) {
 	// Setup
 	dagWrapper, err := dag.NewIpldWrapper(nil, nil)
 	require.NoError(t, err)
-	defer dagWrapper.Close()
+	defer dagWrapper.BlockServiceWrapper.Close()
 
 	unixfsSystem, err := unixfs.New(256*1024, nil)
 	require.NoError(t, err)
-	defer unixfsSystem.Close()
+	defer unixfsSystem.BlockServiceWrapper.Close()
 
 	config := gateway.GatewayConfig{Port: 0} // Use random port for testing
 	gw := gateway.NewGateway(dagWrapper, unixfsSystem, config)
@@ -61,12 +61,12 @@ func TestGateway(t *testing.T) {
 		require.NoError(t, err)
 
 		// Verify content exists
-		exists, err := dagWrapper.HasBlock(ctx, testCID)
+		exists, err := dagWrapper.BlockServiceWrapper.HasBlock(ctx, testCID)
 		require.NoError(t, err)
 		assert.True(t, exists, "Content should exist")
 
 		// Retrieve content
-		retrievedData, err := dagWrapper.GetBlockRaw(ctx, testCID)
+		retrievedData, err := dagWrapper.BlockServiceWrapper.GetBlockRaw(ctx, testCID)
 		require.NoError(t, err)
 		assert.Equal(t, testData, retrievedData, "Retrieved data should match original")
 	})
@@ -179,11 +179,11 @@ func TestGatewayAPI(t *testing.T) {
 	// Setup
 	dagWrapper, err := dag.NewIpldWrapper(nil, nil)
 	require.NoError(t, err)
-	defer dagWrapper.Close()
+	defer dagWrapper.BlockServiceWrapper.Close()
 
 	unixfsSystem, err := unixfs.New(256*1024, nil)
 	require.NoError(t, err)
-	defer unixfsSystem.Close()
+	defer unixfsSystem.BlockServiceWrapper.Close()
 
 	t.Run("API Add File Simulation", func(t *testing.T) {
 		// Simulate what the API would do
@@ -233,7 +233,7 @@ func TestGatewayAPI(t *testing.T) {
 func TestGatewayConfig(t *testing.T) {
 	dagWrapper, err := dag.NewIpldWrapper(nil, nil)
 	require.NoError(t, err)
-	defer dagWrapper.Close()
+	defer dagWrapper.BlockServiceWrapper.Close()
 
 	t.Run("Default Configuration", func(t *testing.T) {
 		config := gateway.GatewayConfig{}

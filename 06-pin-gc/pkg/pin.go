@@ -102,7 +102,7 @@ func (pm *PinManager) Pin(ctx context.Context, c cid.Cid, opts PinOptions) error
 	_, err := pm.dagWrapper.Get(ctx, c)
 	if err != nil {
 		// If DAG service fails (e.g., for DAG-CBOR), try direct block access
-		_, err2 := pm.dagWrapper.GetBlockRaw(ctx, c)
+		_, err2 := pm.dagWrapper.BlockServiceWrapper.GetBlockRaw(ctx, c)
 		if err2 != nil {
 			return fmt.Errorf("content not found for CID %s: %w (also tried raw access: %w)", c.String(), err, err2)
 		}

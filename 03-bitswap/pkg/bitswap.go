@@ -12,6 +12,7 @@ import (
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 
+	block "github.com/gosuda/boxo-starter-kit/00-block-cid/pkg"
 	persistent "github.com/gosuda/boxo-starter-kit/01-persistent/pkg"
 	network "github.com/gosuda/boxo-starter-kit/02-network/pkg"
 )
@@ -74,12 +75,12 @@ func (b *BitswapWrapper) PutBlockRaw(ctx context.Context, data []byte) (cid.Cid,
 		return cid.Undef, fmt.Errorf("empty data")
 	}
 
-	c, err := b.PersistentWrapper.PutRaw(ctx, data)
+	blk, err := block.NewBlock(data, nil)
 	if err != nil {
-		return cid.Undef, fmt.Errorf("failed to store block: %w", err)
+		return cid.Undef, fmt.Errorf("failed to build block with cid: %w", err)
 	}
 
-	blk, err := blocks.NewBlockWithCid(data, c)
+	err = b.PersistentWrapper.Put(ctx, blk)
 	if err != nil {
 		return cid.Undef, fmt.Errorf("failed to build block with cid: %w", err)
 	}
@@ -88,7 +89,7 @@ func (b *BitswapWrapper) PutBlockRaw(ctx context.Context, data []byte) (cid.Cid,
 		return cid.Undef, fmt.Errorf("bitswap announce failed: %w", err)
 	}
 
-	return c, nil
+	return blk.Cid(), nil
 }
 
 // GetBlock retrieves a block by CID (simplified implementation)

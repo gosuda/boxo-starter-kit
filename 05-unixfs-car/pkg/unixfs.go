@@ -13,7 +13,6 @@ import (
 	"github.com/ipfs/boxo/files"
 	ufs "github.com/ipfs/boxo/ipld/unixfs"
 	uio "github.com/ipfs/boxo/ipld/unixfs/file"
-	"github.com/ipfs/boxo/ipld/unixfs/importer"
 	"github.com/ipfs/go-cid"
 
 	dag "github.com/gosuda/boxo-starter-kit/04-dag-ipld/pkg"
@@ -52,6 +51,35 @@ func (u *UnixFsWrapper) Put(ctx context.Context, node files.Node) (cid.Cid, erro
 	}
 }
 
+func (u *UnixFsWrapper) PutBytes(ctx context.Context, b []byte) (cid.Cid, error) {
+	file := files.NewBytesFile(b)
+	return u.Put(ctx, file)
+}
+
+func (u *UnixFsWrapper) PutPath(ctx context.Context, path string) (cid.Cid, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	var node files.Node
+	if !info.IsDir() { // put file
+		f, err := os.Open(path)
+		if err != nil {
+			return cid.Undef, fmt.Errorf("open %q: %w", path, err)
+		}
+		node = files.NewReaderFile(f)
+	} else { // put directory
+		node, err = files.NewSerialFile(path, false, info)
+		if err != nil {
+			return cid.Undef, fmt.Errorf("new serial file %q: %w", path, err)
+		}
+	}
+	defer node.Close()
+
+	return u.Put(ctx, node)
+}
+
 func (u *UnixFsWrapper) putFile(ctx context.Context, file files.File) (cid.Cid, error) {
 	size, _ := file.Size()
 	if size <= 0 {
@@ -59,7 +87,7 @@ func (u *UnixFsWrapper) putFile(ctx context.Context, file files.File) (cid.Cid, 
 	}
 	splitter := chunk.NewSizeSplitter(file, GetChunkSize(int(size), u.defaultChunkSize))
 
-	nd, err := importer.BuildDagFromReader(u.IpldWrapper, splitter)
+	nd, err := BuildDagFromReader(u.Prefix, u.IpldWrapper, splitter)
 	if err != nil {
 		return cid.Undef, fmt.Errorf("build dag from file: %w", err)
 	}
@@ -68,6 +96,7 @@ func (u *UnixFsWrapper) putFile(ctx context.Context, file files.File) (cid.Cid, 
 
 func (u *UnixFsWrapper) putDir(ctx context.Context, d files.Directory) (cid.Cid, error) {
 	root := ufs.EmptyDirNode()
+	root.SetCidBuilder(u.IpldWrapper.Prefix)
 
 	type child struct {
 		name string
@@ -113,35 +142,6 @@ func (u *UnixFsWrapper) putDir(ctx context.Context, d files.Directory) (cid.Cid,
 		return cid.Undef, fmt.Errorf("dag add dir root: %w", err)
 	}
 	return root.Cid(), nil
-}
-
-func (u *UnixFsWrapper) PutBytes(ctx context.Context, b []byte) (cid.Cid, error) {
-	file := files.NewBytesFile(b)
-	return u.Put(ctx, file)
-}
-
-func (u *UnixFsWrapper) PutPath(ctx context.Context, path string) (cid.Cid, error) {
-	info, err := os.Stat(path)
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	var node files.Node
-	if !info.IsDir() { // put file
-		f, err := os.Open(path)
-		if err != nil {
-			return cid.Undef, fmt.Errorf("open %q: %w", path, err)
-		}
-		node = files.NewReaderFile(f)
-	} else { // put directory
-		node, err = files.NewSerialFile(path, false, info)
-		if err != nil {
-			return cid.Undef, fmt.Errorf("new serial file %q: %w", path, err)
-		}
-	}
-	defer node.Close()
-
-	return u.Put(ctx, node)
 }
 
 func (u *UnixFsWrapper) Get(ctx context.Context, c cid.Cid) (files.Node, error) {

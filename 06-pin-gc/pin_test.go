@@ -18,7 +18,7 @@ func TestPinManager(t *testing.T) {
 	// Create DAG wrapper for testing
 	dagWrapper, err := dag.NewIpldWrapper(nil, nil)
 	require.NoError(t, err)
-	defer dagWrapper.Close()
+	defer dagWrapper.BlockServiceWrapper.Close()
 
 	// Create pin manager
 	pinManager, err := pin.NewPinManager(dagWrapper)
@@ -153,7 +153,7 @@ func TestPinManager(t *testing.T) {
 		require.NoError(t, err)
 
 		// Verify unpinned content exists before GC
-		unpinnedExists, err := dagWrapper.HasBlock(ctx, unpinnedCID)
+		unpinnedExists, err := dagWrapper.BlockServiceWrapper.HasBlock(ctx, unpinnedCID)
 		require.NoError(t, err)
 		assert.True(t, unpinnedExists, "Unpinned content should exist before GC")
 
@@ -170,7 +170,7 @@ func TestPinManager(t *testing.T) {
 		assert.GreaterOrEqual(t, result.Duration, time.Duration(0))
 
 		// Pinned content should still exist
-		exists, err := dagWrapper.HasBlock(ctx, pinnedCID)
+		exists, err := dagWrapper.BlockServiceWrapper.HasBlock(ctx, pinnedCID)
 		require.NoError(t, err)
 		assert.True(t, exists, "Pinned content should survive GC")
 
@@ -210,7 +210,7 @@ func TestErrorHandling(t *testing.T) {
 
 	dagWrapper, err := dag.NewIpldWrapper(nil, nil)
 	require.NoError(t, err)
-	defer dagWrapper.Close()
+	defer dagWrapper.BlockServiceWrapper.Close()
 
 	pinManager, err := pin.NewPinManager(dagWrapper)
 	require.NoError(t, err)

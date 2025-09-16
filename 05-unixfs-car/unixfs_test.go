@@ -6,9 +6,11 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ipfs/boxo/files"
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
-	unixfs "github.com/gosuda/boxo-starter-kit/05-unixfs/pkg"
+	unixfs "github.com/gosuda/boxo-starter-kit/05-unixfs-car/pkg"
 )
 
 func TestUnixFsBytes(t *testing.T) {
@@ -84,4 +86,39 @@ func TestUnixFsDirs(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, data, gotData, "file content must match for %s", name)
 	}
+}
+
+func TestCar(t *testing.T) {
+	ctx := context.TODO()
+
+	tmp := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "x.txt"), []byte("X"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "y.txt"), []byte("Y"), 0o644))
+
+	fx, err := os.Open(filepath.Join(tmp, "x.txt"))
+	require.NoError(t, err)
+	defer fx.Close()
+
+	fy, err := os.Open(filepath.Join(tmp, "y.txt"))
+	require.NoError(t, err)
+	defer fy.Close()
+
+	ufs, err := unixfs.New(0, nil)
+	require.NoError(t, err)
+
+	rootX, err := ufs.Put(ctx, files.NewReaderFile(fx))
+	require.NoError(t, err)
+
+	rootY, err := ufs.Put(ctx, files.NewReaderFile(fy))
+	require.NoError(t, err)
+
+	carBytes, err := ufs.CarExportBytes(ctx, []cid.Cid{rootX, rootY})
+	require.NoError(t, err)
+	require.NotEmpty(t, carBytes)
+
+	ufs2, err := unixfs.New(0, nil)
+	require.NoError(t, err)
+	imported, err := ufs2.CarImportBytes(ctx, carBytes)
+	require.NoError(t, err)
+	require.ElementsMatch(t, []cid.Cid{rootX, rootY}, imported)
 }

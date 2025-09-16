@@ -25,7 +25,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create DAG wrapper: %v", err)
 	}
-	defer dagWrapper.Close()
+	defer dagWrapper.BlockServiceWrapper.Close()
 
 	// Create IPNS manager
 	ipnsManager := ipns.NewIPNSManager(dagWrapper)

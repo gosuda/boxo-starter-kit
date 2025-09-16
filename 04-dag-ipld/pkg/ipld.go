@@ -7,6 +7,8 @@ import (
 
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
+	_ "github.com/ipld/go-ipld-prime/codec/dagcbor"
+	_ "github.com/ipld/go-ipld-prime/codec/dagjson"
 	"github.com/ipld/go-ipld-prime/datamodel"
 	"github.com/ipld/go-ipld-prime/linking"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
@@ -15,14 +17,14 @@ import (
 	mc "github.com/multiformats/go-multicodec"
 
 	block "github.com/gosuda/boxo-starter-kit/00-block-cid/pkg"
-	bitswap "github.com/gosuda/boxo-starter-kit/03-bitswap-blockservice/pkg"
+	bitswap "github.com/gosuda/boxo-starter-kit/03-bitswap/pkg"
 )
 
 var _ format.DAGService = (*IpldWrapper)(nil)
 
 type IpldWrapper struct {
 	*DagServiceWrapper
-	prefix     *cid.Prefix
+	Prefix     *cid.Prefix
 	linkSystem linking.LinkSystem
 }
 
@@ -38,7 +40,7 @@ func NewIpldWrapper(prefix *cid.Prefix, blockserviceWrapper *bitswap.BlockServic
 		}
 	}
 
-	dagServiceWrapper, err := NewDagServiceWrapper(blockserviceWrapper)
+	dagServiceWrapper, err := NewDagServiceWrapper(nil, blockserviceWrapper)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create DAGService wrapper: %w", err)
 	}
@@ -52,7 +54,7 @@ func NewIpldWrapper(prefix *cid.Prefix, blockserviceWrapper *bitswap.BlockServic
 
 	return &IpldWrapper{
 		DagServiceWrapper: dagServiceWrapper,
-		prefix:            prefix,
+		Prefix:            prefix,
 		linkSystem:        linkSystem,
 	}, nil
 }
@@ -64,7 +66,7 @@ func NewIpldWrapper(prefix *cid.Prefix, blockserviceWrapper *bitswap.BlockServic
 func (d *IpldWrapper) PutIPLD(ctx context.Context, n datamodel.Node) (cid.Cid, error) {
 	lnk, err := d.linkSystem.Store(
 		linking.LinkContext{Ctx: ctx},
-		cidlink.LinkPrototype{Prefix: *d.prefix},
+		cidlink.LinkPrototype{Prefix: *d.Prefix},
 		n,
 	)
 
