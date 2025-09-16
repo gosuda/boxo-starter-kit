@@ -26,7 +26,7 @@ go test ./00-block-cid/...
 3. [02-network](./02-network): Peer-to-peer networking with libp2p
 4. [03-bitswap](./03-bitswap-blockstore): Bitswap protocol for data exchange
 5. [04-dag-ipld](./04-dag-ipld): IPLD data
-6. [05-unixfs](./05-unixfs): UnixFS file system abstraction
+6. [05-unixfs-car](./05-unixfs-car): UnixFS file system abstraction
 7. [06-pin-gc](./06-pin-gc): Pinning and Garbage Collection
 8. [07-gateway](./07-gateway): Building a read-only HTTP Gateway
 9. [08-ipns](./08-ipns): IPNS and mutable data

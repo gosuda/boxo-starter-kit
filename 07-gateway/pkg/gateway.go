@@ -17,7 +17,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	dag "github.com/gosuda/boxo-starter-kit/04-dag-ipld/pkg"
-	unixfs "github.com/gosuda/boxo-starter-kit/05-unixfs/pkg"
+	unixfs "github.com/gosuda/boxo-starter-kit/05-unixfs-car/pkg"
 )
 
 // Gateway represents an HTTP gateway for IPFS content
@@ -174,7 +174,7 @@ func (g *Gateway) handleIPFS(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Check if CID exists
-	exists, err := g.dagWrapper.HasBlock(ctx, c)
+	exists, err := g.dagWrapper.BlockServiceWrapper.HasBlock(ctx, c)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to check CID: %s", err), http.StatusInternalServerError)
 		return
@@ -239,7 +239,7 @@ func (g *Gateway) handleRawContent(w http.ResponseWriter, r *http.Request, c cid
 	ctx := r.Context()
 
 	// Get raw data
-	data, err := g.dagWrapper.GetBlockRaw(ctx, c)
+	data, err := g.dagWrapper.BlockServiceWrapper.GetBlockRaw(ctx, c)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to get content: %s", err), http.StatusInternalServerError)
 		return
@@ -575,7 +575,7 @@ func (g *Gateway) handleAPIObjectStat(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Check if exists
-	exists, err := g.dagWrapper.HasBlock(ctx, c)
+	exists, err := g.dagWrapper.BlockServiceWrapper.HasBlock(ctx, c)
 	if err != nil {
 		http.Error(w, "Failed to check CID", http.StatusInternalServerError)
 		return
@@ -586,7 +586,7 @@ func (g *Gateway) handleAPIObjectStat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get object info
-	data, err := g.dagWrapper.GetBlockRaw(ctx, c)
+	data, err := g.dagWrapper.BlockServiceWrapper.GetBlockRaw(ctx, c)
 	if err != nil {
 		http.Error(w, "Failed to get object", http.StatusInternalServerError)
 		return
