@@ -10,7 +10,7 @@ import (
 	mc "github.com/multiformats/go-multicodec"
 
 	block "github.com/gosuda/boxo-starter-kit/00-block-cid/pkg"
-	bitswap "github.com/gosuda/boxo-starter-kit/03-bitswap-blockservice/pkg"
+	bitswap "github.com/gosuda/boxo-starter-kit/03-bitswap/pkg"
 )
 
 // legacy merkledag service wrapper

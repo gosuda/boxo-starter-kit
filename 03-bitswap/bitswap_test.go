@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	bitswap "github.com/gosuda/boxo-starter-kit/03-bitswap-blockservice/pkg"
+	bitswap "github.com/gosuda/boxo-starter-kit/03-bitswap/pkg"
 )
 
 func TestBitswap(t *testing.T) {
