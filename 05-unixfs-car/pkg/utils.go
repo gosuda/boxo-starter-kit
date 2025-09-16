@@ -1,5 +1,13 @@
 package unixfs
 
+import (
+	chunker "github.com/ipfs/boxo/chunker"
+	bal "github.com/ipfs/boxo/ipld/unixfs/importer/balanced"
+	h "github.com/ipfs/boxo/ipld/unixfs/importer/helpers"
+	"github.com/ipfs/go-cid"
+	ipld "github.com/ipfs/go-ipld-format"
+)
+
 const (
 	KiB = 1 << 10
 	MiB = KiB << 10
@@ -21,4 +29,17 @@ func GetChunkSize(size int, defaultChunkSize int64) (chunkSize int64) {
 	default:
 		return 4 * MiB
 	}
+}
+
+func BuildDagFromReader(prefix *cid.Prefix, ds ipld.DAGService, spl chunker.Splitter) (ipld.Node, error) {
+	dbp := h.DagBuilderParams{
+		Dagserv:    ds,
+		Maxlinks:   h.DefaultLinksPerBlock,
+		CidBuilder: prefix,
+	}
+	db, err := dbp.New(spl)
+	if err != nil {
+		return nil, err
+	}
+	return bal.Layout(db)
 }
