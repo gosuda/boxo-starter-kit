@@ -14,7 +14,7 @@ import (
 
 	dag "github.com/gosuda/boxo-starter-kit/04-dag-ipld/pkg"
 	unixfs "github.com/gosuda/boxo-starter-kit/05-unixfs-car/pkg"
-	gateway "github.com/gosuda/boxo-starter-kit/07-gateway/pkg"
+	gateway "github.com/gosuda/boxo-starter-kit/08-gateway/pkg"
 )
 
 func main() {

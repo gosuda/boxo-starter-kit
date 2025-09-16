@@ -24,15 +24,39 @@ func (u *UnixFsWrapper) CarExport(ctx context.Context, roots []cid.Cid, w io.Wri
 		return fmt.Errorf("failed to create writable car storage: %w", err)
 	}
 	defer writable.Finalize()
-
 	bs := u.IpldWrapper.BlockServiceWrapper.Blockstore()
-	for _, root := range roots {
-		blk, err := bs.Get(ctx, root)
+	seen := make(map[cid.Cid]struct{}, 1024)
+
+	var walk func(c cid.Cid) error
+	walk = func(c cid.Cid) error {
+		if _, ok := seen[c]; ok {
+			return nil
+		}
+		seen[c] = struct{}{}
+
+		blk, err := bs.Get(ctx, c)
 		if err != nil {
-			return fmt.Errorf("failed to get root block: %w", err)
+			return fmt.Errorf("get block %s: %w", c, err)
 		}
 		if err := writable.Put(ctx, blk.Cid().KeyString(), blk.RawData()); err != nil {
 			return fmt.Errorf("write block %s: %w", blk.Cid(), err)
+		}
+
+		nd, err := u.IpldWrapper.Get(ctx, c) // format.Node
+		if err != nil {
+			return fmt.Errorf("load node %s: %w", c, err)
+		}
+		for _, l := range nd.Links() {
+			if err := walk(l.Cid); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	for _, r := range roots {
+		if err := walk(r); err != nil {
+			return err
 		}
 	}
 	return nil
