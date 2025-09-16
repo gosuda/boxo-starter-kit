@@ -7,7 +7,6 @@ import (
 
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
-	"github.com/ipld/go-ipld-prime/codec"
 	"github.com/ipld/go-ipld-prime/datamodel"
 	"github.com/ipld/go-ipld-prime/linking"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
@@ -23,14 +22,8 @@ var _ format.DAGService = (*IpldWrapper)(nil)
 
 type IpldWrapper struct {
 	*DagServiceWrapper
-
-	prefix *cid.Prefix
-
-	proto datamodel.NodePrototype
-	enc   codec.Encoder
-	dec   codec.Decoder
-
-	ls linking.LinkSystem
+	prefix     *cid.Prefix
+	linkSystem linking.LinkSystem
 }
 
 func NewIpldWrapper(prefix *cid.Prefix, blockserviceWrapper *bitswap.BlockServiceWrapper) (*IpldWrapper, error) {
@@ -50,25 +43,17 @@ func NewIpldWrapper(prefix *cid.Prefix, blockserviceWrapper *bitswap.BlockServic
 		return nil, fmt.Errorf("failed to create DAGService wrapper: %w", err)
 	}
 
-	enc, dec, err := GetEncodeFuncs(prefix.Codec)
-	if err != nil {
-		return nil, err
-	}
-
 	ad := &bsadapter.Adapter{
 		Wrapped: blockserviceWrapper.Blockstore(),
 	}
-	ls := cidlink.DefaultLinkSystem()
-	ls.SetReadStorage(ad)
-	ls.SetWriteStorage(ad)
+	linkSystem := cidlink.DefaultLinkSystem()
+	linkSystem.SetReadStorage(ad)
+	linkSystem.SetWriteStorage(ad)
 
 	return &IpldWrapper{
 		DagServiceWrapper: dagServiceWrapper,
 		prefix:            prefix,
-		proto:             basicnode.Prototype.Any,
-		enc:               enc,
-		dec:               dec,
-		ls:                ls,
+		linkSystem:        linkSystem,
 	}, nil
 }
 
@@ -77,7 +62,7 @@ func NewIpldWrapper(prefix *cid.Prefix, blockserviceWrapper *bitswap.BlockServic
 //-------------------------------------------------------------------------------//
 
 func (d *IpldWrapper) PutIPLD(ctx context.Context, n datamodel.Node) (cid.Cid, error) {
-	lnk, err := d.ls.Store(
+	lnk, err := d.linkSystem.Store(
 		linking.LinkContext{Ctx: ctx},
 		cidlink.LinkPrototype{Prefix: *d.prefix},
 		n,
@@ -98,10 +83,10 @@ func (d *IpldWrapper) PutAny(ctx context.Context, data any) (cid.Cid, error) {
 }
 
 func (d *IpldWrapper) GetIPLD(ctx context.Context, c cid.Cid) (datamodel.Node, error) {
-	n, err := d.ls.Load(
+	n, err := d.linkSystem.Load(
 		linking.LinkContext{Ctx: ctx},
 		cidlink.Link{Cid: c},
-		d.proto,
+		basicnode.Prototype.Any,
 	)
 	if err != nil {
 		return nil, err

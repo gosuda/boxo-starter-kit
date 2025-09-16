@@ -2,48 +2,14 @@ package dag
 
 import (
 	"fmt"
-	"io"
 	"math"
 	"reflect"
 
 	"github.com/ipfs/go-cid"
-	"github.com/ipld/go-ipld-prime/codec"
-	"github.com/ipld/go-ipld-prime/codec/dagcbor"
-	"github.com/ipld/go-ipld-prime/codec/dagjson"
 	"github.com/ipld/go-ipld-prime/datamodel"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/ipld/go-ipld-prime/node/basicnode"
-	mc "github.com/multiformats/go-multicodec"
 )
-
-func GetEncodeFuncs(codec uint64) (enc codec.Encoder, dec codec.Decoder, err error) {
-	switch codec {
-	case uint64(mc.Raw):
-		enc = func(n datamodel.Node, w io.Writer) error {
-			bs, err := n.AsBytes()
-			if err != nil {
-				return fmt.Errorf("raw codec requires bytes node: %w", err)
-			}
-			_, err = w.Write(bs)
-			return err
-		}
-		dec = func(na datamodel.NodeAssembler, r io.Reader) error {
-			data, err := io.ReadAll(r)
-			if err != nil {
-				return err
-			}
-			return na.AssignBytes(data)
-		}
-	case uint64(mc.DagCbor):
-		enc = dagcbor.Encode
-		dec = dagcbor.Decode
-	case uint64(mc.DagJson):
-		return dagjson.Encode, dagjson.Decode, nil
-	default:
-		return nil, nil, fmt.Errorf("unsupported codec: 0x%x", codec)
-	}
-	return enc, dec, nil
-}
 
 func NodeToAny(n datamodel.Node) (any, error) {
 	switch n.Kind() {
