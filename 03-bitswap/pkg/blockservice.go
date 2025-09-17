@@ -12,6 +12,7 @@ import (
 )
 
 type BlockServiceWrapper struct {
+	PersistentWrapper *persistent.PersistentWrapper
 	blockservice.BlockService
 }
 
@@ -39,7 +40,8 @@ func NewBlockService(persistentWrapper *persistent.PersistentWrapper, bitswapWra
 	bs := blockservice.New(persistentWrapper, bitswapWrapper)
 
 	return &BlockServiceWrapper{
-		BlockService: bs,
+		PersistentWrapper: persistentWrapper,
+		BlockService:      bs,
 	}, nil
 }
 

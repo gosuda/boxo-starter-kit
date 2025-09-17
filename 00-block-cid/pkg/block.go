@@ -14,6 +14,7 @@ import (
 var _ blockstore.Blockstore = (*BlockWrapper)(nil)
 
 type BlockWrapper struct {
+	Batching ds.Batching
 	blockstore.Blockstore
 }
 
@@ -24,7 +25,10 @@ func NewInMemory() *BlockWrapper {
 
 func New(ds ds.Batching, opts ...blockstore.Option) *BlockWrapper {
 	bs := blockstore.NewBlockstore(ds, opts...)
-	return &BlockWrapper{Blockstore: bs}
+	return &BlockWrapper{
+		Batching:   ds,
+		Blockstore: bs,
+	}
 }
 
 func (s *BlockWrapper) Put(ctx context.Context, b blocks.Block) error {
@@ -90,4 +94,11 @@ func (s *BlockWrapper) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) 
 
 func (s *BlockWrapper) Delete(ctx context.Context, c cid.Cid) error {
 	return s.Blockstore.DeleteBlock(ctx, c)
+}
+
+func (s *BlockWrapper) Close() error {
+	if closer, ok := s.Blockstore.(interface{ Close() error }); ok {
+		return closer.Close()
+	}
+	return nil
 }
