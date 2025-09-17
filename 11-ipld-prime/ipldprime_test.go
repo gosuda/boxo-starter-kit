@@ -14,7 +14,7 @@ func TestDagIPLDSingle(t *testing.T) {
 	ctx, timeout := context.WithTimeout(context.Background(), time.Second*5)
 	defer timeout()
 
-	d, err := ipld.NewIpldWrapper(nil, nil)
+	d, err := ipld.NewIpldWrapper(nil, nil, nil)
 	require.NoError(t, err)
 
 	c1, err := d.PutAny(ctx, map[string]any{"name": "bob", "age": 30})
@@ -44,7 +44,7 @@ func TestDagIPLDNestedLinks(t *testing.T) {
 	ctx, timeout := context.WithTimeout(context.Background(), time.Second*5)
 	defer timeout()
 
-	d, err := ipld.NewIpldWrapper(nil, nil)
+	d, err := ipld.NewIpldWrapper(nil, nil, nil)
 	require.NoError(t, err)
 
 	c1, err := d.PutAny(ctx, map[string]any{"name": "bob", "age": 30})

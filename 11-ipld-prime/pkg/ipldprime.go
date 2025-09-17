@@ -16,7 +16,7 @@ import (
 	mc "github.com/multiformats/go-multicodec"
 
 	block "github.com/gosuda/boxo-starter-kit/00-block-cid/pkg"
-	bitswap "github.com/gosuda/boxo-starter-kit/03-bitswap/pkg"
+	persistent "github.com/gosuda/boxo-starter-kit/01-persistent/pkg"
 )
 
 type IpldWrapper struct {
@@ -24,20 +24,20 @@ type IpldWrapper struct {
 	linkSystem linking.LinkSystem
 }
 
-func NewIpldWrapper(prefix *cid.Prefix, blockserviceWrapper *bitswap.BlockServiceWrapper) (*IpldWrapper, error) {
+func NewIpldWrapper(prefix *cid.Prefix, persistentWrapper *persistent.PersistentWrapper, fetcher Fetcher) (*IpldWrapper, error) {
 	var err error
 	if prefix == nil {
 		prefix = block.NewV1Prefix(mc.DagCbor, 0, 0)
 	}
-	if blockserviceWrapper == nil {
-		blockserviceWrapper, err = bitswap.NewBlockService(nil, nil)
+	if persistentWrapper == nil {
+		persistentWrapper, err = persistent.New(persistent.Pebbledb, "")
 		if err != nil {
-			return nil, fmt.Errorf("failed to create BlockService wrapper: %w", err)
+			return nil, err
 		}
 	}
 
 	ad := &bsadapter.Adapter{
-		Wrapped: blockserviceWrapper.Blockstore(),
+		Wrapped: persistentWrapper,
 	}
 	linkSystem := cidlink.DefaultLinkSystem()
 	linkSystem.SetReadStorage(ad)
