@@ -2,7 +2,7 @@
 > **Boxo is Cool, but How to Use It?**
 
 Step-by-step guide to using [Boxo](https://github.com/ipfs/boxo), the modular Go libraries extracted from IPFS.  
-This repository provides small, incremental examples that show how to build with Boxo, from the very basics to higher-level concepts.
+This repository provides small, incremental examples showing how to build with Boxo—from the basics to advanced topics.
 
 ## Prerequisites
 - Go 1.25+
@@ -21,7 +21,7 @@ go test ./00-block-cid/...
 
 ## 📚 Chapters
 
-🟦 Part 1: Boxo Basics
+🟦 **Part 1: Boxo Basics**
 - [00-block-cid](./00-block-cid): Block storage and Content Identifiers (CIDs)
 - [01-persistent](./01-persistent): Persistent storage backends
 - [02-network](./02-network): Peer-to-peer networking with libp2p
@@ -31,16 +31,16 @@ go test ./00-block-cid/...
 - [06-mfs](./06-mfs): Mutable File System (MFS)
 - [07-pin-gc](./07-pin-gc): Pinning and Garbage Collection
 - [08-ipns](./08-ipns): IPNS and mutable data
-- [09-gateway](./09-gateway): Building a read-only HTTP Gateway
+- [09-gateway](./09-gateway): Building a HTTP Gateway
 - [10-kubo-api-demo](./10-kubo-api-demo): Mini Kubo API server
 
-🟧 Part 2: Advanced
+🟧 **Part 2: Advanced**
 - [11-ipld-prime](./11-ipld-prime): Using ipld-prime for IPLD data
 - [12-dasl](./12-dasl): DASL for schema and type system
-- [13-graphsync](./13-graphsync): GraphSync protocol and Data Transfer Layer (DTL)
+- [13-graphsync](./13-graphsync): GraphSync protocol & Data Transfer Layer (DTL)
 - [14-ipni](./14-ipni): IPNI and content indexing
-- [15-trustless-gateway](./15-trustless-gateway): Trustless Gateway with Subdomain and DNSLink
-- [16-multifetcher](./16-multifetcher): Implement a Multifetcher that uses Bitswap, GraphSync, and HTTP in parallel
+- [15-trustless-gateway](./15-trustless-gateway): Trustless Gateway (Subdomain and DNSLink)
+- [16-multifetcher](./16-multifetcher): Multifetcher using Bitswap, GraphSync, and HTTP in parallel
 
 ## Contributing
 
