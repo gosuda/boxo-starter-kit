@@ -12,6 +12,132 @@ import (
 	pin "github.com/gosuda/boxo-starter-kit/07-pin-gc/pkg"
 )
 
+func TestPinWrapper(t *testing.T) {
+	ctx := context.Background()
+
+	// Create DAG wrapper for testing
+	dagWrapper, err := dag.NewIpldWrapper(nil, nil)
+	require.NoError(t, err)
+
+	// Create pin manager
+	pinManager, err := pin.NewPinnerWrapper(ctx, dagWrapper)
+	require.NoError(t, err)
+	defer pinManager.Close()
+
+	t.Run("Pin and Unpin Operations", func(t *testing.T) {
+		// Create test content
+		testData := map[string]any{
+			"test":   "data",
+			"number": 42,
+		}
+
+		cid, err := dagWrapper.PutAny(ctx, testData)
+		require.NoError(t, err)
+		node, err := dagWrapper.Get(ctx, cid)
+		require.NoError(t, err)
+
+		// Test pinning
+		err = pinManager.Pin(ctx, node, false, "testname")
+		assert.NoError(t, err)
+
+		// Verify pin exists
+		name, isPinned, err := pinManager.IsPinned(ctx, cid)
+		require.NoError(t, err)
+		assert.True(t, isPinned)
+		assert.Equal(t, pin.DirectPin.String(), name)
+
+		// Test unpinning
+		err = pinManager.Unpin(ctx, cid, false)
+		assert.NoError(t, err)
+
+		// Verify pin is removed
+		_, isPinned, err = pinManager.IsPinned(ctx, cid)
+		require.NoError(t, err)
+		assert.False(t, isPinned)
+	})
+
+	t.Run("Recursive Pinning", func(t *testing.T) {
+		// Create nested content
+		childData := map[string]any{"child": "data"}
+		childCID, err := dagWrapper.PutAny(ctx, childData)
+		require.NoError(t, err)
+
+		parentData := map[string]any{
+			"parent": "data",
+			"child":  childCID,
+		}
+		name := "testname"
+		parentCID, err := dagWrapper.PutAny(ctx, parentData)
+		require.NoError(t, err)
+
+		node, err := dagWrapper.Get(ctx, parentCID)
+		require.NoError(t, err)
+
+		// Pin recursively
+		err = pinManager.Pin(ctx, node, true, name)
+		assert.NoError(t, err)
+
+		// Parent should be considered pinned
+		exp, parentPinned, err := pinManager.IsPinned(ctx, parentCID)
+		require.NoError(t, err)
+		assert.True(t, parentPinned)
+		assert.Equal(t, pin.RecursivePin.String(), exp)
+
+		// child pinned
+		_, childPinned, err := pinManager.IsPinned(ctx, childCID)
+		require.NoError(t, err)
+		assert.True(t, childPinned)
+	})
+
+	t.Run("List Pins", func(t *testing.T) {
+		// Create and pin multiple items
+		data1 := map[string]any{"item": 1}
+		cid1, err := dagWrapper.PutAny(ctx, data1)
+		require.NoError(t, err)
+
+		data2 := map[string]any{"item": 2}
+		cid2, err := dagWrapper.PutAny(ctx, data2)
+		require.NoError(t, err)
+
+		// Load nodes for pinning (Pin expects ipld.Node)
+		node1, err := dagWrapper.Get(ctx, cid1)
+		require.NoError(t, err)
+		node2, err := dagWrapper.Get(ctx, cid2)
+		require.NoError(t, err)
+
+		// Pin both: one direct, one recursive
+		err = pinManager.Pin(ctx, node1, false, "item1")
+		require.NoError(t, err)
+
+		err = pinManager.Pin(ctx, node2, true, "item2")
+		require.NoError(t, err)
+
+		// Verify both pins exist with expected types
+		name1, pinned1, err := pinManager.IsPinned(ctx, cid1)
+		require.NoError(t, err)
+		assert.True(t, pinned1)
+		assert.Equal(t, pin.DirectPin.String(), name1)
+
+		name2, pinned2, err := pinManager.IsPinned(ctx, cid2)
+		require.NoError(t, err)
+		assert.True(t, pinned2)
+		assert.Equal(t, pin.RecursivePin.String(), name2)
+
+		err = pinManager.Unpin(ctx, cid1, false)
+		require.NoError(t, err)
+		err = pinManager.Unpin(ctx, cid2, true)
+		require.NoError(t, err)
+
+		_, still1, err := pinManager.IsPinned(ctx, cid1)
+		require.NoError(t, err)
+		assert.False(t, still1)
+
+		_, still2, err := pinManager.IsPinned(ctx, cid2)
+		require.NoError(t, err)
+		assert.False(t, still2)
+	})
+}
+
 func TestPinManager(t *testing.T) {
 	ctx := context.Background()
 
