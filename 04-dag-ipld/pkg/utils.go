@@ -258,3 +258,28 @@ func lookupListIndex(n datamodel.Node, seg string) (datamodel.Node, error) {
 	}
 	return nil, fmt.Errorf("index out of range")
 }
+
+func ExtractChildCIDs(n datamodel.Node) []cid.Cid {
+	var out []cid.Cid
+	switch n.Kind() {
+	case datamodel.Kind_Link:
+		if lk, err := n.AsLink(); err == nil {
+			if cl, ok := lk.(cidlink.Link); ok {
+				out = append(out, cl.Cid)
+			}
+		}
+	case datamodel.Kind_List:
+		it := n.ListIterator()
+		for !it.Done() {
+			_, v, _ := it.Next()
+			out = append(out, ExtractChildCIDs(v)...)
+		}
+	case datamodel.Kind_Map:
+		it := n.MapIterator()
+		for !it.Done() {
+			_, v, _ := it.Next()
+			out = append(out, ExtractChildCIDs(v)...)
+		}
+	}
+	return out
+}
