@@ -99,23 +99,33 @@ func assignAny(ass datamodel.NodeAssembler, v any) error {
 		return ass.AssignBool(t)
 	case int:
 		return ass.AssignInt(int64(t))
-	case int8, int16, int32:
-		return ass.AssignInt(reflect.ValueOf(t).Int())
+	case int8:
+		return ass.AssignInt(int64(t))
+	case int16:
+		return ass.AssignInt(int64(t))
+	case int32:
+		return ass.AssignInt(int64(t))
 	case int64:
 		return ass.AssignInt(t)
-
-	case uint, uint8, uint16, uint32:
-		u := reflect.ValueOf(t).Uint()
-		if u > math.MaxInt64 {
-			return fmt.Errorf("unsigned int overflows int64: %d", u)
+	case uint:
+		if uint64(t) > math.MaxInt64 {
+			return fmt.Errorf("unsigned int overflows int64: %d", t)
 		}
-		return ass.AssignInt(int64(u))
+		return ass.AssignInt(int64(t))
+	case uint8:
+		return ass.AssignInt(int64(t))
+	case uint16:
+		return ass.AssignInt(int64(t))
+	case uint32:
+		if uint64(t) > math.MaxInt64 {
+			return fmt.Errorf("unsigned int overflows int64: %d", t)
+		}
+		return ass.AssignInt(int64(t))
 	case uint64:
 		if t > math.MaxInt64 {
 			return fmt.Errorf("uint64 overflows int64: %d", t)
 		}
 		return ass.AssignInt(int64(t))
-
 	case float32:
 		f := float64(t)
 		if math.IsNaN(f) || math.IsInf(f, 0) {
@@ -127,10 +137,8 @@ func assignAny(ass datamodel.NodeAssembler, v any) error {
 			return fmt.Errorf("non-finite float not allowed in dag-cbor")
 		}
 		return ass.AssignFloat(t)
-
 	case []byte:
 		return ass.AssignBytes(t)
-
 	case datamodel.Node:
 		return ass.AssignNode(t)
 	case datamodel.Link:
