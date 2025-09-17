@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	dag "github.com/gosuda/boxo-starter-kit/04-dag-ipld/pkg"
-	ipns "github.com/gosuda/boxo-starter-kit/09-ipns/pkg"
+	ipns "github.com/gosuda/boxo-starter-kit/08-ipns/pkg"
 )
 
 func TestIPNSManager(t *testing.T) {
