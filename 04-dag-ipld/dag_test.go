@@ -5,7 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/ipfs/boxo/ipld/merkledag"
+	"github.com/ipfs/go-cid"
+	format "github.com/ipfs/go-ipld-format"
 	"github.com/stretchr/testify/require"
 
 	dag "github.com/gosuda/boxo-starter-kit/04-dag-ipld/pkg"
@@ -27,79 +29,176 @@ func TestDagServiceAddGet(t *testing.T) {
 	// get back
 	got, err := d.Get(ctx, cid)
 	require.NoError(t, err)
-	assert.Equal(t, cid, got.Cid())
-	assert.Equal(t, payload, got.RawData())
+	require.Equal(t, cid, got.Cid())
+	require.Equal(t, payload, got.RawData())
 
 	// clean up
 	err = d.Remove(ctx, cid)
 	require.NoError(t, err)
 
 	_, err = d.Get(ctx, cid)
-	assert.Error(t, err, "must error after delete")
+	require.Error(t, err, "must error after delete")
 }
 
-func TestDagIPLDSingle(t *testing.T) {
-	ctx, timeout := context.WithTimeout(context.Background(), time.Second*5)
-	defer timeout()
-
-	d, err := dag.NewIpldWrapper(nil, nil)
-	require.NoError(t, err)
-
-	c1, err := d.PutAny(ctx, map[string]any{"name": "bob", "age": 30})
-	require.NoError(t, err)
-	c2, err := d.PutAny(ctx, map[string]any{"age": 30, "name": "bob"})
-	require.NoError(t, err)
-	assert.True(t, c1.Equals(c2), "same structure → same CID")
-
-	// get any type
-	data, err := d.GetAny(ctx, c1)
-	require.NoError(t, err)
-	m, ok := data.(map[string]any)
-	require.True(t, ok, "data must be a map")
-	assert.Equal(t, map[string]any{"name": "bob", "age": int64(30)}, m, "data must match original")
-
-	// get node and lookup
-	n, err := d.GetIPLD(ctx, c1)
-	require.NoError(t, err)
-	name, err := n.LookupByString("name")
-	require.NoError(t, err)
-	ns, err := name.AsString()
-	require.NoError(t, err)
-	assert.Equal(t, "bob", ns, "name must be 'bob'")
+// helper: new leaf ProtoNode with data
+func newLeaf(data string) format.Node {
+	return merkledag.NewRawNode([]byte(data))
 }
 
-func TestDagIPLDNestedLinks(t *testing.T) {
-	ctx, timeout := context.WithTimeout(context.Background(), time.Second*5)
-	defer timeout()
+// helper: add a named link from parent -> child (child must have a CID)
+func addNamedLink(t *testing.T, parent *merkledag.ProtoNode, name string, child format.Node) {
+	t.Helper()
+	l, err := format.MakeLink(child)
+	require.NoError(t, err)
+	err = parent.AddRawLink(name, l)
+	require.NoError(t, err)
+}
 
-	d, err := dag.NewIpldWrapper(nil, nil)
+func TestPutAndGetNode(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	w, err := dag.NewIpldWrapper(nil, nil)
 	require.NoError(t, err)
 
-	c1, err := d.PutAny(ctx, map[string]any{"name": "bob", "age": 30})
+	c1, err := w.AddRaw(ctx, []byte("hello"))
 	require.NoError(t, err)
-	c2, err := d.PutAny(ctx, map[string]any{"child": c1})
+	require.NotEqual(t, cid.Undef, c1)
+
+	got, err := w.GetNode(ctx, c1)
 	require.NoError(t, err)
-	c3, err := d.PutAny(ctx, map[string]any{"grandchild": c2})
+	require.Equal(t, c1, got.Cid())
+}
+
+func TestResolvePath_ByName(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	w, err := dag.NewIpldWrapper(nil, nil)
 	require.NoError(t, err)
 
-	n1, resolved1, err := d.ResolvePath(ctx, c3, "grandchild")
+	// Build: root --a--> mid --b--> leaf
+	leaf := newLeaf("leaf")
+	leafCID, err := w.PutNode(ctx, leaf)
 	require.NoError(t, err)
-	assert.True(t, resolved1.Equals(c2), "resolved must be c2 after following grandchild link")
-	k, _ := n1.LookupByString("child")
-	assert.Equal(t, "map", n1.Kind().String())
-	assert.Equal(t, "link", k.Kind().String())
 
-	n2, resolved2, err := d.ResolvePath(ctx, c3, "grandchild/child")
+	mid := merkledag.NodeWithData(nil)
+	addNamedLink(t, mid, "b", leaf)
+	_, err = w.PutNode(ctx, mid)
 	require.NoError(t, err)
-	assert.True(t, resolved2.Equals(c1), "resolved must be c1 after following child link")
-	nameNode, err := n2.LookupByString("name")
-	require.NoError(t, err)
-	ns, _ := nameNode.AsString()
-	assert.Equal(t, "bob", ns)
 
-	n3, resolved3, err := d.ResolvePath(ctx, c3, "grandchild/child/name")
+	root := merkledag.NodeWithData(nil)
+	addNamedLink(t, root, "a", mid)
+	rootCID, err := w.PutNode(ctx, root)
 	require.NoError(t, err)
-	assert.True(t, resolved3.Equals(c1), "resolved remains c1 at leaf value access")
-	s, _ := n3.AsString()
-	assert.Equal(t, "bob", s)
+
+	// Resolve "a/b" → leaf
+	gotNode, gotCID, err := w.ResolvePath(ctx, rootCID, "a/b")
+	require.NoError(t, err)
+	require.Equal(t, leafCID, gotCID)
+	require.Equal(t, leafCID, gotNode.Cid())
+}
+
+func TestResolvePath_ByIndex(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	w, err := dag.NewIpldWrapper(nil, nil)
+	require.NoError(t, err)
+
+	// Build same chain but use indices "0/0"
+	leaf := newLeaf("leaf-index")
+	leafCID, err := w.PutNode(ctx, leaf)
+	require.NoError(t, err)
+
+	mid := merkledag.NodeWithData(nil)
+	addNamedLink(t, mid, "only", leaf) // single link => index 0
+	_, err = w.PutNode(ctx, mid)
+	require.NoError(t, err)
+
+	root := merkledag.NodeWithData(nil)
+	addNamedLink(t, root, "first", mid) // single link => index 0
+	rootCID, err := w.PutNode(ctx, root)
+	require.NoError(t, err)
+
+	gotNode, gotCID, err := w.ResolvePath(ctx, rootCID, "0/0")
+	require.NoError(t, err)
+	require.Equal(t, leafCID, gotCID)
+	require.Equal(t, leafCID, gotNode.Cid())
+}
+
+func TestResolvePath_MixedNameIndex(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	w, err := dag.NewIpldWrapper(nil, nil)
+	require.NoError(t, err)
+
+	leaf1 := newLeaf("L1")
+	leaf1CID, err := w.PutNode(ctx, leaf1)
+	require.NoError(t, err)
+
+	leaf2 := newLeaf("L2")
+	_, err = w.PutNode(ctx, leaf2)
+	require.NoError(t, err)
+
+	// mid has two links: [x: leaf1, y: leaf2]
+	mid := merkledag.NodeWithData(nil)
+	addNamedLink(t, mid, "x", leaf1)
+	addNamedLink(t, mid, "y", leaf2)
+	_, err = w.PutNode(ctx, mid)
+	require.NoError(t, err)
+
+	// root has one link "m" → mid
+	root := merkledag.NodeWithData(nil)
+	addNamedLink(t, root, "m", mid)
+	rootCID, err := w.PutNode(ctx, root)
+	require.NoError(t, err)
+
+	// "m/0" should pick the first link under mid => leaf1
+	gotNode, gotCID, err := w.ResolvePath(ctx, rootCID, "m/0")
+	require.NoError(t, err)
+	require.Equal(t, leaf1CID, gotCID)
+	require.Equal(t, leaf1CID, gotNode.Cid())
+}
+
+func TestResolvePath_EmptyPathReturnsRoot(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	w, err := dag.NewIpldWrapper(nil, nil)
+	require.NoError(t, err)
+
+	root := merkledag.NodeWithData(nil)
+	rootCID, err := w.PutNode(ctx, root)
+	require.NoError(t, err)
+
+	gotNode, gotCID, err := w.ResolvePath(ctx, rootCID, "")
+	require.NoError(t, err)
+	require.Equal(t, rootCID, gotCID)
+	require.Equal(t, rootCID, gotNode.Cid())
+}
+
+func TestResolvePath_Errors(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	w, err := dag.NewIpldWrapper(nil, nil)
+	require.NoError(t, err)
+
+	leaf := newLeaf("leaf")
+	_, err = w.PutNode(ctx, leaf)
+	require.NoError(t, err)
+
+	root := merkledag.NodeWithData(nil) // no links
+	rootCID, err := w.PutNode(ctx, root)
+	require.NoError(t, err)
+
+	// missing link name
+	_, _, err = w.ResolvePath(ctx, rootCID, "missing")
+	require.Error(t, err, "expected error for missing link name")
+
+	// index out of range
+	_, _, err = w.ResolvePath(ctx, rootCID, "0")
+	require.Error(t, err, "expected error for index out of range")
 }

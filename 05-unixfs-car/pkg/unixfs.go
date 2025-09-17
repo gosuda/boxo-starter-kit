@@ -13,6 +13,7 @@ import (
 	"github.com/ipfs/boxo/files"
 	ufs "github.com/ipfs/boxo/ipld/unixfs"
 	uio "github.com/ipfs/boxo/ipld/unixfs/file"
+	"github.com/ipfs/boxo/ipld/unixfs/importer"
 	"github.com/ipfs/go-cid"
 
 	dag "github.com/gosuda/boxo-starter-kit/04-dag-ipld/pkg"
@@ -87,7 +88,7 @@ func (u *UnixFsWrapper) putFile(ctx context.Context, file files.File) (cid.Cid, 
 	}
 	splitter := chunk.NewSizeSplitter(file, GetChunkSize(int(size), u.defaultChunkSize))
 
-	nd, err := BuildDagFromReader(u.Prefix, u.IpldWrapper, splitter)
+	nd, err := importer.BuildDagFromReader(u.IpldWrapper, splitter)
 	if err != nil {
 		return cid.Undef, fmt.Errorf("build dag from file: %w", err)
 	}
@@ -96,7 +97,6 @@ func (u *UnixFsWrapper) putFile(ctx context.Context, file files.File) (cid.Cid, 
 
 func (u *UnixFsWrapper) putDir(ctx context.Context, d files.Directory) (cid.Cid, error) {
 	root := ufs.EmptyDirNode()
-	root.SetCidBuilder(u.IpldWrapper.Prefix)
 
 	type child struct {
 		name string

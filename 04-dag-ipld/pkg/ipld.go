@@ -2,21 +2,15 @@ package dag
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 
+	"github.com/ipfs/boxo/ipld/merkledag"
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
-	_ "github.com/ipld/go-ipld-prime/codec/dagcbor"
-	_ "github.com/ipld/go-ipld-prime/codec/dagjson"
-	"github.com/ipld/go-ipld-prime/datamodel"
-	"github.com/ipld/go-ipld-prime/linking"
-	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
-	"github.com/ipld/go-ipld-prime/node/basicnode"
-	"github.com/ipld/go-ipld-prime/storage/bsadapter"
-	mc "github.com/multiformats/go-multicodec"
 
-	block "github.com/gosuda/boxo-starter-kit/00-block-cid/pkg"
 	bitswap "github.com/gosuda/boxo-starter-kit/03-bitswap/pkg"
 )
 
@@ -24,15 +18,10 @@ var _ format.DAGService = (*IpldWrapper)(nil)
 
 type IpldWrapper struct {
 	*DagServiceWrapper
-	Prefix     *cid.Prefix
-	linkSystem linking.LinkSystem
 }
 
 func NewIpldWrapper(prefix *cid.Prefix, blockserviceWrapper *bitswap.BlockServiceWrapper) (*IpldWrapper, error) {
 	var err error
-	if prefix == nil {
-		prefix = block.NewV1Prefix(mc.DagCbor, 0, 0)
-	}
 	if blockserviceWrapper == nil {
 		blockserviceWrapper, err = bitswap.NewBlockService(nil, nil)
 		if err != nil {
@@ -45,67 +34,46 @@ func NewIpldWrapper(prefix *cid.Prefix, blockserviceWrapper *bitswap.BlockServic
 		return nil, fmt.Errorf("failed to create DAGService wrapper: %w", err)
 	}
 
-	ad := &bsadapter.Adapter{
-		Wrapped: blockserviceWrapper.Blockstore(),
-	}
-	linkSystem := cidlink.DefaultLinkSystem()
-	linkSystem.SetReadStorage(ad)
-	linkSystem.SetWriteStorage(ad)
-
 	return &IpldWrapper{
 		DagServiceWrapper: dagServiceWrapper,
-		Prefix:            prefix,
-		linkSystem:        linkSystem,
 	}, nil
 }
 
-//-------------------------------------------------------------------------------//
-// IPLD-prime util methods
-//-------------------------------------------------------------------------------//
+// ------------------------------------------------------------------
+// go-ipld-format utils
+// ------------------------------------------------------------------
 
-func (d *IpldWrapper) PutIPLD(ctx context.Context, n datamodel.Node) (cid.Cid, error) {
-	lnk, err := d.linkSystem.Store(
-		linking.LinkContext{Ctx: ctx},
-		cidlink.LinkPrototype{Prefix: *d.Prefix},
-		n,
-	)
+func (d *IpldWrapper) PutNode(ctx context.Context, n format.Node) (cid.Cid, error) {
+	if err := d.DagServiceWrapper.Add(ctx, n); err != nil {
+		return cid.Undef, err
+	}
+	return n.Cid(), nil
+}
 
+func (d *IpldWrapper) PutAny(ctx context.Context, v any) (cid.Cid, error) {
+	data, err := json.Marshal(v)
 	if err != nil {
 		return cid.Undef, err
 	}
-	return lnk.(cidlink.Link).Cid, nil
+
+	node := merkledag.NewRawNode(data)
+	return d.PutNode(ctx, node)
 }
 
-func (d *IpldWrapper) PutAny(ctx context.Context, data any) (cid.Cid, error) {
-	node, err := AnyToNode(data)
+func (d *IpldWrapper) GetNode(ctx context.Context, c cid.Cid) (format.Node, error) {
+	return d.DagServiceWrapper.Get(ctx, c)
+}
+
+func (d *IpldWrapper) GetAny(ctx context.Context, c cid.Cid, v any) error {
+	n, err := d.DagServiceWrapper.Get(ctx, c)
 	if err != nil {
-		return cid.Undef, err
+		return err
 	}
-	return d.PutIPLD(ctx, node)
+	return json.Unmarshal(n.RawData(), v)
 }
 
-func (d *IpldWrapper) GetIPLD(ctx context.Context, c cid.Cid) (datamodel.Node, error) {
-	n, err := d.linkSystem.Load(
-		linking.LinkContext{Ctx: ctx},
-		cidlink.Link{Cid: c},
-		basicnode.Prototype.Any,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return n, nil
-}
-
-func (d *IpldWrapper) GetAny(ctx context.Context, c cid.Cid) (any, error) {
-	node, err := d.GetIPLD(ctx, c)
-	if err != nil {
-		return nil, err
-	}
-	return NodeToAny(node)
-}
-
-func (d *IpldWrapper) ResolvePath(ctx context.Context, root cid.Cid, path string) (datamodel.Node, cid.Cid, error) {
-	cur, err := d.GetIPLD(ctx, root)
+func (d *IpldWrapper) ResolvePath(ctx context.Context, root cid.Cid, path string) (format.Node, cid.Cid, error) {
+	cur, err := d.GetNode(ctx, root)
 	if err != nil {
 		return nil, cid.Undef, err
 	}
@@ -118,35 +86,38 @@ func (d *IpldWrapper) ResolvePath(ctx context.Context, root cid.Cid, path string
 	parts := strings.Split(seg, "/")
 
 	for i, p := range parts {
-		next, err := cur.LookupByString(p)
+		nextCID, err := findChildCID(cur, p)
 		if err != nil {
-			next, err = lookupListIndex(cur, p)
-			if err != nil {
-				return nil, cid.Undef, fmt.Errorf("path %q: %w", p, err)
-			}
+			return nil, cid.Undef, fmt.Errorf("path %q: %w", p, err)
 		}
 
-		if next.Kind() == datamodel.Kind_Link {
-			lk, err := next.AsLink()
-			if err != nil {
-				return nil, cid.Undef, fmt.Errorf("invalid link at %q: %w", p, err)
-			}
-			cl, ok := lk.(cidlink.Link)
-			if !ok {
-				return nil, cid.Undef, fmt.Errorf("unsupported link at %q", p)
-			}
-			cur, err = d.GetIPLD(ctx, cl.Cid)
-			if err != nil {
-				return nil, cid.Undef, err
-			}
-			curCID = cl.Cid
-		} else {
-			cur = next
+		nextNode, err := d.GetNode(ctx, nextCID)
+		if err != nil {
+			return nil, cid.Undef, err
 		}
+
+		cur = nextNode
+		curCID = nextCID
 
 		if i == len(parts)-1 {
 			return cur, curCID, nil
 		}
 	}
 	return cur, curCID, nil
+}
+
+func findChildCID(n format.Node, seg string) (cid.Cid, error) {
+	links := n.Links()
+	if idx, err := strconv.Atoi(seg); err == nil {
+		if idx < 0 || idx >= len(links) {
+			return cid.Undef, fmt.Errorf("index %d out of range (%d links)", idx, len(links))
+		}
+		return links[idx].Cid, nil
+	}
+	for _, l := range links {
+		if l.Name == seg {
+			return l.Cid, nil
+		}
+	}
+	return cid.Undef, fmt.Errorf("link %q not found", seg)
 }
