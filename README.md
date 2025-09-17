@@ -29,9 +29,10 @@ go test ./00-block-cid/...
 6. [05-unixfs-car](./05-unixfs-car): UnixFS file system and CAR format
 7. [06-mfs](./06-mfs): Mutable File System (MFS)
 8. [07-pin-gc](./07-pin-gc): Pinning and Garbage Collection
-9. [08-gateway](./08-gateway): Building a read-only HTTP Gateway
-10. [09-ipns](./09-ipns): IPNS and mutable data
-11. [99-kubo-api-demo](./99-kubo-api-demo): Mini Kubo API server
+9. [08-ipns](./08-ipns): IPNS and mutable data
+10. [09-ipni](./09-ipni): IPNI and content indexing
+11. [10-gateway](./10-gateway): Building a read-only HTTP Gateway
+12. [99-kubo-api-demo](./99-kubo-api-demo): Mini Kubo API server
 
 ## Contributing
 
