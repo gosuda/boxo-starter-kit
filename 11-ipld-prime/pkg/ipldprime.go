@@ -19,7 +19,7 @@ import (
 
 type IpldWrapper struct {
 	Prefix     *cid.Prefix
-	linkSystem linking.LinkSystem
+	LinkSystem linking.LinkSystem
 }
 
 func New(prefix *cid.Prefix, linkSystem *linking.LinkSystem) (*IpldWrapper, error) {
@@ -31,7 +31,7 @@ func New(prefix *cid.Prefix, linkSystem *linking.LinkSystem) (*IpldWrapper, erro
 	}
 	return &IpldWrapper{
 		Prefix:     prefix,
-		linkSystem: *linkSystem,
+		LinkSystem: *linkSystem,
 	}, nil
 }
 
@@ -62,7 +62,7 @@ func NewDefault(prefix *cid.Prefix, persistentWrapper *persistent.PersistentWrap
 //-------------------------------------------------------------------------------//
 
 func (d *IpldWrapper) PutIPLD(ctx context.Context, n datamodel.Node) (cid.Cid, error) {
-	lnk, err := d.linkSystem.Store(
+	lnk, err := d.LinkSystem.Store(
 		linking.LinkContext{Ctx: ctx},
 		cidlink.LinkPrototype{Prefix: *d.Prefix},
 		n,
@@ -83,7 +83,7 @@ func (d *IpldWrapper) PutIPLDAny(ctx context.Context, data any) (cid.Cid, error)
 }
 
 func (d *IpldWrapper) GetIPLDWith(ctx context.Context, c cid.Cid, proto datamodel.NodePrototype) (datamodel.Node, error) {
-	return d.linkSystem.Load(
+	return d.LinkSystem.Load(
 		linking.LinkContext{Ctx: ctx},
 		cidlink.Link{Cid: c},
 		proto,
@@ -112,7 +112,7 @@ func (d *IpldWrapper) ResolvePath(ctx context.Context, root cid.Cid, path string
 
 	prog := traversal.Progress{
 		Cfg: &traversal.Config{
-			LinkSystem: d.linkSystem,
+			LinkSystem: d.LinkSystem,
 			LinkTargetNodePrototypeChooser: func(lnk datamodel.Link, lc linking.LinkContext) (datamodel.NodePrototype, error) {
 				return basicnode.Prototype.Any, nil
 			},
