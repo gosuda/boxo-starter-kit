@@ -17,14 +17,14 @@ func TestDagIPLDSingle(t *testing.T) {
 	d, err := ipld.NewDefault(nil, nil)
 	require.NoError(t, err)
 
-	c1, err := d.PutAny(ctx, map[string]any{"name": "bob", "age": 30})
+	c1, err := d.PutIPLDAny(ctx, map[string]any{"name": "bob", "age": 30})
 	require.NoError(t, err)
-	c2, err := d.PutAny(ctx, map[string]any{"age": 30, "name": "bob"})
+	c2, err := d.PutIPLDAny(ctx, map[string]any{"age": 30, "name": "bob"})
 	require.NoError(t, err)
 	assert.True(t, c1.Equals(c2), "same structure → same CID")
 
 	// get any type
-	data, err := d.GetAny(ctx, c1)
+	data, err := d.GetIPLDAny(ctx, c1)
 	require.NoError(t, err)
 	m, ok := data.(map[string]any)
 	require.True(t, ok, "data must be a map")
@@ -47,11 +47,11 @@ func TestDagIPLDNestedLinks(t *testing.T) {
 	d, err := ipld.NewDefault(nil, nil)
 	require.NoError(t, err)
 
-	c1, err := d.PutAny(ctx, map[string]any{"name": "bob", "age": 30})
+	c1, err := d.PutIPLDAny(ctx, map[string]any{"name": "bob", "age": 30})
 	require.NoError(t, err)
-	c2, err := d.PutAny(ctx, map[string]any{"child": c1})
+	c2, err := d.PutIPLDAny(ctx, map[string]any{"child": c1})
 	require.NoError(t, err)
-	c3, err := d.PutAny(ctx, map[string]any{"grandchild": c2})
+	c3, err := d.PutIPLDAny(ctx, map[string]any{"grandchild": c2})
 	require.NoError(t, err)
 
 	n1, resolved1, err := d.ResolvePath(ctx, c3, "grandchild")

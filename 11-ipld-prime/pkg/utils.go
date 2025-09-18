@@ -238,27 +238,6 @@ func BuildList(items ...any) (datamodel.Node, error) {
 	return lb.Build(), nil
 }
 
-func lookupListIndex(n datamodel.Node, seg string) (datamodel.Node, error) {
-	if n.Kind() != datamodel.Kind_List {
-		return nil, fmt.Errorf("not a list")
-	}
-	var idx int
-	_, err := fmt.Sscanf(seg, "%d", &idx)
-	if err != nil {
-		return nil, fmt.Errorf("invalid list index %q", seg)
-	}
-	itr := n.ListIterator()
-	i := 0
-	for !itr.Done() {
-		_, v, _ := itr.Next()
-		if i == idx {
-			return v, nil
-		}
-		i++
-	}
-	return nil, fmt.Errorf("index out of range")
-}
-
 func ExtractChildCIDs(n datamodel.Node) []cid.Cid {
 	var out []cid.Cid
 	switch n.Kind() {
