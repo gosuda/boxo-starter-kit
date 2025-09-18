@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDagIPLDSingle(t *testing.T) {
+func TestIPLD(t *testing.T) {
 	ctx, timeout := context.WithTimeout(context.Background(), time.Second*5)
 	defer timeout()
 
@@ -40,38 +40,70 @@ func TestDagIPLDSingle(t *testing.T) {
 	assert.Equal(t, "bob", ns, "name must be 'bob'")
 }
 
-func TestDagIPLDNestedLinks(t *testing.T) {
+func TestIpldLink(t *testing.T) {
 	ctx, timeout := context.WithTimeout(context.Background(), time.Second*5)
 	defer timeout()
 
 	d, err := ipld.NewDefault(nil, nil)
 	require.NoError(t, err)
+	// leaf1
+	l1b := map[string]any{
+		"name": "leaf1",
+		"age":  30,
+	}
+	lnk1, err := d.PutIPLDAny(ctx, l1b)
+	require.NoError(t, err)
 
-	c1, err := d.PutIPLDAny(ctx, map[string]any{"name": "bob", "age": 30})
-	require.NoError(t, err)
-	c2, err := d.PutIPLDAny(ctx, map[string]any{"child": c1})
-	require.NoError(t, err)
-	c3, err := d.PutIPLDAny(ctx, map[string]any{"grandchild": c2})
+	// leaf2
+	l2b := map[string]any{
+		"name": "leaf2",
+	}
+	lnk2, err := d.PutIPLDAny(ctx, l2b)
 	require.NoError(t, err)
 
-	n1, resolved1, err := d.ResolvePath(ctx, c3, "grandchild")
+	// root
+	rb := map[string]any{
+		"L1": lnk1,
+		"L2": lnk2,
+	}
+
+	rl, err := d.PutIPLDAny(ctx, rb)
 	require.NoError(t, err)
-	assert.True(t, resolved1.Equals(c2), "resolved must be c2 after following grandchild link")
-	k, _ := n1.LookupByString("child")
+
+	// resolve L1
+	n1, resolved1, err := d.ResolvePath(ctx, rl, "L1")
+	require.NoError(t, err)
+	assert.True(t, resolved1.Equals(lnk1), "resolved must be lnk1 after following L1 link")
+	k, _ := n1.LookupByString("name")
+	val, err := k.AsString()
+	require.NoError(t, err)
+	assert.Equal(t, "leaf1", val)
 	assert.Equal(t, "map", n1.Kind().String())
-	assert.Equal(t, "link", k.Kind().String())
+	assert.Equal(t, "string", k.Kind().String())
 
-	n2, resolved2, err := d.ResolvePath(ctx, c3, "grandchild/child")
+	// resolve L2
+	n2, resolved2, err := d.ResolvePath(ctx, rl, "L2")
 	require.NoError(t, err)
-	assert.True(t, resolved2.Equals(c1), "resolved must be c1 after following child link")
-	nameNode, err := n2.LookupByString("name")
+	assert.True(t, resolved2.Equals(lnk2), "resolved must be lnk2 after following L2 link")
+	k2, _ := n2.LookupByString("name")
+	val2, err := k2.AsString()
 	require.NoError(t, err)
-	ns, _ := nameNode.AsString()
-	assert.Equal(t, "bob", ns)
+	assert.Equal(t, "leaf2", val2)
+	assert.Equal(t, "map", n2.Kind().String())
+	assert.Equal(t, "string", k2.Kind().String())
 
-	n3, resolved3, err := d.ResolvePath(ctx, c3, "grandchild/child/name")
+	// resolve L1/name
+	n3, resolved3, err := d.ResolvePath(ctx, rl, "L1/name")
 	require.NoError(t, err)
-	assert.True(t, resolved3.Equals(c1), "resolved remains c1 at leaf value access")
+	assert.True(t, resolved3.Equals(lnk1), "resolved remains lnk1 at leaf value access")
 	s, _ := n3.AsString()
-	assert.Equal(t, "bob", s)
+	assert.Equal(t, "leaf1", s)
+
+	// resolve L2/name
+	n4, resolved4, err := d.ResolvePath(ctx, rl, "L2/name")
+	require.NoError(t, err)
+	assert.True(t, resolved4.Equals(lnk2), "resolved remains lnk2 at leaf value access")
+	s2, _ := n4.AsString()
+	assert.Equal(t, "leaf2", s2)
+
 }
