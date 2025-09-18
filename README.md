@@ -37,10 +37,11 @@ go test ./00-block-cid/...
 🟧 **Part 2: Advanced**
 - [11-ipld-prime](./11-ipld-prime): Using ipld-prime for IPLD data
 - [12-dasl](./12-dasl): DASL for schema and type system
-- [13-graphsync](./13-graphsync): GraphSync protocol & Data Transfer Layer (DTL)
-- [14-ipni](./14-ipni): IPNI and content indexing
-- [15-trustless-gateway](./15-trustless-gateway): Trustless Gateway (Subdomain and DNSLink)
-- [16-multifetcher](./16-multifetcher): Multifetcher using Bitswap, GraphSync, and HTTP in parallel
+- [13-traversal-selector](./13-traversal-selector): Traversal and Selector
+- [14-graphsync](./14-graphsync): GraphSync protocol & Data Transfer Layer (DTL)
+- [15-ipni](./15-ipni): IPNI and content indexing
+- [16-trustless-gateway](./16-trustless-gateway): Trustless Gateway (Subdomain and DNSLink)
+- [17-multifetcher](./17-multifetcher): Multifetcher using Bitswap, GraphSync, and HTTP in parallel
 
 ## Contributing
 
