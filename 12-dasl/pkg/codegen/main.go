@@ -20,5 +20,8 @@ func main() {
 		panic(err)
 	}
 
+	// It is not working with the latest version.
+	// https://github.com/ipld/go-ipld-prime/issues/528
+	// TODO: Update the code to work.
 	gengo.Generate("./", "main", ts, &gengo.AdjunctCfg{})
 }
