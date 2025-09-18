@@ -12,7 +12,7 @@ require (
 	github.com/ipfs/go-ipfs-api v0.7.0
 	github.com/ipfs/go-ipld-format v0.6.2
 	github.com/ipld/go-car/v2 v2.14.3
-	github.com/ipld/go-ipld-prime v0.21.0
+	github.com/ipld/go-ipld-prime v0.21.1-0.20250821084354-a425e60cd714
 	github.com/ipld/go-ipld-prime/storage/bsadapter v0.0.0-20250821084354-a425e60cd714
 	github.com/ipni/go-indexer-core v0.8.23
 	github.com/libp2p/go-libp2p v0.43.0
@@ -20,7 +20,7 @@ require (
 	github.com/multiformats/go-multicodec v0.9.2
 	github.com/multiformats/go-multihash v0.2.3
 	github.com/multiformats/go-varint v0.0.7
-	github.com/spf13/cobra v1.0.0
+	github.com/spf13/cobra v1.2.1
 	github.com/stretchr/testify v1.10.0
 )
 
@@ -134,7 +134,7 @@ require (
 	github.com/pion/webrtc/v4 v4.1.2 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/polydawn/refmt v0.89.0 // indirect
+	github.com/polydawn/refmt v0.89.1-0.20231129105047-37766d95467a // indirect
 	github.com/prometheus/client_golang v1.23.0 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.65.0 // indirect

@@ -82,12 +82,16 @@ func (d *IpldWrapper) PutIPLDAny(ctx context.Context, data any) (cid.Cid, error)
 	return d.PutIPLD(ctx, node)
 }
 
-func (d *IpldWrapper) GetIPLD(ctx context.Context, c cid.Cid) (datamodel.Node, error) {
+func (d *IpldWrapper) GetIPLDWith(ctx context.Context, c cid.Cid, proto datamodel.NodePrototype) (datamodel.Node, error) {
 	return d.linkSystem.Load(
 		linking.LinkContext{Ctx: ctx},
 		cidlink.Link{Cid: c},
-		basicnode.Prototype.Any,
+		proto,
 	)
+}
+
+func (d *IpldWrapper) GetIPLD(ctx context.Context, c cid.Cid) (datamodel.Node, error) {
+	return d.GetIPLDWith(ctx, c, basicnode.Prototype.Any)
 }
 
 func (d *IpldWrapper) GetIPLDAny(ctx context.Context, c cid.Cid) (any, error) {

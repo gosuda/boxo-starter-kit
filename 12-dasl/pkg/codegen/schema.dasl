@@ -1,0 +1,21 @@
+type User struct {
+  id        String
+  name      String
+  email     String
+  friends   [&User]
+  avatar    Bytes
+}
+
+type Post struct {
+  id        String
+  author    &User
+  title     String
+  body      String
+  tags      [String]
+  createdAt Int
+}
+
+type Root struct {
+  users User
+  posts Post
+}
