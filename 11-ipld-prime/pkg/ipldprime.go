@@ -6,8 +6,6 @@ import (
 	"strings"
 
 	"github.com/ipfs/go-cid"
-	_ "github.com/ipld/go-ipld-prime/codec/dagcbor"
-	_ "github.com/ipld/go-ipld-prime/codec/dagjson"
 	"github.com/ipld/go-ipld-prime/datamodel"
 	"github.com/ipld/go-ipld-prime/linking"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
@@ -24,7 +22,17 @@ type IpldWrapper struct {
 	linkSystem linking.LinkSystem
 }
 
-func NewIpldWrapper(prefix *cid.Prefix, persistentWrapper *persistent.PersistentWrapper, fetcher Fetcher) (*IpldWrapper, error) {
+func New(prefix *cid.Prefix, linkSystem *linking.LinkSystem) (*IpldWrapper, error) {
+	if linkSystem == nil {
+		return nil, fmt.Errorf("linkSystem is required")
+	}
+	return &IpldWrapper{
+		Prefix:     prefix,
+		linkSystem: *linkSystem,
+	}, nil
+}
+
+func NewDefault(prefix *cid.Prefix, persistentWrapper *persistent.PersistentWrapper) (*IpldWrapper, error) {
 	var err error
 	if prefix == nil {
 		prefix = block.NewV1Prefix(mc.DagCbor, 0, 0)
@@ -43,10 +51,7 @@ func NewIpldWrapper(prefix *cid.Prefix, persistentWrapper *persistent.Persistent
 	linkSystem.SetReadStorage(ad)
 	linkSystem.SetWriteStorage(ad)
 
-	return &IpldWrapper{
-		Prefix:     prefix,
-		linkSystem: linkSystem,
-	}, nil
+	return New(prefix, &linkSystem)
 }
 
 //-------------------------------------------------------------------------------//
