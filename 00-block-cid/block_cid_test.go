@@ -1,4 +1,4 @@
-package block_cid_test
+package main
 
 import (
 	"context"

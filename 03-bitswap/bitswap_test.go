@@ -1,4 +1,4 @@
-package bitswap_test
+package main
 
 import (
 	"context"

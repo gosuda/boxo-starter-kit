@@ -1,4 +1,4 @@
-package persistent_test
+package main
 
 import (
 	"context"

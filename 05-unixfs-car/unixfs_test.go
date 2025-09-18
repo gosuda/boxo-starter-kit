@@ -1,4 +1,4 @@
-package unixfs_test
+package main
 
 import (
 	"context"

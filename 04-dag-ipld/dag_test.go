@@ -1,4 +1,4 @@
-package dag_test
+package main
 
 import (
 	"context"
