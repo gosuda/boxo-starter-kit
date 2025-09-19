@@ -39,8 +39,8 @@ go test ./00-block-cid/...
 - [12-dasl](./12-dasl): DASL for schema and type system
 - [13-traversal-selector](./13-traversal-selector): Traversal and Selector
 - [14-graphsync](./14-graphsync): GraphSync protocol & Data Transfer Layer (DTL)
-- [15-ipni](./15-ipni): IPNI and content indexing
-- [16-trustless-gateway](./16-trustless-gateway): Trustless Gateway (Subdomain and DNSLink)
+- [15-trustless-gateway](./15-trustless-gateway): Trustless Gateway (Subdomain and DNSLink)
+- [16-ipni](./16-ipni): IPNI and content indexing
 - [17-multifetcher](./17-multifetcher): Multifetcher using Bitswap, GraphSync, and HTTP in parallel
 
 ## Contributing
