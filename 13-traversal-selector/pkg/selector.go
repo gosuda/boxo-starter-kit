@@ -1,6 +1,7 @@
 package traversalselector
 
 import (
+	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/datamodel"
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	"github.com/ipld/go-ipld-prime/traversal/selector"
@@ -11,13 +12,17 @@ func newSSB() sb.SelectorSpecBuilder {
 	return sb.NewSelectorSpecBuilder(basicnode.Prototype.Any)
 }
 
-func SelectorOne() (selector.Selector, error) {
-	ssb := newSSB()
-	spec := ssb.Matcher()
-	return selector.CompileSelector(spec.Node())
+func CompileSelector(node ipld.Node) (selector.Selector, error) {
+	return selector.CompileSelector(node)
 }
 
-func SelectorAll(match bool) (selector.Selector, error) {
+func SelectorOne() ipld.Node {
+	ssb := newSSB()
+	spec := ssb.Matcher()
+	return spec.Node()
+}
+
+func SelectorAll(match bool) ipld.Node {
 	ssb := newSSB()
 
 	var explore sb.SelectorSpec
@@ -34,10 +39,10 @@ func SelectorAll(match bool) (selector.Selector, error) {
 		selector.RecursionLimitNone(),
 		explore,
 	)
-	return selector.CompileSelector(spec.Node())
+	return spec.Node()
 }
 
-func SelectorDepth(limit int64, match bool) (selector.Selector, error) {
+func SelectorDepth(limit int64, match bool) ipld.Node {
 	ssb := newSSB()
 
 	var explore sb.SelectorSpec
@@ -54,48 +59,48 @@ func SelectorDepth(limit int64, match bool) (selector.Selector, error) {
 		selector.RecursionLimitDepth(limit),
 		explore,
 	)
-	return selector.CompileSelector(spec.Node())
+	return spec.Node()
 }
 
-func SelectorField(key string) (selector.Selector, error) {
+func SelectorField(key string) ipld.Node {
 	ssb := newSSB()
 	spec := ssb.ExploreFields(func(ef sb.ExploreFieldsSpecBuilder) {
 		ef.Insert(key, ssb.Matcher())
 	})
-	return selector.CompileSelector(spec.Node())
+	return spec.Node()
 }
 
-func SelectorIndex(i int64) (selector.Selector, error) {
+func SelectorIndex(i int64) ipld.Node {
 	ssb := newSSB()
 	spec := ssb.ExploreIndex(i, ssb.Matcher())
-	return selector.CompileSelector(spec.Node())
+	return spec.Node()
 }
 
-func SelectorPath(path datamodel.Path) (selector.Selector, error) {
+func SelectorPath(path datamodel.Path) ipld.Node {
 	ssb := newSSB()
 	if path.Len() == 0 {
 		return SelectorOne()
 	}
 
 	segs := path.Segments()
-	var currentSpec sb.SelectorSpec = ssb.Matcher()
+	var spec sb.SelectorSpec = ssb.Matcher()
 	for i := len(segs) - 1; i >= 0; i-- {
 		seg := segs[i]
 		if idx, err := seg.Index(); err == nil {
-			currentSpec = ssb.ExploreIndex(idx, currentSpec)
+			spec = ssb.ExploreIndex(idx, spec)
 		} else {
 			key := seg.String()
-			currentSpec = ssb.ExploreFields(func(ef sb.ExploreFieldsSpecBuilder) {
-				ef.Insert(key, currentSpec)
+			spec = ssb.ExploreFields(func(ef sb.ExploreFieldsSpecBuilder) {
+				ef.Insert(key, spec)
 			})
 		}
 	}
 
-	return selector.CompileSelector(currentSpec.Node())
+	return spec.Node()
 }
 
-func SelectorInterpretAs(as string, next sb.SelectorSpec) (selector.Selector, error) {
+func SelectorInterpretAs(as string, next sb.SelectorSpec) ipld.Node {
 	ssb := newSSB()
 	spec := ssb.ExploreInterpretAs(as, next)
-	return selector.CompileSelector(spec.Node())
+	return spec.Node()
 }

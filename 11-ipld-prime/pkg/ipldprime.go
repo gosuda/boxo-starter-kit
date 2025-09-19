@@ -41,7 +41,7 @@ func NewDefault(prefix *cid.Prefix, persistentWrapper *persistent.PersistentWrap
 		prefix = block.NewV1Prefix(mc.DagCbor, 0, 0)
 	}
 	if persistentWrapper == nil {
-		persistentWrapper, err = persistent.New(persistent.Pebbledb, "")
+		persistentWrapper, err = persistent.New(persistent.Memory, "")
 		if err != nil {
 			return nil, err
 		}

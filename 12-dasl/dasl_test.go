@@ -5,9 +5,10 @@ import (
 	"testing"
 	"time"
 
-	dasl "github.com/gosuda/boxo-starter-kit/12-dasl/pkg"
 	mc "github.com/multiformats/go-multicodec"
 	"github.com/stretchr/testify/require"
+
+	dasl "github.com/gosuda/boxo-starter-kit/12-dasl/pkg"
 )
 
 func TestDaslWrapperPutGet(t *testing.T) {

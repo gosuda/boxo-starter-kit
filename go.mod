@@ -9,6 +9,7 @@ require (
 	github.com/ipfs/go-datastore v0.8.3
 	github.com/ipfs/go-ds-badger v0.3.4
 	github.com/ipfs/go-ds-pebble v0.5.1
+	github.com/ipfs/go-graphsync v0.17.0
 	github.com/ipfs/go-ipfs-api v0.7.0
 	github.com/ipfs/go-ipld-format v0.6.2
 	github.com/ipld/go-car/v2 v2.14.3
@@ -66,6 +67,7 @@ require (
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
+	github.com/hannahhoward/go-pubsub v0.0.0-20200423002714-8d62886cc36e // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/huin/goupnp v1.3.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect

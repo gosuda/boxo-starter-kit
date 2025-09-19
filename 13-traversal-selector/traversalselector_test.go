@@ -96,7 +96,7 @@ func TestWalkMatchingAll(t *testing.T) {
 	w, _ := ts.New(nil)
 	root := buildBinaryTree(t, ctx, w, 3, "root")
 
-	sel, err := ts.SelectorAll(true)
+	sel, err := ts.CompileSelector(ts.SelectorAll(true))
 	require.NoError(t, err)
 
 	visit, col := ts.NewVisitAll(root)
