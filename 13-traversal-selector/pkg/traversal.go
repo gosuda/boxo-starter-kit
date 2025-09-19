@@ -30,18 +30,19 @@ func New(ipld *ipldprime.IpldWrapper) (*TraversalSelectorWrapper, error) {
 	}, nil
 }
 
-func (d *TraversalSelectorWrapper) traversalProgress() traversal.Progress {
+func (d *TraversalSelectorWrapper) defaultTraversalProgress() traversal.Progress {
 	return traversal.Progress{
 		Cfg: &traversal.Config{
 			LinkSystem: d.LinkSystem,
 			LinkTargetNodePrototypeChooser: func(_ datamodel.Link, lc linking.LinkContext) (datamodel.NodePrototype, error) {
 				return basicnode.Prototype.Any, nil
 			},
+			LinkVisitOnlyOnce: true,
 		},
 	}
 }
 
-func (d *TraversalSelectorWrapper) WalkLocalCid(
+func (d *TraversalSelectorWrapper) WalkOneNode(
 	ctx context.Context,
 	root cid.Cid,
 	visit traversal.VisitFn,
@@ -50,11 +51,11 @@ func (d *TraversalSelectorWrapper) WalkLocalCid(
 	if err != nil {
 		return fmt.Errorf("load root %s: %w", root, err)
 	}
-	prog := d.traversalProgress()
+	prog := d.defaultTraversalProgress()
 	return prog.WalkLocal(node, visit)
 }
 
-func (d *TraversalSelectorWrapper) WalkMatchingCid(
+func (d *TraversalSelectorWrapper) WalkMatching(
 	ctx context.Context,
 	root cid.Cid,
 	sel selector.Selector,
@@ -64,11 +65,11 @@ func (d *TraversalSelectorWrapper) WalkMatchingCid(
 	if err != nil {
 		return fmt.Errorf("load root %s: %w", root, err)
 	}
-	prog := d.traversalProgress()
+	prog := d.defaultTraversalProgress()
 	return prog.WalkMatching(node, sel, visit)
 }
 
-func (d *TraversalSelectorWrapper) WalkAdvCid(
+func (d *TraversalSelectorWrapper) WalkAdv(
 	ctx context.Context,
 	root cid.Cid,
 	sel selector.Selector,
@@ -78,11 +79,11 @@ func (d *TraversalSelectorWrapper) WalkAdvCid(
 	if err != nil {
 		return fmt.Errorf("load root %s: %w", root, err)
 	}
-	prog := d.traversalProgress()
+	prog := d.defaultTraversalProgress()
 	return prog.WalkAdv(node, sel, visit)
 }
 
-func (d *TraversalSelectorWrapper) WalkTransformingCid(
+func (d *TraversalSelectorWrapper) WalkTransforming(
 	ctx context.Context,
 	root cid.Cid,
 	sel selector.Selector,
@@ -92,6 +93,6 @@ func (d *TraversalSelectorWrapper) WalkTransformingCid(
 	if err != nil {
 		return nil, fmt.Errorf("load root %s: %w", root, err)
 	}
-	prog := d.traversalProgress()
+	prog := d.defaultTraversalProgress()
 	return prog.WalkTransforming(node, sel, transform)
 }

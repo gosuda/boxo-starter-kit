@@ -1,8 +1,6 @@
 package traversalselector
 
 import (
-	"errors"
-
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-ipld-prime/datamodel"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
@@ -19,8 +17,6 @@ type AdvVisitRecord struct {
 	Cid    cid.Cid
 	Reason traversal.VisitReason
 }
-
-var ErrMatchLimitReached = errors.New("match limit reached")
 
 func resolvedFromProgress(p traversal.Progress, root cid.Cid) cid.Cid {
 	c := root
@@ -55,15 +51,10 @@ type VisitCollector struct {
 	Records []VisitRecord
 }
 
-func NewVisitAll(root cid.Cid, limit int) (traversal.VisitFn, *VisitCollector) {
+func NewVisitAll(root cid.Cid) (traversal.VisitFn, *VisitCollector) {
 	col := &VisitCollector{Records: make([]VisitRecord, 0)}
-	sent := 0
 	visit := func(p traversal.Progress, n datamodel.Node) error {
 		col.Records = append(col.Records, VisitRecord{Node: n, Cid: resolvedFromProgress(p, root)})
-		sent++
-		if limit > 0 && sent >= limit {
-			return ErrMatchLimitReached
-		}
 		return nil
 	}
 	return visit, col
@@ -92,17 +83,14 @@ type TransformCollector struct {
 
 func NewTransformAll(
 	root cid.Cid,
-	limit int,
 	replacer func(p traversal.Progress, n datamodel.Node) (datamodel.Node, error),
 ) (traversal.TransformFn, *TransformCollector) {
 	if replacer == nil {
 		replacer = func(_ traversal.Progress, n datamodel.Node) (datamodel.Node, error) { return n, nil }
 	}
 	col := &TransformCollector{Records: make([]VisitRecord, 0)}
-	sent := 0
 	fn := func(p traversal.Progress, n datamodel.Node) (datamodel.Node, error) {
 		col.Records = append(col.Records, VisitRecord{Node: n, Cid: resolvedFromProgress(p, root)})
-		sent++
 		return replacer(p, n)
 	}
 	return fn, col
@@ -148,7 +136,6 @@ func NewAdvVisitOne(root cid.Cid) (traversal.AdvVisitFn, *AdvVisitOne) {
 				Reason: r,
 			}
 			state.Found = true
-			return ErrMatchLimitReached
 		}
 		return nil
 	}
@@ -159,19 +146,14 @@ type AdvVisitCollector struct {
 	Records []AdvVisitRecord
 }
 
-func NewAdvVisitAll(root cid.Cid, limit int) (traversal.AdvVisitFn, *AdvVisitCollector) {
+func NewAdvVisitAll(root cid.Cid) (traversal.AdvVisitFn, *AdvVisitCollector) {
 	col := &AdvVisitCollector{Records: make([]AdvVisitRecord, 0)}
-	sent := 0
 	fn := func(p traversal.Progress, n datamodel.Node, r traversal.VisitReason) error {
 		col.Records = append(col.Records, AdvVisitRecord{
 			Node:   n,
 			Cid:    resolvedFromProgress(p, root),
 			Reason: r,
 		})
-		sent++
-		if limit > 0 && sent >= limit {
-			return ErrMatchLimitReached
-		}
 		return nil
 	}
 	return fn, col

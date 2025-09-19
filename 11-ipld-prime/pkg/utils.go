@@ -147,13 +147,13 @@ func assignAny(ass datamodel.NodeAssembler, v any) error {
 		return ass.AssignLink(cidlink.Link{Cid: t})
 
 	case map[string]any:
-		n, err := BuildMap(t)
+		n, err := MapToNode(t)
 		if err != nil {
 			return err
 		}
 		return ass.AssignNode(n)
 	case []any:
-		n, err := BuildList(t...)
+		n, err := ListToNode(t...)
 		if err != nil {
 			return err
 		}
@@ -201,7 +201,7 @@ func assignAny(ass datamodel.NodeAssembler, v any) error {
 	return fmt.Errorf("unsupported type %T", v)
 }
 
-func BuildMap(kv map[string]any) (datamodel.Node, error) {
+func MapToNode(kv map[string]any) (datamodel.Node, error) {
 	mb := basicnode.Prototype.Map.NewBuilder()
 	ma, err := mb.BeginMap(int64(len(kv)))
 	if err != nil {
@@ -221,7 +221,7 @@ func BuildMap(kv map[string]any) (datamodel.Node, error) {
 	return mb.Build(), nil
 }
 
-func BuildList(items ...any) (datamodel.Node, error) {
+func ListToNode(items ...any) (datamodel.Node, error) {
 	lb := basicnode.Prototype.List.NewBuilder()
 	la, err := lb.BeginList(int64(len(items)))
 	if err != nil {
@@ -238,7 +238,7 @@ func BuildList(items ...any) (datamodel.Node, error) {
 	return lb.Build(), nil
 }
 
-func ExtractChildCIDs(n datamodel.Node) []cid.Cid {
+func NodeToCids(n datamodel.Node) []cid.Cid {
 	var out []cid.Cid
 	switch n.Kind() {
 	case datamodel.Kind_Link:
@@ -251,13 +251,13 @@ func ExtractChildCIDs(n datamodel.Node) []cid.Cid {
 		it := n.ListIterator()
 		for !it.Done() {
 			_, v, _ := it.Next()
-			out = append(out, ExtractChildCIDs(v)...)
+			out = append(out, NodeToCids(v)...)
 		}
 	case datamodel.Kind_Map:
 		it := n.MapIterator()
 		for !it.Done() {
 			_, v, _ := it.Next()
-			out = append(out, ExtractChildCIDs(v)...)
+			out = append(out, NodeToCids(v)...)
 		}
 	}
 	return out
