@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	block "github.com/gosuda/boxo-starter-kit/00-block-cid/pkg"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -17,395 +16,244 @@ import (
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/multiformats/go-varint"
+
+	block "github.com/gosuda/boxo-starter-kit/00-block-cid/pkg"
 )
 
 type HostWrapper struct {
 	host.Host
-
-	// config
-	maxPayload uint64
 	protoID    protocol.ID
+	maxPayload uint64
 	timeout    time.Duration
 
-	// runtime
-	receiver  chan network.Stream
-	done      chan struct{}
-	onceClose sync.Once
-	waitMu    sync.Mutex
-	waiters   map[string][]chan message
-	buf       map[string]message
+	inbox chan network.Stream
+	done  chan struct{}
 
-	// node info
-	id        peer.ID
-	addresses []multiaddr.Multiaddr
-	peers     []peer.AddrInfo
-
-	// simple stats
-	stats struct {
-		mutex          sync.RWMutex
-		BlocksSent     int64
-		BlocksReceived int64
-		PeersConnected int
-		WantListSize   int
-	}
+	mu      sync.Mutex
+	waiters map[string][]chan msg // by cid.String()
+	buf     map[string]msg
 }
 
-// NodeConfig configures a bitswap node
-type NodeConfig struct {
-	MaxPayload  uint64
+type Config struct {
 	ProtoID     string
+	MaxPayload  uint64
 	Timeout     time.Duration
-	ListenAddrs []string // Addresses to listen on (e.g., "/ip4/0.0.0.0/tcp/0")
+	ListenAddrs []string
 }
 
-func New(config *NodeConfig) (*HostWrapper, error) {
-	if config == nil {
-		config = &NodeConfig{}
+func New(cfg *Config) (*HostWrapper, error) {
+	if cfg == nil {
+		cfg = &Config{}
 	}
-	if config.MaxPayload == 0 {
-		config.MaxPayload = 1 << 20 // 1 MiB
+	if cfg.ProtoID == "" {
+		cfg.ProtoID = "/custom/xfer/1.0.0"
 	}
-	if config.ProtoID == "" {
-		config.ProtoID = "/custom/xfer/1.0.0"
+	if cfg.MaxPayload == 0 {
+		cfg.MaxPayload = 1 << 20 // 1MiB
 	}
-	if config.Timeout == 0 {
-		config.Timeout = 10 * time.Second
+	if cfg.Timeout == 0 {
+		cfg.Timeout = 10 * time.Second
 	}
-	if config == nil {
-		config = &NodeConfig{}
-	}
-	if config.ListenAddrs == nil {
-		config.ListenAddrs = []string{"/ip4/0.0.0.0/tcp/0"}
+	if len(cfg.ListenAddrs) == 0 {
+		cfg.ListenAddrs = []string{"/ip4/0.0.0.0/tcp/0"}
 	}
 
-	// Build listen addrs
-	var listenAddrs []multiaddr.Multiaddr
-	for _, addr := range config.ListenAddrs {
-		ma, err := multiaddr.NewMultiaddr(addr)
+	var las []multiaddr.Multiaddr
+	for _, s := range cfg.ListenAddrs {
+		ma, err := multiaddr.NewMultiaddr(s)
 		if err != nil {
-			return nil, fmt.Errorf("invalid listen address %s: %w", addr, err)
+			return nil, fmt.Errorf("listen addr %q: %w", s, err)
 		}
-		listenAddrs = append(listenAddrs, ma)
+		las = append(las, ma)
 	}
 
-	// Create host
-	h, err := libp2p.New(
-		libp2p.ListenAddrs(listenAddrs...),
-		libp2p.EnableRelay(), // NAT traversal aid
-	)
+	h, err := libp2p.New(libp2p.ListenAddrs(las...))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create libp2p host: %w", err)
+		return nil, err
 	}
 
-	node := &HostWrapper{
-		maxPayload: config.MaxPayload,
-		protoID:    protocol.ID(config.ProtoID),
-		timeout:    config.Timeout,
-
-		Host:      h,
-		id:        h.ID(),
-		addresses: h.Addrs(),
-
-		receiver: make(chan network.Stream, 32),
-		done:     make(chan struct{}),
-		waiters:  make(map[string][]chan message),
-		buf:      make(map[string]message),
+	n := &HostWrapper{
+		Host:       h,
+		protoID:    protocol.ID(cfg.ProtoID),
+		maxPayload: cfg.MaxPayload,
+		timeout:    cfg.Timeout,
+		inbox:      make(chan network.Stream, 32),
+		done:       make(chan struct{}),
+		waiters:    make(map[string][]chan msg),
+		buf:        make(map[string]msg),
 	}
 
-	// install handler: push streams into receiver channel
-	h.SetStreamHandler(node.protoID, func(s network.Stream) {
+	h.SetStreamHandler(n.protoID, func(s network.Stream) {
 		select {
-		case node.receiver <- s:
-		case <-node.done:
+		case n.inbox <- s:
+		case <-n.done:
 			_ = s.Reset()
 		}
 	})
-	go node.runDispatcher()
+	go n.dispatch()
 
-	return node, nil
+	return n, nil
 }
 
-// GetID returns the peer ID of this node
-func (h *HostWrapper) GetID() peer.ID {
-	return h.id
-}
-
-// GetAddresses returns the multiaddresses this node is listening on
-func (h *HostWrapper) GetAddresses() []multiaddr.Multiaddr {
-	return h.addresses
-}
-
-// GetFullAddresses returns the full multiaddresses including peer ID
-func (h *HostWrapper) GetFullAddresses() []multiaddr.Multiaddr {
-	var fullAddrs []multiaddr.Multiaddr
-	peerPart, _ := multiaddr.NewMultiaddr("/p2p/" + h.id.String())
-
-	for _, addr := range h.addresses {
-		fullAddr := addr.Encapsulate(peerPart)
-		fullAddrs = append(fullAddrs, fullAddr)
-	}
-
-	return fullAddrs
-}
-
-// ConnectToPeer connects to another bitswap node
-func (h *HostWrapper) ConnectToPeer(ctx context.Context, addrs ...multiaddr.Multiaddr) error {
-	// Extract peer info from multiaddr
-	for _, addr := range addrs {
-		info, err := peer.AddrInfoFromP2pAddr(addr)
+func (n *HostWrapper) ConnectToPeer(ctx context.Context, addrs ...multiaddr.Multiaddr) error {
+	for _, a := range addrs {
+		info, err := peer.AddrInfoFromP2pAddr(a)
 		if err != nil {
-			return fmt.Errorf("failed to parse peer address: %w", err)
+			return fmt.Errorf("parse addr: %w", err)
 		}
-
-		// Connect to peer
-		err = h.Host.Connect(ctx, *info)
-		if err != nil {
-			return fmt.Errorf("failed to connect to peer %s: %w", info.ID, err)
+		if err := n.Host.Connect(ctx, *info); err != nil {
+			return fmt.Errorf("connect %s: %w", info.ID, err)
 		}
-
-		// Update stats
-		h.peers = append(h.peers, *info)
 	}
 	return nil
 }
 
-func (h *HostWrapper) Send(ctx context.Context, payload []byte, id peer.ID) (cid.Cid, error) {
-	if id == "" {
-		if len(h.peers) == 0 {
-			return cid.Undef, fmt.Errorf("no target peer: id is empty and peer list is empty")
-		}
-		id = h.peers[0].ID
+func (n *HostWrapper) Peers() []peer.ID {
+	return n.Host.Network().Peers()
+}
+
+func (n *HostWrapper) Send(ctx context.Context, to peer.ID, payload []byte) (cid.Cid, error) {
+	if to == "" {
+		return cid.Undef, fmt.Errorf("missing peer id")
 	}
 	if len(payload) == 0 {
 		return cid.Undef, fmt.Errorf("empty payload")
 	}
-	if uint64(len(payload)) > h.maxPayload {
-		return cid.Undef, fmt.Errorf("payload too large: %d > %d", len(payload), h.maxPayload)
+	if uint64(len(payload)) > n.maxPayload {
+		return cid.Undef, fmt.Errorf("payload too large: %d > %d", len(payload), n.maxPayload)
 	}
 
-	s, err := h.Host.NewStream(ctx, id, h.protoID)
+	s, err := n.NewStream(ctx, to, n.protoID)
 	if err != nil {
-		return cid.Undef, fmt.Errorf("new stream: %w", err)
+		return cid.Undef, err
 	}
 	defer s.Close()
-	_ = s.SetDeadline(time.Now().Add(h.timeout))
+	_ = s.SetDeadline(time.Now().Add(n.timeout))
 
 	if _, err := s.Write(varint.ToUvarint(uint64(len(payload)))); err != nil {
-		return cid.Undef, fmt.Errorf("write length: %w", err)
+		return cid.Undef, fmt.Errorf("write len: %w", err)
 	}
 	if _, err := s.Write(payload); err != nil {
 		return cid.Undef, fmt.Errorf("write payload: %w", err)
 	}
 	_ = s.CloseWrite()
 
-	h.stats.mutex.Lock()
-	h.stats.BlocksSent++
-	h.stats.mutex.Unlock()
-
-	c, err := block.ComputeCID(payload, nil)
-	if err != nil {
-		return cid.Undef, err
-	}
-	return c, nil
+	return block.ComputeCID(payload, nil)
 }
 
-func (h *HostWrapper) Receive(ctx context.Context, c cid.Cid) (peer.ID, []byte, error) {
-	if !c.Defined() {
-		return "", nil, fmt.Errorf("want CID is undefined")
+// Receive blocks until a message whose CID == want arrives.
+// Returns (fromPeer, payload, error).
+func (n *HostWrapper) Receive(ctx context.Context, want cid.Cid) (peer.ID, []byte, error) {
+	if !want.Defined() {
+		return "", nil, fmt.Errorf("undefined CID")
 	}
-	key := c.String()
+	key := want.String()
 
-	// 1) fast path: buffered
-	h.waitMu.Lock()
-	if msg, ok := h.buf[key]; ok {
-		delete(h.buf, key)
-		h.waitMu.Unlock()
-		return msg.from, msg.data, nil
+	n.mu.Lock()
+	if m, ok := n.buf[key]; ok {
+		delete(n.buf, key)
+		n.mu.Unlock()
+		return m.from, m.data, nil
 	}
+	ch := make(chan msg, 1)
+	n.waiters[key] = append(n.waiters[key], ch)
+	n.mu.Unlock()
 
-	// 2) register waiter
-	ch := make(chan message, 1)
-	h.waiters[key] = append(h.waiters[key], ch)
-	h.waitMu.Unlock()
-
-	// 3) wait
 	select {
-	case msg := <-ch:
-		return msg.from, msg.data, nil
+	case m := <-ch:
+		return m.from, m.data, nil
 	case <-ctx.Done():
-		// remove myself from waiters
-		h.waitMu.Lock()
-		queue := h.waiters[key]
-		for i := range queue {
-			if queue[i] == ch {
-				h.waiters[key] = append(queue[:i], queue[i+1:]...)
+		n.mu.Lock()
+		q := n.waiters[key]
+		for i := range q {
+			if q[i] == ch {
+				n.waiters[key] = append(q[:i], q[i+1:]...)
 				break
 			}
 		}
-		if len(h.waiters[key]) == 0 {
-			delete(h.waiters, key)
+		if len(n.waiters[key]) == 0 {
+			delete(n.waiters, key)
 		}
-		h.waitMu.Unlock()
+		n.mu.Unlock()
 		return "", nil, ctx.Err()
-	case <-h.done:
+	case <-n.done:
 		return "", nil, io.EOF
 	}
 }
 
-func (h *HostWrapper) receive(s network.Stream) ([]byte, error) {
-	_ = s.SetDeadline(time.Now().Add(h.timeout))
-	br := bufio.NewReader(s)
-
-	// read uvarint length safely
-	length, err := varint.ReadUvarint(br)
-	if err != nil {
-		_ = s.Close()
-		return nil, fmt.Errorf("read length: %w", err)
+func (n *HostWrapper) GetFullAddresses() []multiaddr.Multiaddr {
+	peerPart, _ := multiaddr.NewMultiaddr("/p2p/" + n.ID().String())
+	var out []multiaddr.Multiaddr
+	for _, a := range n.Addrs() {
+		out = append(out, a.Encapsulate(peerPart))
 	}
-	if length == 0 || length > h.maxPayload {
-		_ = s.Close()
-		return nil, fmt.Errorf("invalid/too-large payload: %d", length)
-	}
-
-	// read exact payload
-	payload := make([]byte, length)
-	if _, err := io.ReadFull(br, payload); err != nil {
-		_ = s.Close()
-		return nil, fmt.Errorf("read payload: %w", err)
-	}
-
-	// if single-message-per-stream, close here; if streaming, let caller manage
-	_ = s.Close()
-
-	h.stats.mutex.Lock()
-	h.stats.BlocksReceived++
-	h.stats.mutex.Unlock()
-
-	return payload, nil
+	return out
 }
 
-func (h *HostWrapper) runDispatcher() {
-	for {
-		select {
-		case s := <-h.receiver:
-			h.handleIncomingStream(s)
-		case <-h.done:
-			return
-		}
+func (n *HostWrapper) Close() error {
+	close(n.done)
+	if n.Host != nil {
+		return n.Host.Close()
 	}
+	return nil
 }
 
-type message struct {
+// --- internal ---
+
+type msg struct {
 	from peer.ID
 	cid  cid.Cid
 	data []byte
 }
 
-func (n *HostWrapper) handleIncomingStream(s network.Stream) {
-	data, err := n.receive(s)
-	if err != nil {
+func (n *HostWrapper) dispatch() {
+	for {
+		select {
+		case s := <-n.inbox:
+			n.handle(s)
+		case <-n.done:
+			return
+		}
+	}
+}
+
+func (n *HostWrapper) handle(s network.Stream) {
+	_ = s.SetDeadline(time.Now().Add(n.timeout))
+	br := bufio.NewReader(s)
+
+	length, err := varint.ReadUvarint(br)
+	if err != nil || length == 0 || length > n.maxPayload {
+		_ = s.Close()
 		return
 	}
+
+	data := make([]byte, length)
+	if _, err := io.ReadFull(br, data); err != nil {
+		_ = s.Close()
+		return
+	}
+	_ = s.Close()
+
 	c, err := block.ComputeCID(data, nil)
 	if err != nil {
 		return
 	}
-	msg := message{
-		from: s.Conn().RemotePeer(),
-		cid:  c,
-		data: data,
-	}
-
+	m := msg{from: s.Conn().RemotePeer(), cid: c, data: data}
 	key := c.String()
-	// waiter 우선
-	n.waitMu.Lock()
-	q := n.waiters[key]
-	if len(q) > 0 {
-		ch := q[0]
-		n.waiters[key] = q[1:]
+
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	if wait := n.waiters[key]; len(wait) > 0 {
+		ch := wait[0]
+		n.waiters[key] = wait[1:]
 		if len(n.waiters[key]) == 0 {
 			delete(n.waiters, key)
 		}
-		n.waitMu.Unlock()
-
 		select {
-		case ch <- msg:
+		case ch <- m:
 		default:
 		}
 	} else {
-		n.buf[key] = msg
-		n.waitMu.Unlock()
-	}
-
-	// stats
-	n.stats.mutex.Lock()
-	n.stats.BlocksReceived++
-	n.stats.mutex.Unlock()
-}
-
-// WantBlock adds a block to the want list (simplified implementation)
-func (h *HostWrapper) WantBlock(ctx context.Context, c cid.Cid) error {
-	if !c.Defined() {
-		return fmt.Errorf("invalid CID")
-	}
-
-	// In a full bitswap implementation, this would:
-	// 1. Add CID to want list
-	// 2. Announce want to connected peers
-	// 3. Wait for providers to respond
-	// For this educational version, we simulate the behavior
-	h.stats.mutex.Lock()
-	h.stats.WantListSize++
-	h.stats.mutex.Unlock()
-
-	return nil
-}
-
-// GetConnectedPeers returns the list of connected peers
-func (h *HostWrapper) GetConnectedPeers() []peer.ID {
-	return h.Host.Network().Peers()
-}
-
-// GetStats returns current bitswap statistics
-func (h *HostWrapper) GetStats() BitswapStats {
-	h.stats.mutex.RLock()
-	defer h.stats.mutex.RUnlock()
-
-	return BitswapStats{
-		BlocksSent:     h.stats.BlocksSent,
-		BlocksReceived: h.stats.BlocksReceived,
-		PeersConnected: len(h.GetConnectedPeers()),
-		WantListSize:   h.stats.WantListSize,
-		NodeID:         h.id.String(),
+		n.buf[key] = m
 	}
 }
-
-// BitswapStats contains bitswap node statistics
-type BitswapStats struct {
-	BlocksSent     int64  `json:"blocks_sent"`
-	BlocksReceived int64  `json:"blocks_received"`
-	PeersConnected int    `json:"peers_connected"`
-	WantListSize   int    `json:"want_list_size"`
-	NodeID         string `json:"node_id"`
-}
-
-// Close shuts down the bitswap node
-func (h *HostWrapper) Close() error {
-	if h.Host != nil {
-		return h.Host.Close()
-	}
-	return nil
-}
-
-// updatePeerStats updates peer-related statistics
-func (h *HostWrapper) updatePeerStats() {
-	h.stats.mutex.Lock()
-	defer h.stats.mutex.Unlock()
-
-	h.stats.PeersConnected = len(h.GetConnectedPeers())
-}
-
-// Note: This simplified implementation focuses on demonstrating P2P networking concepts
-// rather than full bitswap protocol implementation. In a production system,
-// you would use the complete boxo bitswap package with proper routing,
-// want-list management, and provider discovery.

@@ -1,14 +1,19 @@
-# 02-network-bitswap: P2P Networking and Block Exchange
+# 02-network: P2P Networking using libp2p
+
+This module demonstrates the simplest possible P2P communication using libp2p:
+- A single custom protocol
+- Length-prefixed payload transmission
+- Receiving side computes a CID and delivers the message only when the requested CID arrives
+
+This is a pure networking demo. Bitswap, DHT, wantlists, sessions, and advanced strategies are not included.
 
 ## 🎯 Learning Objectives
 
 Through this module, you will learn:
-- **P2P networking** fundamentals and IPFS network architecture
-- **Bitswap protocol** for efficient block exchange between peers
-- **Want-list** management and block request/response mechanisms
-- **DHT (Distributed Hash Table)** for peer discovery and content routing
-- **Network optimization** strategies for better performance
-- **Real-world deployment** considerations for production networks
+- **P2P networking** Create and configure a libp2p host
+- **Peer connections** Establish connections between peers using multiaddresses
+- **Custom protocols** Implement a simple protocol for data exchange
+- **Message transmission** Send and receive length-prefixed messages
 
 ## 📋 Prerequisites
 
@@ -19,28 +24,27 @@ Through this module, you will learn:
 
 ## 🔑 Key Concepts
 
-### What is Bitswap?
+### What is libp2p?
 
-**Bitswap** is IPFS's block exchange protocol that enables peers to efficiently trade data blocks:
+**libp2p** is a modular peer-to-peer networking stack. It provides the building blocks for peers to discover each other, establish encrypted connections, and exchange messages over custom protocols:
 
 ```
 Traditional Client-Server:
 Client → Server: "Give me file.txt"
 Server → Client: [entire file]
 
-IPFS Bitswap:
-Peer A → Network: "I want blocks: [CID1, CID2, CID3]"
-Peer B → Peer A: "I have CID1" → [block data]
-Peer C → Peer A: "I have CID2" → [block data]
+libp2p Peer-to-Peer:
+Peer A → Peer B: "Open a stream using /custom/proto/1.0.0"
+Peer B → Peer A: [response data]
+Peer A ↔ Peer C: [parallel stream using the same or another protocol]
 ```
 
 ### Key Components
 
-1. **Want-list**: List of blocks a peer is seeking
-2. **Have-list**: List of blocks a peer can provide
-3. **Bitswap Ledger**: Credit/debt tracking between peers
-4. **Session**: Context for related block requests
-5. **Strategy**: Algorithm for prioritizing requests and responses
+1. **Peer Identity**: Each peer has a cryptographic ID (peer.ID) derived from its public key.
+2. **Multiaddress**: Unified addressing format (/ip4/127.0.0.1/tcp/4001/p2p/Qm...) that encodes transport + peer ID.
+3. **Transport**: Underlying protocol (TCP, WebRTC, etc.) used for connections.
+4. **Streaming Multiplexing**: Bidirectional channel over a connection for protocol-specific communication.
 
 ### Network Architecture
 
@@ -48,196 +52,14 @@ Peer C → Peer A: "I have CID2" → [block data]
 ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
 │    Peer A   │    │    Peer B   │    │    Peer C   │
 │ ┌─────────┐ │    │ ┌─────────┐ │    │ ┌─────────┐ │
-│ │Bitswap  │←┼────┼→│Bitswap  │←┼────┼→│Bitswap  │ │
+│ │ Protocol│←┼────┼→│ Protocol│←┼────┼→│ Protocol│ │
+│ │ Handler │ │    │ │ Handler │ │    │ │ Handler │ │
 │ └─────────┘ │    │ └─────────┘ │    │ └─────────┘ │
 │ ┌─────────┐ │    │ ┌─────────┐ │    │ ┌─────────┐ │
-│ │ DHT     │←┼────┼→│ DHT     │←┼────┼→│ DHT     │ │
+│ │Transport│←┼────┼→│Transport│←┼────┼→│Transport│ │
 │ └─────────┘ │    │ └─────────┘ │    │ └─────────┘ │
 └─────────────┘    └─────────────┘    └─────────────┘
 ```
-
-## 💻 Code Analysis
-
-### 1. Network Manager Structure
-
-```go
-// pkg/network.go:20-35
-type NetworkManager struct {
-    host      host.Host
-    bitswap   exchange.Interface
-    dht       *dht.IpfsDHT
-    blockstore blockstore.Blockstore
-    sessions  map[string]*BitswapSession
-    ctx       context.Context
-    cancel    context.CancelFunc
-    mutex     sync.RWMutex
-}
-
-func NewNetworkManager(bs blockstore.Blockstore) (*NetworkManager, error) {
-    ctx, cancel := context.WithCancel(context.Background())
-
-    // Create libp2p host
-    h, err := libp2p.New()
-    if err != nil {
-        cancel()
-        return nil, fmt.Errorf("failed to create libp2p host: %w", err)
-    }
-
-    return &NetworkManager{
-        host:       h,
-        blockstore: bs,
-        sessions:   make(map[string]*BitswapSession),
-        ctx:        ctx,
-        cancel:     cancel,
-    }, nil
-}
-```
-
-**Design Features**:
-- Centralized network management
-- Session-based block retrieval
-- Context-based lifecycle management
-- Thread-safe session tracking
-
-### 2. Bitswap Integration
-
-```go
-// pkg/network.go:65-85
-func (nm *NetworkManager) StartBitswap() error {
-    // Initialize DHT for peer discovery
-    dhtInstance, err := dht.New(nm.ctx, nm.host)
-    if err != nil {
-        return fmt.Errorf("failed to create DHT: %w", err)
-    }
-    nm.dht = dhtInstance
-
-    // Bootstrap DHT
-    if err := nm.dht.Bootstrap(nm.ctx); err != nil {
-        return fmt.Errorf("failed to bootstrap DHT: %w", err)
-    }
-
-    // Create Bitswap network adapter
-    network := bsnet.NewFromIpfsHost(nm.host, nm.dht)
-
-    // Initialize Bitswap exchange
-    nm.bitswap = bitswap.New(nm.ctx, network, nm.blockstore)
-
-    fmt.Printf("Bitswap started on peer: %s\n", nm.host.ID().Pretty())
-    return nil
-}
-```
-
-**Integration Process**:
-1. **DHT Initialization**: Enable peer and content discovery
-2. **DHT Bootstrap**: Connect to known peers in network
-3. **Network Adapter**: Bridge libp2p and Bitswap protocols
-4. **Bitswap Creation**: Initialize block exchange engine
-
-### 3. Block Request Implementation
-
-```go
-// pkg/network.go:120-150
-func (nm *NetworkManager) GetBlock(ctx context.Context, c cid.Cid) (blocks.Block, error) {
-    // Check local blockstore first
-    if has, err := nm.blockstore.Has(ctx, c); err == nil && has {
-        return nm.blockstore.Get(ctx, c)
-    }
-
-    // Create or get existing session
-    sessionID := "default"
-    session := nm.getOrCreateSession(sessionID)
-
-    // Request block through Bitswap
-    block, err := session.GetBlock(ctx, c)
-    if err != nil {
-        return nil, fmt.Errorf("failed to get block %s: %w", c, err)
-    }
-
-    // Store in local blockstore
-    if err := nm.blockstore.Put(ctx, block); err != nil {
-        fmt.Printf("Warning: failed to store block locally: %v\n", err)
-    }
-
-    return block, nil
-}
-
-func (nm *NetworkManager) GetBlocks(ctx context.Context, cids []cid.Cid) (<-chan blocks.Block, error) {
-    sessionID := "batch-" + uuid.New().String()
-    session := nm.getOrCreateSession(sessionID)
-
-    blockCh := make(chan blocks.Block, len(cids))
-
-    go func() {
-        defer close(blockCh)
-        defer nm.closeSession(sessionID)
-
-        for block := range session.GetBlocks(ctx, cids) {
-            // Store locally
-            nm.blockstore.Put(ctx, block)
-            blockCh <- block
-        }
-    }()
-
-    return blockCh, nil
-}
-```
-
-**Request Strategy**:
-1. **Local Check**: Always check local storage first
-2. **Session Management**: Use sessions for efficient batch requests
-3. **Network Request**: Leverage Bitswap for missing blocks
-4. **Local Caching**: Store retrieved blocks for future use
-
-### 4. Want-list Management
-
-```go
-// pkg/session.go:25-50
-type BitswapSession struct {
-    exchange   exchange.SessionExchange
-    wantlist   *Wantlist
-    peers      map[peer.ID]*PeerContext
-    strategy   RequestStrategy
-    mutex      sync.RWMutex
-}
-
-type Wantlist struct {
-    wants  map[cid.Cid]*WantEntry
-    mutex  sync.RWMutex
-}
-
-type WantEntry struct {
-    Cid      cid.Cid
-    Priority int32
-    WantType pb.Message_Wantlist_WantType
-    SendDontHave bool
-    Created  time.Time
-}
-
-func (w *Wantlist) Add(c cid.Cid, priority int32, wantType pb.Message_Wantlist_WantType) {
-    w.mutex.Lock()
-    defer w.mutex.Unlock()
-
-    w.wants[c] = &WantEntry{
-        Cid:      c,
-        Priority: priority,
-        WantType: wantType,
-        SendDontHave: true,
-        Created:  time.Now(),
-    }
-}
-
-func (w *Wantlist) Remove(c cid.Cid) {
-    w.mutex.Lock()
-    defer w.mutex.Unlock()
-    delete(w.wants, c)
-}
-```
-
-**Want-list Features**:
-- **Priority System**: Higher priority requests processed first
-- **Want Types**: Block vs Have (existence check)
-- **Timeout Handling**: Remove stale requests
-- **Thread Safety**: Concurrent access protection
 
 ## 🏃‍♂️ Practice Guide
 
@@ -252,24 +74,28 @@ go run main.go
 ```
 === IPFS P2P Network Demo ===
 
-1. Initializing Network Manager:
-   ✅ LibP2P host created: 12D3KooWBhvWaF...
-   ✅ DHT initialized and bootstrapped
-   ✅ Bitswap exchange started
-   🌐 Connected to 0 peers initially
+1. Creating libp2p nodes:
+   ✅ Node 1 created: 12D3KooWP6uX...
+   ✅ Node 2 created: 12D3KooWDhod...
 
-2. Connecting to Bootstrap Peers:
-   🔄 Attempting to connect to bootstrap peers...
-   ✅ Connected to peer: 12D3KooWLRhRdq...
-   ✅ Connected to peer: 12D3KooWMySNaP...
-   🌐 Total connected peers: 2
+2. Connecting nodes:
+   ✅ Node 1 connected to Node 2
 
-3. Testing Block Exchange:
-   📤 Publishing test blocks to network...
-   ✅ Block published: bafkreigh2akiscaid6...
-   📥 Requesting blocks from network...
-   ✅ Block retrieved: bafkreigh2akiscaid6...
-   🔍 Block validation: PASSED
+3. Storing content in Node 1:
+   ✅ Content stored...
+
+4. Retrieving content from Node 2:
+   ✅ Content retrieved: Hello, libp2p World! This is a test message for P2P block exchange.
+
+5. Multiple block exchange test:
+   ✅ Stored block 1: bafkreigb7tfrfwhxfyd...
+   ✅ Stored block 2: bafkreicnzymjdhro2wc...
+   ✅ Stored block 3: bafkreig6ruxlrdbe23s...
+
+   Attempting to retrieve blocks from Node 2:
+   ✅ Retrieved block 1: First message for libp2p exchange
+   ✅ Retrieved block 2: Second message with different content
+   ✅ Retrieved block 3: Third message to test multiple blocks
 ```
 
 ### 2. Two-Peer Communication Test
@@ -305,117 +131,7 @@ go test -v ./...
 - ✅ Network initialization and cleanup
 - ✅ Peer discovery and connection
 - ✅ Block publishing and retrieval
-- ✅ Want-list management
 - ✅ Session lifecycle management
-
-## 🚀 Advanced Features
-
-### 1. Custom Request Strategy
-
-```go
-type PriorityStrategy struct {
-    highPriority map[cid.Cid]bool
-    peers        map[peer.ID]*PeerReputation
-}
-
-type PeerReputation struct {
-    ResponseTime    time.Duration
-    SuccessRate     float64
-    LastInteraction time.Time
-}
-
-func (ps *PriorityStrategy) SelectPeers(c cid.Cid, available []peer.ID) []peer.ID {
-    // Sort peers by reputation
-    sort.Slice(available, func(i, j int) bool {
-        repI := ps.peers[available[i]]
-        repJ := ps.peers[available[j]]
-
-        if repI.SuccessRate != repJ.SuccessRate {
-            return repI.SuccessRate > repJ.SuccessRate
-        }
-
-        return repI.ResponseTime < repJ.ResponseTime
-    })
-
-    // Return top 3 peers
-    if len(available) > 3 {
-        available = available[:3]
-    }
-
-    return available
-}
-```
-
-### 2. Content Routing Optimization
-
-```go
-func (nm *NetworkManager) AnnounceContent(ctx context.Context, c cid.Cid) error {
-    // Announce to DHT that we have this content
-    if err := nm.dht.Provide(ctx, c, true); err != nil {
-        return fmt.Errorf("failed to announce content: %w", err)
-    }
-
-    // Also announce to connected Bitswap peers
-    nm.bitswap.NotifyNewBlocks(ctx, blocks.NewBlock([]byte{}, c))
-
-    return nil
-}
-
-func (nm *NetworkManager) FindProviders(ctx context.Context, c cid.Cid, maxProviders int) ([]peer.AddrInfo, error) {
-    // Query DHT for content providers
-    providers := nm.dht.FindProviders(ctx, c)
-
-    var result []peer.AddrInfo
-    for provider := range providers {
-        result = append(result, provider)
-        if len(result) >= maxProviders {
-            break
-        }
-    }
-
-    return result, nil
-}
-```
-
-### 3. Network Monitoring
-
-```go
-type NetworkStats struct {
-    ConnectedPeers    int           `json:"connected_peers"`
-    BlocksRequested   int64         `json:"blocks_requested"`
-    BlocksProvided    int64         `json:"blocks_provided"`
-    AverageLatency    time.Duration `json:"average_latency"`
-    WantlistSize      int           `json:"wantlist_size"`
-    ActiveSessions    int           `json:"active_sessions"`
-}
-
-func (nm *NetworkManager) GetNetworkStats() *NetworkStats {
-    nm.mutex.RLock()
-    defer nm.mutex.RUnlock()
-
-    return &NetworkStats{
-        ConnectedPeers:  len(nm.host.Network().Peers()),
-        ActiveSessions:  len(nm.sessions),
-        WantlistSize:    nm.getCurrentWantlistSize(),
-    }
-}
-
-func (nm *NetworkManager) StartMonitoring(interval time.Duration) {
-    ticker := time.NewTicker(interval)
-    defer ticker.Stop()
-
-    for {
-        select {
-        case <-ticker.C:
-            stats := nm.GetNetworkStats()
-            fmt.Printf("Network Stats: %+v\n", stats)
-
-        case <-nm.ctx.Done():
-            return
-        }
-    }
-}
-```
 
 ## ⚠️ Best Practices and Considerations
 
@@ -423,24 +139,14 @@ func (nm *NetworkManager) StartMonitoring(interval time.Duration) {
 
 ```go
 // ✅ Always clean up network resources
-func (nm *NetworkManager) Close() error {
-    nm.cancel() // Cancel context
+func (n *HostWrapper) Close() error {
+    // Signal the dispatcher to exit.
+    // Safe to close multiple times thanks to the nil-check and host.Close semantics.
+    close(n.done)
 
-    // Close Bitswap
-    if nm.bitswap != nil {
-        nm.bitswap.Close()
+    if n.Host != nil {
+        return n.Host.Close()
     }
-
-    // Close DHT
-    if nm.dht != nil {
-        nm.dht.Close()
-    }
-
-    // Close libp2p host
-    if nm.host != nil {
-        nm.host.Close()
-    }
-
     return nil
 }
 ```
@@ -448,54 +154,75 @@ func (nm *NetworkManager) Close() error {
 ### 2. Error Handling and Retries
 
 ```go
-// ✅ Implement exponential backoff for network requests
-func (nm *NetworkManager) GetBlockWithRetry(ctx context.Context, c cid.Cid, maxRetries int) (blocks.Block, error) {
+func backoff(attempt int) time.Duration {
+    return time.Duration(attempt*attempt) * time.Second
+}
+
+// ✅ Retry Send with exponential backoff
+func SendWithRetry(ctx context.Context, n *HostWrapper, to peer.ID, payload []byte, maxRetries int) (cid.Cid, error) {
     var lastErr error
-
     for attempt := 0; attempt < maxRetries; attempt++ {
-        block, err := nm.GetBlock(ctx, c)
+        c, err := n.Send(ctx, to, payload)
         if err == nil {
-            return block, nil
+            return c, nil
         }
-
         lastErr = err
 
-        // Exponential backoff
-        delay := time.Duration(attempt*attempt) * time.Second
+        // Wait unless context is already done
         select {
-        case <-time.After(delay):
-            continue
+        case <-time.After(backoff(attempt)):
         case <-ctx.Done():
-            return nil, ctx.Err()
+            return cid.Undef, ctx.Err()
         }
     }
+    return cid.Undef, fmt.Errorf("send failed after %d attempts: %w", maxRetries, lastErr)
+}
 
-    return nil, fmt.Errorf("failed after %d attempts: %w", maxRetries, lastErr)
+// ✅ Retry Receive with exponential backoff on timeout
+func ReceiveWithRetry(ctx context.Context, n *HostWrapper, want cid.Cid, maxRetries int) (peer.ID, []byte, error) {
+    var lastErr error
+    for attempt := 0; attempt < maxRetries; attempt++ {
+        from, data, err := n.Receive(ctx, want)
+        if err == nil {
+            return from, data, nil
+        }
+        lastErr = err
+
+        // If the context was canceled by caller, bubble up immediately.
+        if ctx.Err() != nil {
+            return "", nil, ctx.Err()
+        }
+        // Small pause before re-waiting; upstream sender may not have pushed yet.
+        select {
+        case <-time.After(backoff(attempt)):
+        case <-ctx.Done():
+            return "", nil, ctx.Err()
+        }
+    }
+    return "", nil, fmt.Errorf("receive failed after %d attempts: %w", maxRetries, lastErr)
 }
 ```
 
 ### 3. Security Considerations
 
 ```go
-// ✅ Validate blocks before accepting
-func (nm *NetworkManager) validateBlock(block blocks.Block) error {
-    // Verify CID matches content
-    expectedCID, err := block.Cid().Prefix().Sum(block.RawData())
+func ValidatePayloadAgainstCID(expected cid.Cid, payload []byte) error {
+    // Recompute using your canonical prefix; this must match ComputeCID used in Send/handle.
+    got, err := block.ComputeCID(payload, nil)
     if err != nil {
-        return fmt.Errorf("failed to calculate CID: %w", err)
+        return fmt.Errorf("compute cid: %w", err)
     }
-
-    if !expectedCID.Equals(block.Cid()) {
-        return fmt.Errorf("block CID mismatch: expected %s, got %s",
-            expectedCID, block.Cid())
+    if got != expected {
+        return fmt.Errorf("cid mismatch: expected %s, got %s", expected, got)
     }
+    return nil
+}
 
-    // Check block size limits
-    if len(block.RawData()) > MaxBlockSize {
-        return fmt.Errorf("block too large: %d bytes > %d",
-            len(block.RawData()), MaxBlockSize)
+// Optional: guard against self-dial at call sites.
+func AvoidSelfDial(self, target peer.ID) error {
+    if self == target {
+        return fmt.Errorf("dial to self attempted")
     }
-
     return nil
 }
 ```
@@ -594,12 +321,9 @@ func (nm *NetworkManager) selectBestPeers(candidates []peer.ID) []peer.ID {
 ## 📚 Next Steps
 
 ### Related Modules
-1. **03-dag-ipld**: Learn how blocks connect to form complex structures
-2. **04-unixfs**: Understand file system abstraction over the network
-3. **05-pin-gc**: Learn data lifecycle management in networked environment
+1. **03-bitswap**: Dive deeper into the Bitswap protocol for block exchange
 
 ### Advanced Topics
-- Custom Bitswap strategies
 - Network topology optimization
 - Content routing algorithms
 - DHT performance tuning
@@ -607,13 +331,13 @@ func (nm *NetworkManager) selectBestPeers(candidates []peer.ID) []peer.ID {
 ## 🎓 Practice Exercises
 
 ### Basic Exercises
-1. Create a simple file sharing application using Bitswap
+1. Create a simple file sharing application using libp2p
 2. Implement a custom want-list prioritization algorithm
 3. Build a network monitor that displays real-time peer connections
 
 ### Advanced Exercises
-1. Design a content distribution network using IPFS
+1. Design a content distribution network using libp2p
 2. Implement a reputation system for peer selection
 3. Create a caching layer that optimizes block retrieval patterns
 
-You now understand how IPFS uses P2P networking and Bitswap for efficient block exchange. The next modules will show you how to structure and organize this networked data! 🚀
+You now understand how libp2p uses P2P networking for efficient block exchange. The next modules will show you how to structure and organize this networked data! 🚀

@@ -16,18 +16,18 @@ func TestHost(t *testing.T) {
 	defer cancel()
 
 	t.Run("Node Creation", func(t *testing.T) {
-		// Create bitswap node
-		node, err := network.New(&network.NodeConfig{
+		// Create node
+		node, err := network.New(&network.Config{
 			ListenAddrs: []string{"/ip4/127.0.0.1/tcp/0"},
 		})
 		require.NoError(t, err)
 		defer node.Close()
 
 		// Verify node properties
-		nodeID := node.GetID()
+		nodeID := node.ID()
 		assert.NotEmpty(t, nodeID.String())
 
-		addrs := node.GetAddresses()
+		addrs := node.Addrs()
 		assert.Greater(t, len(addrs), 0, "Node should have at least one address")
 
 		fullAddrs := node.GetFullAddresses()
@@ -36,14 +36,14 @@ func TestHost(t *testing.T) {
 
 	t.Run("Two Node Connection", func(t *testing.T) {
 		// Create first node
-		node1, err := network.New(&network.NodeConfig{
+		node1, err := network.New(&network.Config{
 			ListenAddrs: []string{"/ip4/127.0.0.1/tcp/0"},
 		})
 		require.NoError(t, err)
 		defer node1.Close()
 
 		// Create second node
-		node2, err := network.New(&network.NodeConfig{
+		node2, err := network.New(&network.Config{
 			ListenAddrs: []string{"/ip4/127.0.0.1/tcp/0"},
 		})
 		require.NoError(t, err)
@@ -60,23 +60,23 @@ func TestHost(t *testing.T) {
 		time.Sleep(1 * time.Second)
 
 		// Check connection stats
-		peers1 := node1.GetConnectedPeers()
-		peers2 := node2.GetConnectedPeers()
+		peers1 := node1.Peers()
+		peers2 := node2.Peers()
 
 		// Both nodes should see each other as connected
-		assert.Contains(t, peers1, node2.GetID(), "Node 1 should see Node 2 as connected")
-		assert.Contains(t, peers2, node1.GetID(), "Node 2 should see Node 1 as connected")
+		assert.Contains(t, peers1, node2.ID(), "Node 1 should see Node 2 as connected")
+		assert.Contains(t, peers2, node1.ID(), "Node 2 should see Node 1 as connected")
 	})
 
 	t.Run("Two Nodes Connection: Send/Receive", func(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		node1, _ := network.New(&network.NodeConfig{
+		node1, _ := network.New(&network.Config{
 			ListenAddrs: []string{"/ip4/127.0.0.1/tcp/0"},
 		})
 		defer node1.Close()
-		node2, _ := network.New(&network.NodeConfig{
+		node2, _ := network.New(&network.Config{
 			ListenAddrs: []string{"/ip4/127.0.0.1/tcp/0"},
 		})
 		defer node2.Close()
@@ -84,66 +84,30 @@ func TestHost(t *testing.T) {
 		require.NoError(t, node2.ConnectToPeer(ctx, node1.GetFullAddresses()[0]))
 
 		payload := []byte("hi data")
-		cid, err := node2.Send(ctx, payload, node1.GetID())
+		cid, err := node2.Send(ctx, node1.ID(), payload)
 		require.NoError(t, err)
 
 		from, got, err := node1.Receive(ctx, cid)
 		require.NoError(t, err)
-		assert.Equal(t, node2.GetID(), from)
+		assert.Equal(t, from, node2.ID())
 		assert.Equal(t, payload, got)
 	})
 
-	t.Run("Statistics Tracking", func(t *testing.T) {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-
-		node1, _ := network.New(&network.NodeConfig{
-			ListenAddrs: []string{"/ip4/127.0.0.1/tcp/0"},
-		})
-		defer node1.Close()
-		node2, _ := network.New(&network.NodeConfig{
-			ListenAddrs: []string{"/ip4/127.0.0.1/tcp/0"},
-		})
-		defer node2.Close()
-
-		require.NoError(t, node2.ConnectToPeer(ctx, node1.GetFullAddresses()[0]))
-
-		// Initial stats
-		initialStats := node1.GetStats()
-		assert.Equal(t, int64(0), initialStats.BlocksSent)
-		assert.Equal(t, int64(0), initialStats.BlocksReceived)
-		assert.NotEmpty(t, initialStats.NodeID)
-
-		// Store a block
-		testData := []byte("Statistics test data")
-		cid, err := node2.Send(ctx, testData, "")
-		require.NoError(t, err)
-
-		// Retrieve the block
-		_, _, err = node1.Receive(ctx, cid)
-		require.NoError(t, err)
-
-		// Check updated stats
-		finalStats := node1.GetStats()
-		finalStats2 := node2.GetStats()
-		assert.Greater(t, finalStats.BlocksReceived, initialStats.BlocksReceived, "Blocks received should increase")
-		assert.Greater(t, finalStats2.BlocksSent, initialStats.BlocksSent, "Blocks sent should increase")
-	})
 }
 
 func TestConfig(t *testing.T) {
 	t.Run("Default Configuration", func(t *testing.T) {
 		// Test with empty config (should use defaults)
-		node, err := network.New(&network.NodeConfig{})
+		node, err := network.New(&network.Config{})
 		require.NoError(t, err)
 		defer node.Close()
 
-		addrs := node.GetAddresses()
+		addrs := node.GetFullAddresses()
 		assert.Greater(t, len(addrs), 0, "Should have default addresses")
 	})
 
 	t.Run("Custom Listen Addresses", func(t *testing.T) {
-		node, err := network.New(&network.NodeConfig{
+		node, err := network.New(&network.Config{
 			ListenAddrs: []string{
 				"/ip4/127.0.0.1/tcp/0",
 				"/ip6/::1/tcp/0",
@@ -152,12 +116,12 @@ func TestConfig(t *testing.T) {
 		require.NoError(t, err)
 		defer node.Close()
 
-		addrs := node.GetAddresses()
+		addrs := node.GetFullAddresses()
 		assert.GreaterOrEqual(t, len(addrs), 1, "Should have at least one address")
 	})
 
 	t.Run("Invalid Listen Address", func(t *testing.T) {
-		_, err := network.New(&network.NodeConfig{
+		_, err := network.New(&network.Config{
 			ListenAddrs: []string{"invalid-address"},
 		})
 		assert.Error(t, err, "Should fail with invalid address")
