@@ -3,54 +3,60 @@ package ipni
 import (
 	"context"
 	"os"
+	"time"
 
-	dag "github.com/gosuda/boxo-starter-kit/04-dag-ipld/pkg"
 	"github.com/ipfs/go-cid"
 	"github.com/ipni/go-indexer-core"
 	"github.com/ipni/go-indexer-core/cache/radixcache"
 	"github.com/ipni/go-indexer-core/engine"
 	"github.com/ipni/go-indexer-core/store/pebble"
+	md "github.com/ipni/go-libipni/metadata"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/multiformats/go-multihash"
+	mh "github.com/multiformats/go-multihash"
 )
 
+// -----------------------------
+// Fetcher: Remote indexer fetcher
+// -----------------------------
+
 type IPNIWrapper struct {
-	dagWrapper *dag.IpldWrapper
-	Engine     *engine.Engine
+	Engine       *engine.Engine
+	Planner      *Planner
+	HealthScorer HealthScorer
+	DefaultTTL   time.Duration
 }
 
-func NewIPNIWrapper(path string, dagWrapper *dag.IpldWrapper) (*IPNIWrapper, error) {
+func NewIPNIWrapper(path string) (*IPNIWrapper, error) {
 	if path == "" {
-		path = os.TempDir() + "ipni"
+		path = os.TempDir() + "/ipni"
 	}
 
 	store, err := pebble.New(path, nil)
 	if err != nil {
 		return nil, err
 	}
-	// 4 MB
+	// 4 MB cache
 	cache := radixcache.New(4 * 1024 * 1024)
 
 	eng := engine.New(store, engine.WithCache(cache), engine.WithCacheOnPut(true))
+
+	// scoring-only planner with default policy
+	pl := NewPlanner(nil)
+
 	return &IPNIWrapper{
-		dagWrapper: dagWrapper,
-		Engine:     eng,
+		Engine:       eng,
+		Planner:      pl,
+		HealthScorer: nil,              // can be set via SetHealthScorer
+		DefaultTTL:   60 * time.Second, // used when composing Providers
 	}, nil
 }
 
-func (w *IPNIWrapper) Close() error {
-	if w.dagWrapper != nil {
-		w.dagWrapper.BlockServiceWrapper.Close()
-	}
-
-	return w.Engine.Close()
-}
-
+func (w *IPNIWrapper) Close() error                   { return w.Engine.Close() }
 func (w *IPNIWrapper) Flush() error                   { return w.Engine.Flush() }
 func (w *IPNIWrapper) Size() (int64, error)           { return w.Engine.Size() }
 func (w *IPNIWrapper) Stats() (*indexer.Stats, error) { return w.Engine.Stats() }
 
-func (w *IPNIWrapper) PutMultihashes(ctx context.Context, val indexer.Value, mhs ...multihash.Multihash) error {
+func (w *IPNIWrapper) PutMultihashes(ctx context.Context, val indexer.Value, mhs ...mh.Multihash) error {
 	if len(mhs) == 0 {
 		return nil
 	}
@@ -61,7 +67,7 @@ func (w *IPNIWrapper) PutCID(ctx context.Context, val indexer.Value, c cid.Cid) 
 	return w.Engine.Put(val, c.Hash())
 }
 
-func (w *IPNIWrapper) Remove(ctx context.Context, val indexer.Value, mhs ...multihash.Multihash) error {
+func (w *IPNIWrapper) Remove(ctx context.Context, val indexer.Value, mhs ...mh.Multihash) error {
 	return w.Engine.Remove(val, mhs...)
 }
 
@@ -77,6 +83,109 @@ func (w *IPNIWrapper) GetProvidersByCID(ctx context.Context, c cid.Cid) ([]index
 	return w.Engine.Get(c.Hash())
 }
 
-func (w *IPNIWrapper) GetProviders(ctx context.Context, mh multihash.Multihash) ([]indexer.Value, bool, error) {
+func (w *IPNIWrapper) GetProviders(ctx context.Context, mh mh.Multihash) ([]indexer.Value, bool, error) {
 	return w.Engine.Get(mh)
+}
+
+// =====================================================================
+// PUT helpers (wrap MetadataBytes creation for each transport)
+// =====================================================================
+
+func (w *IPNIWrapper) PutBitswap(ctx context.Context, pid peer.ID, contextID []byte, mhs ...mh.Multihash) error {
+	meta := md.Bitswap{}
+	metaBytes, err := meta.MarshalBinary()
+	if err != nil {
+		return err
+	}
+
+	val := indexer.Value{ProviderID: pid, ContextID: contextID, MetadataBytes: metaBytes}
+	return w.PutMultihashes(ctx, val, mhs...)
+}
+
+func (w *IPNIWrapper) PutGraphSync(ctx context.Context, pid peer.ID, contextID []byte, mhs ...mh.Multihash) error {
+	val := indexer.Value{ProviderID: pid, ContextID: contextID, MetadataBytes: nil}
+	return w.PutMultihashes(ctx, val, mhs...)
+}
+
+func (w *IPNIWrapper) PutHTTP(ctx context.Context, pid peer.ID, contextID []byte, urls []string, partialCAR bool, auth bool, mhs ...mh.Multihash) error {
+	meta := md.IpfsGatewayHttp{}
+	// TODO : WHY are we not setting URLs here?
+	metaBytes, err := meta.MarshalBinary()
+	if err != nil {
+		return err
+	}
+	val := indexer.Value{ProviderID: pid, ContextID: contextID, MetadataBytes: metaBytes}
+	return w.PutMultihashes(ctx, val, mhs...)
+}
+
+// Planning helpers (scoring-only)
+// RankedFetchers returns a simplified prioritized list of (providerID, transport)
+// derived from the Plan, for easy wiring into a multifetcher.
+type RankedFetcher struct {
+	ProviderID string
+	Proto      TransportKind
+	Meta       map[string]string // small hints like region / partial_car
+}
+
+func (w *IPNIWrapper) RankedFetchersByCID(ctx context.Context, c cid.Cid, in RouteIntent) ([]RankedFetcher, bool, error) {
+	pl, hit, err := w.PlanByCID(ctx, c, in)
+	if err != nil {
+		return nil, hit, err
+	}
+	out := make([]RankedFetcher, 0, len(pl.Attempts))
+	for _, a := range pl.Attempts {
+		out = append(out, RankedFetcher{
+			ProviderID: a.ProviderID,
+			Proto:      a.Proto,
+			Meta:       a.Meta,
+		})
+	}
+	return out, hit, nil
+}
+
+func (w *IPNIWrapper) RankedFetchers(ctx context.Context, mh mh.Multihash, in RouteIntent) ([]RankedFetcher, bool, error) {
+	pl, hit, err := w.Plan(ctx, mh, in)
+	if err != nil {
+		return nil, hit, err
+	}
+	out := make([]RankedFetcher, 0, len(pl.Attempts))
+	for _, a := range pl.Attempts {
+		out = append(out, RankedFetcher{
+			ProviderID: a.ProviderID,
+			Proto:      a.Proto,
+			Meta:       a.Meta,
+		})
+	}
+	return out, hit, nil
+}
+
+// PlanByCID reads local providers (engine), normalizes them, and returns a scoring-only Plan.
+// This does NOT fetch from a remote indexer and does NOT execute any network transfer.
+func (w *IPNIWrapper) PlanByCID(ctx context.Context, c cid.Cid, in RouteIntent) (Plan, bool, error) {
+	vals, hit, err := w.Engine.Get(c.Hash())
+	if err != nil {
+		return Plan{}, hit, err
+	}
+	provs := Providers{
+		Items:       Normalize(vals), // normalize indexer.Value -> Provider
+		ObservedTTL: w.DefaultTTL,
+		Source:      "local-engine",
+	}
+	pl := w.Planner.Plan(ctx, provs, in, w.HealthScorer)
+	return pl, hit, nil
+}
+
+// Plan reads local providers (engine) by multihash, normalizes them, and returns a scoring-only Plan.
+func (w *IPNIWrapper) Plan(ctx context.Context, mh mh.Multihash, in RouteIntent) (Plan, bool, error) {
+	vals, hit, err := w.Engine.Get(mh)
+	if err != nil {
+		return Plan{}, hit, err
+	}
+	provs := Providers{
+		Items:       Normalize(vals),
+		ObservedTTL: w.DefaultTTL,
+		Source:      "local-engine",
+	}
+	pl := w.Planner.Plan(ctx, provs, in, w.HealthScorer)
+	return pl, hit, nil
 }
