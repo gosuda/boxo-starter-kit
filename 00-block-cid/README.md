@@ -7,7 +7,7 @@ Through this module, you will learn:
 - The role and structure of **Blocks** and **CIDs (Content Identifiers)**
 - Differences between **CID v0** and **CID v1** and their usage scenarios
 - Characteristics of various **hash algorithms** (SHA2-256, BLAKE3, etc.)
-- Data storage and retrieval methods through **Blockstore**
+- How to use a **Blockstore** wrapper for storing, retrieving, and managing blocks
 
 ## 📋 Prerequisites
 
@@ -17,7 +17,7 @@ Through this module, you will learn:
 
 ## 🔑 Key Concepts
 
-### What is Content Addressing?
+### Content Addressing
 
 Traditional file systems use **location-based addressing** (e.g., `/home/user/document.txt`). In contrast, IPFS uses **content-based addressing**.
 
@@ -25,8 +25,7 @@ Traditional file systems use **location-based addressing** (e.g., `/home/user/do
 Traditional approach: "Where is it?" → /path/to/file.txt
 IPFS approach: "What is it?" → QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG
 ```
-
-### What is a Block?
+### Block
 
 **Block** is the fundamental unit for storing data in IPFS:
 
@@ -36,8 +35,7 @@ type Block interface {
     Cid() cid.Cid      // Unique identifier for this block
 }
 ```
-
-### What is a CID (Content Identifier)?
+### CID (Content Identifier)
 
 **CID** is a unique address for identifying content in IPFS:
 
@@ -51,156 +49,54 @@ Example: QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG
 | Feature | CID v0 | CID v1 |
 |---------|--------|---------|
 | Format | Base58 | Multibase (base32, base64, etc.) |
-| Example | `QmYwAPJ...` | `bafybeig...` |
-| Codec | DAG-PB fixed | Various codec support |
-| Usage | Legacy compatibility | Modern applications |
+| Example | `Qm...` | `bafy...` |
+| Codec | DAG-PB only | Multiple codec (Raw, DAG-PB, Cbor, etc.) |
+| Usage | Legacy compatibility | Modern applications (recommended) |
 
-## 💻 Code Analysis
+## 💻 Code Overview
 
 ### 1. Block Wrapper Implementation
 
 ```go
-// pkg/block.go:19-30
 type BlockWrapper struct {
-    blockstore blockstore.Blockstore
+    Batching ds.Batching
+    blockstore.Blockstore
 }
 
-func New(bs blockstore.Blockstore) *BlockWrapper {
-    if bs == nil {
-        bs = blockstore.NewBlockstore(datastore.NewMapDatastore())
-    }
-    return &BlockWrapper{blockstore: bs}
-}
-```
-
-**Design Decisions**:
-- Automatically creates memory-based storage if `blockstore` is nil
-- Flexible storage selection through dependency injection
-
-### 2. Data Storage and CID Generation
-
-```go
-// pkg/block.go:33-46
-func (bw *BlockWrapper) Put(ctx context.Context, data []byte) (cid.Cid, error) {
-    // 1. Hash calculation
-    hash := sha256.Sum256(data)
-    mhash, err := multihash.Encode(hash[:], multihash.SHA2_256)
-
-    // 2. CID generation (v1, raw codec)
-    c := cid.NewCidV1(cid.Raw, mhash)
-
-    // 3. Block creation and storage
-    block, err := blocks.NewBlockWithCid(data, c)
-    return c, bw.blockstore.Put(ctx, block)
-}
-```
-
-**Core Process**:
-1. **Hash Calculation**: Generate data fingerprint with SHA2-256
-2. **Multihash Encoding**: Include hash algorithm information
-3. **CID Generation**: v1 + Raw codec combination
-4. **Block Storage**: Permanent storage in Blockstore
-
-### 3. Various Hash Algorithm Support
-
-```go
-// pkg/block.go:85-102
-func (bw *BlockWrapper) PutWithHash(ctx context.Context, data []byte, hashType uint64) (cid.Cid, error) {
-    switch hashType {
-    case multihash.SHA2_256:
-        hash := sha256.Sum256(data)
-        mhash, err := multihash.Encode(hash[:], hashType)
-        // ...
-    case multihash.BLAKE3:
-        hasher := blake3.New(32, nil)
-        hasher.Write(data)
-        hash := hasher.Sum(nil)
-        mhash, err := multihash.Encode(hash, hashType)
-        // ...
+func New(ds ds.Batching, opts ...blockstore.Option) *BlockWrapper {
+    bs := blockstore.NewBlockstore(ds, opts...)
+    return &BlockWrapper{
+        Batching:   ds,
+        Blockstore: bs,
     }
 }
 ```
 
-**Hash Algorithm Comparison**:
-
-| Algorithm | Speed | Security | Use Case |
-|-----------|-------|----------|----------|
-| SHA2-256 | Medium | High | Default recommendation |
-| BLAKE3 | Fast | High | When performance matters |
-
-### 4. CID v0 Compatibility
+### 2. Storing Data
 
 ```go
-// pkg/block.go:149-163
-func (bw *BlockWrapper) PutCIDv0(ctx context.Context, data []byte) (cid.Cid, error) {
-    hash := sha256.Sum256(data)
-    mhash, err := multihash.Encode(hash[:], multihash.SHA2_256)
+func (s *BlockWrapper) Put(ctx context.Context, b blocks.Block) error
+func (s *BlockWrapper) PutV0Cid(ctx context.Context, data []byte) (cid.Cid, error)
+func (s *BlockWrapper) PutV1Cid(ctx context.Context, data []byte, prefix *cid.Prefix) (cid.Cid, error)
+```
 
-    // CID v0: Uses DAG-PB codec
-    c := cid.NewCidV0(mhash)
-
-    block, err := blocks.NewBlockWithCid(data, c)
-    return c, bw.blockstore.Put(ctx, block)
-}
+### 3. Retrieving Data
+```go
+func (s *BlockWrapper) Has(ctx context.Context, c cid.Cid) (bool, error)
+func (s *BlockWrapper) Get(ctx context.Context, c cid.Cid) (blockformat.Block, error)
+func (s *BlockWrapper) GetRaw(ctx context.Context, c cid.Cid) ([]byte, error)
+func (s *BlockWrapper) GetSize(ctx context.Context, c cid.Cid) (int, error)
+func (s *BlockWrapper) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error)
+func (s *BlockWrapper) Delete(ctx context.Context, c cid.Cid) error
+func (s *BlockWrapper) Close() error
 ```
 
 ## 🏃‍♂️ Practice Guide
 
-### 1. Basic Execution
+### Basic Execution
 
 ```bash
 cd 00-block-cid
-go run main.go
-```
-
-**Expected Output**:
-```
-=== Block and CID Demo ===
-
-1. Basic Block Operations:
-   ✅ Stored data → bafkreibvjvcv2i...
-   ✅ Retrieved data matches original
-   ✅ Block exists in blockstore
-
-2. CID Version Comparison:
-   📋 Same data, different CIDs:
-      CID v0: QmYwAPJzv5CZsnA625s3Xf2ne...
-      CID v1: bafkreibvjvcv2i5ijlrkflt...
-   🔍 Both CIDs point to same data: true
-```
-
-### 2. Hash Algorithm Comparison Experiment
-
-Observe this part in the code:
-
-```go
-// main.go:111-125
-// Same data, different hash algorithms
-data := []byte("Hash algorithm comparison")
-
-sha256CID, _ := blockWrapper.PutWithHash(ctx, data, multihash.SHA2_256)
-blake3CID, _ := blockWrapper.PutWithHash(ctx, data, multihash.BLAKE3)
-
-fmt.Printf("   SHA2-256: %s\n", sha256CID.String()[:25]+"...")
-fmt.Printf("   BLAKE3:   %s\n", blake3CID.String()[:25]+"...")
-```
-
-### 3. Codec Impact Experiment
-
-```go
-// main.go:135-149
-// Same data, different codecs
-rawCID, _ := blockWrapper.PutWithCodec(ctx, data, cid.Raw)
-dagPBCID, _ := blockWrapper.PutWithCodec(ctx, data, cid.DagProtobuf)
-
-// Result: Different CIDs are generated
-```
-
-**Learning Point**: The same data generates different CIDs when using different codecs.
-
-### 4. Running Tests
-
-```bash
 go test -v ./...
 ```
 
@@ -210,7 +106,7 @@ go test -v ./...
 - ✅ Various hash algorithms
 - ✅ Error handling (non-existent CID)
 
-## 🔗 Real-World Use Cases
+## 🔗 Use Cases
 
 ### 1. File Integrity Verification
 
@@ -241,7 +137,7 @@ v2CID, _ := blockWrapper.Put(ctx, []byte("Document v2"))
 // Change tracking possible
 ```
 
-## ⚠️ Cautions and Best Practices
+## ⚠️ Practical Usage & Best Practices
 
 ### 1. CID Version Selection Guide
 
@@ -264,6 +160,13 @@ hashType := multihash.BLAKE3
 
 // ❌ Avoid: MD5, SHA1 (security vulnerabilities)
 ```
+
+**Hash Algorithm Comparison**:
+
+| Algorithm | Speed | Security | Use Case |
+|-----------|-------|----------|----------|
+| SHA2-256 | Medium | High | Default recommendation |
+| BLAKE3 | Fast | High | When performance matters |
 
 ### 3. Error Handling
 
@@ -291,15 +194,7 @@ if !exists {
 }
 ```
 
-### Problem 2: Memory Usage Increase
-
-**Cause**: Storing large data in memory blockstore
-```go
-// Solution: Use persistent storage (learned in next module)
-// Refer to 01-persistent module
-```
-
-### Problem 3: CID Format Error
+### Problem 2: CID Format Error
 
 **Cause**: Invalid CID string parsing
 ```go
@@ -317,9 +212,7 @@ if !cid.IsValid() {
 - [Multihash Specification](https://github.com/multiformats/multihash)
 
 ### Next Steps
-1. **01-persistent**: Learn various storage backends
-2. **02-dag-ipld**: Learn complex data structures and DAG
-3. **03-unixfs**: Learn file system abstraction
+- [01-persistent](./01-persistent): Learn various storage backends
 
 ## 🎓 Practice Problems
 
