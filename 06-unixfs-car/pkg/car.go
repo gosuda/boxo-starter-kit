@@ -8,12 +8,14 @@ import (
 	"os"
 	"path/filepath"
 
+	dag "github.com/gosuda/boxo-starter-kit/05-dag-ipld/pkg"
+	"github.com/ipfs/boxo/blockstore"
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-car/v2"
 	"github.com/ipld/go-car/v2/storage"
 )
 
-func (u *UnixFsWrapper) CarExport(ctx context.Context, roots []cid.Cid, w io.Writer) error {
+func CarExport(ctx context.Context, ipldWrapper *dag.IpldWrapper, roots []cid.Cid, w io.Writer) error {
 	ws, ok := w.(io.WriteSeeker)
 	if !ok {
 		return fmt.Errorf("car v2 export needs io.WriteSeeker; got %T", w)
@@ -24,7 +26,7 @@ func (u *UnixFsWrapper) CarExport(ctx context.Context, roots []cid.Cid, w io.Wri
 		return fmt.Errorf("failed to create writable car storage: %w", err)
 	}
 	defer writable.Finalize()
-	bs := u.IpldWrapper.BlockServiceWrapper.Blockstore()
+	bs := ipldWrapper.BlockServiceWrapper.Blockstore()
 	seen := make(map[cid.Cid]struct{}, 1024)
 
 	var walk func(c cid.Cid) error
@@ -42,7 +44,7 @@ func (u *UnixFsWrapper) CarExport(ctx context.Context, roots []cid.Cid, w io.Wri
 			return fmt.Errorf("write block %s: %w", blk.Cid(), err)
 		}
 
-		nd, err := u.IpldWrapper.Get(ctx, c) // format.Node
+		nd, err := ipldWrapper.Get(ctx, c) // format.Node
 		if err != nil {
 			return fmt.Errorf("load node %s: %w", c, err)
 		}
@@ -62,7 +64,7 @@ func (u *UnixFsWrapper) CarExport(ctx context.Context, roots []cid.Cid, w io.Wri
 	return nil
 }
 
-func (u *UnixFsWrapper) CarExportBytes(ctx context.Context, roots []cid.Cid) ([]byte, error) {
+func CarExportBytes(ctx context.Context, ipldWrapper *dag.IpldWrapper, roots []cid.Cid) ([]byte, error) {
 	f, err := os.CreateTemp("", "export-*.car")
 	if err != nil {
 		return nil, fmt.Errorf("create temp car: %w", err)
@@ -70,7 +72,7 @@ func (u *UnixFsWrapper) CarExportBytes(ctx context.Context, roots []cid.Cid) ([]
 	defer os.Remove(f.Name())
 	defer f.Close()
 
-	if err := u.CarExport(ctx, roots, f); err != nil {
+	if err := CarExport(ctx, ipldWrapper, roots, f); err != nil {
 		return nil, err
 	}
 	if _, err := f.Seek(0, io.SeekStart); err != nil {
@@ -83,7 +85,7 @@ func (u *UnixFsWrapper) CarExportBytes(ctx context.Context, roots []cid.Cid) ([]
 	return data, nil
 }
 
-func (u *UnixFsWrapper) CarExportToPath(ctx context.Context, roots []cid.Cid, path string) error {
+func CarExportToPath(ctx context.Context, ipldWrapper *dag.IpldWrapper, roots []cid.Cid, path string) error {
 	if filepath.Ext(path) != ".car" {
 		path = filepath.Join(path, "default.car")
 	}
@@ -97,16 +99,14 @@ func (u *UnixFsWrapper) CarExportToPath(ctx context.Context, roots []cid.Cid, pa
 	}
 	defer file.Close()
 
-	return u.CarExport(ctx, roots, file)
+	return CarExport(ctx, ipldWrapper, roots, file)
 }
 
-func (u *UnixFsWrapper) CarImport(ctx context.Context, r io.Reader) ([]cid.Cid, error) {
+func CarImport(ctx context.Context, bs blockstore.Blockstore, r io.Reader) ([]cid.Cid, error) {
 	br, err := car.NewBlockReader(r)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open car reader: %w", err)
 	}
-
-	bs := u.IpldWrapper.BlockServiceWrapper.Blockstore()
 
 	for {
 		blk, err := br.Next()
@@ -124,16 +124,16 @@ func (u *UnixFsWrapper) CarImport(ctx context.Context, r io.Reader) ([]cid.Cid, 
 	return br.Roots, nil
 }
 
-func (u *UnixFsWrapper) CarImportBytes(ctx context.Context, data []byte) ([]cid.Cid, error) {
-	return u.CarImport(ctx, bytes.NewReader(data))
+func CarImportBytes(ctx context.Context, bs blockstore.Blockstore, data []byte) ([]cid.Cid, error) {
+	return CarImport(ctx, bs, bytes.NewReader(data))
 }
 
-func (u *UnixFsWrapper) CarImportPath(ctx context.Context, path string) ([]cid.Cid, error) {
+func CarImportPath(ctx context.Context, bs blockstore.Blockstore, path string) ([]cid.Cid, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
 	defer file.Close()
 
-	return u.CarImport(ctx, file)
+	return CarImport(ctx, bs, file)
 }

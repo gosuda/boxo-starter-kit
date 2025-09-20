@@ -120,13 +120,13 @@ func TestCar(t *testing.T) {
 	rootY, err := ufs.Put(ctx, files.NewReaderFile(fy))
 	require.NoError(t, err)
 
-	carBytes, err := ufs.CarExportBytes(ctx, []cid.Cid{rootX, rootY})
+	carBytes, err := unixfs.CarExportBytes(ctx, ufs.IpldWrapper, []cid.Cid{rootX, rootY})
 	require.NoError(t, err)
 	require.NotEmpty(t, carBytes)
 
 	ufs2, err := unixfs.New(0, nil)
 	require.NoError(t, err)
-	imported, err := ufs2.CarImportBytes(ctx, carBytes)
+	imported, err := unixfs.CarImportBytes(ctx, ufs2.IpldWrapper.BlockServiceWrapper.Blockstore(), carBytes)
 	require.NoError(t, err)
 	require.ElementsMatch(t, []cid.Cid{rootX, rootY}, imported)
 }

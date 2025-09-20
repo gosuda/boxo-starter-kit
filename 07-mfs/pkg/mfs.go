@@ -38,6 +38,9 @@ func New(ctx context.Context, ufs *unixfs.UnixFsWrapper, c cid.Cid) (*MFSWrapper
 	var root *mfs.Root
 	if c == cid.Undef {
 		root, err = mfs.NewEmptyRoot(ctx, ufs.DAGService, dummypf, nil, mfs.MkdirOpts{})
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		nd, err := ufs.IpldWrapper.Get(ctx, c) // format.Node
 		if err != nil {
@@ -48,9 +51,9 @@ func New(ctx context.Context, ufs *unixfs.UnixFsWrapper, c cid.Cid) (*MFSWrapper
 			return nil, fmt.Errorf("node is not a ProtoNode")
 		}
 		root, err = mfs.NewRoot(ctx, ufs.DAGService, protond, dummypf, nil)
-	}
-	if err != nil {
-		return nil, err
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &MFSWrapper{
@@ -187,11 +190,11 @@ func (m *MFSWrapper) ExportCAR(ctx context.Context, ws io.WriteSeeker) error {
 	if err != nil {
 		return err
 	}
-	return m.CarExport(ctx, []cid.Cid{root}, ws)
+	return unixfs.CarExport(ctx, m.IpldWrapper, []cid.Cid{root}, ws)
 }
 
 func (m *MFSWrapper) ImportCAR(ctx context.Context, r io.Reader, choose func([]cid.Cid) cid.Cid) (cid.Cid, error) {
-	roots, err := m.CarImport(ctx, r)
+	roots, err := unixfs.CarImport(ctx, m.IpldWrapper.BlockServiceWrapper.Blockstore(), r)
 	if err != nil {
 		return cid.Undef, err
 	}
