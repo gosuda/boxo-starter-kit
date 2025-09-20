@@ -128,6 +128,26 @@ func (g *GatewayWrapper) handleRoot(w http.ResponseWriter, r *http.Request) {
     .footer { margin-top: 28px; color: var(--muted); font-size: 12px; text-align:center; }
     .pill { display:inline-block; padding:2px 8px; border-radius: 999px; border:1px solid var(--border); background: var(--card); font-size: 12px; color: var(--muted); }
     .soon { opacity:.7; }
+
+    /* Improved input/button styles */
+    .row { display:flex; gap:8px; width:100%%; max-width:640px; margin-top:8px; }
+    .input {
+      flex:1; padding:12px 14px; border-radius:12px; border:1px solid var(--border);
+      background: var(--bg); color: var(--fg); font-size:15px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      transition: all .2s ease;
+    }
+    .input::placeholder { color: var(--muted); }
+    .input:focus {
+      outline:none; border-color: var(--accent);
+      box-shadow:0 0 0 2px rgba(79,70,229,.30);
+    }
+    .btn {
+      padding:12px 18px; border-radius:12px; border:1px solid var(--border);
+      background: var(--accent); color:#fff; font-weight:600; font-size:14px;
+      cursor:pointer; transition: background .2s ease;
+    }
+    .btn:hover { background:#3730a3; }
   </style>
 </head>
 <body>
@@ -152,12 +172,16 @@ func (g *GatewayWrapper) handleRoot(w http.ResponseWriter, r *http.Request) {
 
       <div class="card">
         <h2>🧪 Examples</h2>
-        <p>Known public samples (availability not guaranteed):</p>
-        <ul class="list">
-          <li><span class="k">Raw:</span> <a href="/ipfs/QmT78zSuBmuS4z925WZfrqQ1qHaJ56DQaTfyMUF7F8ff5o">/ipfs/QmT78z…</a></li>
-          <li><span class="k">Directory:</span> <a href="/ipfs/QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn">/ipfs/QmUNL…</a></li>
-          <li><span class="k">As CAR:</span> <a href="/ipfs/QmT78zSuBmuS4z925WZfrqQ1qHaJ56DQaTfyMUF7F8ff5o?format=car">…?format=car</a></li>
-        </ul>
+        <p>Enter a <b>CAR URL</b> or a <b>CID</b>. We’ll redirect you to the right path.</p>
+        <form class="row" onsubmit="return openCar(event)">
+          <input id="carinput" class="input" type="text" spellcheck="false" autocomplete="off"
+                 value="/ipfs/QmT78zSuBmuS4z925WZfrqQ1qHaJ56DQaTfyMUF7F8ff5o?format=car" />
+          <button class="btn" type="submit">🚀 Open</button>
+        </form>
+        <p class="muted" style="margin-top:8px;">
+          • CID → <span class="mono">/ipfs/&lt;CID&gt;?format=car</span><br/>
+          • URL ending with <span class="mono">.car</span> → open as-is
+        </p>
       </div>
 
       <div class="card">
@@ -204,6 +228,43 @@ func (g *GatewayWrapper) handleRoot(w http.ResponseWriter, r *http.Request) {
         st.textContent = 'down'; st.className = 'status err';
       }
     }
+
+    function looksLikeCID(s) {
+      return /^Qm[1-9A-HJ-NP-Za-km-z]{44,}$/.test(s) || /^bafy[0-9a-z]{20,}$/.test(s);
+    }
+    function isAbsoluteURL(s) { return /^https?:\/\//i.test(s); }
+    function addFormatIfMissing(path) { return path.includes('?') ? path : (path + '?format=car'); }
+
+    function openCar(e) {
+      e.preventDefault();
+      let v = (document.getElementById('carinput').value || '').trim();
+      if (!v) return false;
+
+      // 1) Absolute URL → go as-is (supports https://.../*.car)
+      if (isAbsoluteURL(v)) {
+        window.location.href = v;
+        return false;
+      }
+      // 2) Already /ipfs/ or /ipns/ → use as-is (avoid duplicating ?format)
+      if (v.startsWith('/ipfs/') || v.startsWith('/ipns/')) {
+        window.location.href = v;
+        return false;
+      }
+      // 3) CID → /ipfs/<CID>[?format=car]
+      if (looksLikeCID(v)) {
+        window.location.href = addFormatIfMissing('/ipfs/' + encodeURIComponent(v));
+        return false;
+      }
+      // 4) Ends with .car but missing scheme → ask for full URL
+      if (v.toLowerCase().endsWith('.car')) {
+        alert('Please enter a full CAR URL including http(s)://');
+        return false;
+      }
+      // 5) Fallback: treat as CID-like
+      window.location.href = addFormatIfMissing('/ipfs/' + encodeURIComponent(v));
+      return false;
+    }
+
     ping(); setInterval(ping, 5000);
   </script>
 </body>
