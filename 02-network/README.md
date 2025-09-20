@@ -321,7 +321,7 @@ func (nm *NetworkManager) selectBestPeers(candidates []peer.ID) []peer.ID {
 ## 📚 Next Steps
 
 ### Related Modules
-1. **03-bitswap**: Dive deeper into the Bitswap protocol for block exchange
+1. **04-bitswap**: Dive deeper into the Bitswap protocol for block exchange
 
 ### Advanced Topics
 - Network topology optimization
