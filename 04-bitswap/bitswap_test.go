@@ -14,11 +14,11 @@ func TestBitswap(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	bswap1, err := bitswap.NewBitswap(ctx, nil, nil)
+	bswap1, err := bitswap.NewBitswap(ctx, nil, nil, nil)
 	require.NoError(t, err)
 	defer bswap1.Close()
 
-	bswap2, err := bitswap.NewBitswap(ctx, nil, nil)
+	bswap2, err := bitswap.NewBitswap(ctx, nil, nil, nil)
 	require.NoError(t, err)
 	defer bswap2.Close()
 
@@ -39,14 +39,14 @@ func TestBlockService(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	bswap1, err := bitswap.NewBitswap(ctx, nil, nil)
+	bswap1, err := bitswap.NewBitswap(ctx, nil, nil, nil)
 	require.NoError(t, err)
 
 	bs1, err := bitswap.NewBlockService(nil, bswap1)
 	require.NoError(t, err)
 	defer bs1.Close()
 
-	bswap2, err := bitswap.NewBitswap(ctx, nil, nil)
+	bswap2, err := bitswap.NewBitswap(ctx, nil, nil, nil)
 	require.NoError(t, err)
 
 	bs2, err := bitswap.NewBlockService(nil, bswap2)

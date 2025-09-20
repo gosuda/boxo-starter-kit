@@ -15,6 +15,7 @@ import (
 	block "github.com/gosuda/boxo-starter-kit/00-block-cid/pkg"
 	persistent "github.com/gosuda/boxo-starter-kit/01-persistent/pkg"
 	network "github.com/gosuda/boxo-starter-kit/02-network/pkg"
+	dht "github.com/gosuda/boxo-starter-kit/03-dht-router/pkg"
 )
 
 var _ exchange.Interface = (*BitswapWrapper)(nil)
@@ -28,7 +29,7 @@ type BitswapWrapper struct {
 }
 
 // NewBitswap creates a new simplified bitswap node for educational purposes
-func NewBitswap(ctx context.Context, host *network.HostWrapper, persistentWrapper *persistent.PersistentWrapper) (*BitswapWrapper, error) {
+func NewBitswap(ctx context.Context, dhtWrapper *dht.DHTWrapper, host *network.HostWrapper, persistentWrapper *persistent.PersistentWrapper) (*BitswapWrapper, error) {
 	var err error
 	if host == nil {
 		host, err = network.New(nil)
@@ -42,12 +43,18 @@ func NewBitswap(ctx context.Context, host *network.HostWrapper, persistentWrappe
 			return nil, fmt.Errorf("failed to create persistent storage: %w", err)
 		}
 	}
+	if dhtWrapper == nil {
+		dhtWrapper, err = dht.New(ctx, 5*time.Second, host, persistentWrapper)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create DHT: %w", err)
+		}
+	}
 
 	bsnet := bsnet.NewFromIpfsHost(host)
 	bsnet = bnet.New(nil, bsnet, nil)
-	bswap := bitswap.New(ctx, bsnet, nil, persistentWrapper,
+	bswap := bitswap.New(ctx, bsnet, dhtWrapper, persistentWrapper,
 		bitswap.SetSendDontHaves(true),
-		bitswap.ProviderSearchDelay(time.Second*5),
+		bitswap.ProviderSearchDelay(time.Second),
 	)
 
 	node := &BitswapWrapper{

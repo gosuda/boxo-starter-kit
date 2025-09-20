@@ -4,11 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	block "github.com/gosuda/boxo-starter-kit/00-block-cid/pkg"
-	persistent "github.com/gosuda/boxo-starter-kit/01-persistent/pkg"
 	"github.com/ipfs/boxo/blockservice"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+
+	block "github.com/gosuda/boxo-starter-kit/00-block-cid/pkg"
+	persistent "github.com/gosuda/boxo-starter-kit/01-persistent/pkg"
 )
 
 type BlockServiceWrapper struct {
@@ -31,7 +32,7 @@ func NewBlockService(persistentWrapper *persistent.PersistentWrapper, bitswapWra
 		}
 	}
 	if bitswapWrapper == nil {
-		bitswapWrapper, err = NewBitswap(context.TODO(), nil, persistentWrapper)
+		bitswapWrapper, err = NewBitswap(context.TODO(), nil, nil, persistentWrapper)
 		if err != nil {
 			return nil, fmt.Errorf("init bitswap: %w", err)
 		}
