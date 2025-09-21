@@ -42,7 +42,7 @@ func main() {
 	if err != nil {
 		log.Printf("Failed to get stats: %v", err)
 	} else {
-		fmt.Printf("   📊 Initial stats available\n")
+		fmt.Printf("   📊 Initial stats: %d multihashes indexed\n", stats.MultihashCount)
 	}
 	fmt.Println()
 

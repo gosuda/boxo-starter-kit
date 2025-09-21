@@ -120,7 +120,7 @@ func main() {
 
 	// Index content with multiple providers to simulate real-world scenario
 	provider1, _ := peer.Decode("12D3KooWDpJ3HrAXLNhppXRwLenEgseUnhTMDMnQBzRBHSCHaWky")
-	provider2, _ := peer.Decode("12D3KooWRBhwKtpH6RarVVNW6xvMvQ3XnZxFTR3Ek4jvoKNTxHbo")
+	// provider2, _ := peer.Decode("12D3KooWRBhwKtpH6RarVVNW6xvMvQ3XnZxFTR3Ek4jvoKNTxHbo")
 	provider3, _ := peer.Decode("12D3KooWQYhTNmY1kZXCJM3BFrwCNhkJQYxWqHN7TAWkqLmZv6wC")
 
 	// Index with Bitswap provider

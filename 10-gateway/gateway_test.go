@@ -231,6 +231,7 @@ func TestGatewayAPI(t *testing.T) {
 }
 
 func TestGatewayConfig(t *testing.T) {
+	ctx := context.Background()
 	dagWrapper, err := dag.NewIpldWrapper(ctx, nil, nil)
 	require.NoError(t, err)
 	defer dagWrapper.BlockServiceWrapper.Close()

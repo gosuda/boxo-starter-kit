@@ -1,6 +1,7 @@
 package multifetcher
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"sync"
@@ -9,7 +10,6 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/cbor"
-	"github.com/ipld/go-ipld-prime/datamodel"
 	"github.com/ipld/go-ipld-prime/node/basicnode"
 	"github.com/libp2p/go-libp2p/core/peer"
 
@@ -457,7 +457,7 @@ func encodeSelectorToCBOR(selector ipld.Node) ([]byte, error) {
 	}
 
 	// Create a buffer to hold the CBOR data
-	var buf []byte
+	var buf bytes.Buffer
 
 	// Encode the selector node to CBOR
 	err := cbor.Encode(selector, &buf)
@@ -465,7 +465,7 @@ func encodeSelectorToCBOR(selector ipld.Node) ([]byte, error) {
 		return nil, fmt.Errorf("failed to encode selector to CBOR: %w", err)
 	}
 
-	return buf, nil
+	return buf.Bytes(), nil
 }
 
 // createDefaultSelector creates a default "match all" selector

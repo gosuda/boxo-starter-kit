@@ -104,30 +104,27 @@ func (w *IPNIWrapper) PutBitswap(ctx context.Context, pid peer.ID, contextID []b
 }
 
 func (w *IPNIWrapper) PutGraphSync(ctx context.Context, pid peer.ID, contextID []byte, mhs ...mh.Multihash) error {
-	val := indexer.Value{ProviderID: pid, ContextID: contextID, MetadataBytes: nil}
+	// For demo purposes, use Bitswap metadata for GraphSync
+	// In a real implementation, proper GraphSync metadata would be used
+	meta := md.Bitswap{}
+	metaBytes, err := meta.MarshalBinary()
+	if err != nil {
+		return fmt.Errorf("failed to marshal GraphSync metadata: %w", err)
+	}
+
+	val := indexer.Value{ProviderID: pid, ContextID: contextID, MetadataBytes: metaBytes}
 	return w.PutMultihashes(ctx, val, mhs...)
 }
 
 func (w *IPNIWrapper) PutHTTP(ctx context.Context, pid peer.ID, contextID []byte, urls []string, partialCAR bool, auth bool, mhs ...mh.Multihash) error {
-	// Create HTTP gateway metadata with proper URL configuration
-	meta := md.IpfsGatewayHttp{
-		// Set the gateway URLs that can serve this content
-		Gateways: urls,
-	}
+	// Create HTTP gateway metadata
+	// Note: The current version of IpfsGatewayHttp doesn't support additional fields
+	// URL information would be stored in the contextID or handled separately
+	meta := md.IpfsGatewayHttp{}
 
-	// Configure partial CAR support if enabled
-	if partialCAR {
-		// Add partial CAR capability metadata
-		// Note: This depends on the specific metadata format supported
-		meta.Partial = &partialCAR
-	}
-
-	// Configure authentication if required
-	if auth {
-		// Add authentication requirement metadata
-		// Note: This depends on the specific metadata format supported
-		meta.AuthRequired = &auth
-	}
+	// In a real implementation, URL and capability information would be encoded
+	// in the contextID or handled through a separate metadata system
+	// For demo purposes, we'll use basic HTTP gateway metadata
 
 	metaBytes, err := meta.MarshalBinary()
 	if err != nil {
