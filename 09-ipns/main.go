@@ -21,7 +21,7 @@ func main() {
 	fmt.Println("\n1. Setting up IPNS manager:")
 
 	// Create DAG wrapper for content storage
-	dagWrapper, err := dag.NewIpldWrapper(nil, nil)
+	dagWrapper, err := dag.NewIpldWrapper(ctx, nil, nil)
 	if err != nil {
 		log.Fatalf("Failed to create DAG wrapper: %v", err)
 	}

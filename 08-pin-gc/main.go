@@ -18,7 +18,7 @@ func main() {
 	ctx := context.Background()
 
 	// Create DAG wrapper (this will create persistent storage)
-	dagWrapper, err := dag.NewIpldWrapper(nil, nil)
+	dagWrapper, err := dag.NewIpldWrapper(ctx, nil, nil)
 	if err != nil {
 		log.Fatalf("Failed to create DAG wrapper: %v", err)
 	}

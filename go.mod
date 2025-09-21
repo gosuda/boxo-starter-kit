@@ -3,6 +3,7 @@ module github.com/gosuda/boxo-starter-kit
 go 1.25.0
 
 require (
+	github.com/golang-jwt/jwt/v5 v5.2.0
 	github.com/ipfs/boxo v0.34.0
 	github.com/ipfs/go-block-format v0.2.2
 	github.com/ipfs/go-cid v0.5.0
@@ -26,6 +27,7 @@ require (
 	github.com/rs/zerolog v1.34.0
 	github.com/spf13/cobra v1.2.1
 	github.com/stretchr/testify v1.10.0
+	golang.org/x/time v0.12.0
 )
 
 require (
@@ -184,7 +186,6 @@ require (
 	golang.org/x/sync v0.16.0 // indirect
 	golang.org/x/sys v0.35.0 // indirect
 	golang.org/x/text v0.28.0 // indirect
-	golang.org/x/time v0.12.0 // indirect
 	golang.org/x/tools v0.36.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	gonum.org/v1/gonum v0.16.0 // indirect
