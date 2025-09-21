@@ -1,0 +1,13 @@
+type User struct {
+  id    String
+  name  String
+  email String
+}
+
+type Post struct {
+  id        String
+  title     String
+  body      String
+  tags      [String]
+  createdAt Int
+}
