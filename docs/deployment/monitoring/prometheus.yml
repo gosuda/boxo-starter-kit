@@ -1,0 +1,172 @@
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'ipfs-production'
+    environment: 'production'
+
+rule_files:
+  - "rules/*.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # IPFS nodes metrics
+  - job_name: 'ipfs-nodes'
+    static_configs:
+      - targets:
+        - 'ipfs-node-1:9090'
+        - 'ipfs-node-2:9090'
+        - 'ipfs-node-3:9090'
+    scrape_interval: 15s
+    metrics_path: /metrics
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+      - source_labels: [__address__]
+        regex: '([^:]+):(.*)'
+        target_label: node_name
+        replacement: '${1}'
+
+  # IPFS gateway metrics
+  - job_name: 'ipfs-gateway'
+    static_configs:
+      - targets:
+        - 'ipfs-node-1:8080'
+        - 'ipfs-node-2:8080'
+        - 'ipfs-node-3:8080'
+    metrics_path: /debug/metrics/prometheus
+    scrape_interval: 30s
+
+  # System metrics via node_exporter
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets:
+        - 'node-exporter-1:9100'
+        - 'node-exporter-2:9100'
+        - 'node-exporter-3:9100'
+    scrape_interval: 15s
+
+  # Docker container metrics
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets:
+        - 'cadvisor:8080'
+    scrape_interval: 30s
+
+  # Nginx load balancer metrics
+  - job_name: 'nginx'
+    static_configs:
+      - targets:
+        - 'nginx:9113'
+    scrape_interval: 30s
+
+  # Backup service metrics
+  - job_name: 'backup-scheduler'
+    static_configs:
+      - targets:
+        - 'backup-scheduler:9090'
+    scrape_interval: 60s
+
+  # Database metrics (if using)
+  - job_name: 'postgres'
+    static_configs:
+      - targets:
+        - 'postgres-exporter:9187'
+    scrape_interval: 30s
+
+  # Redis metrics (if using)
+  - job_name: 'redis'
+    static_configs:
+      - targets:
+        - 'redis-exporter:9121'
+    scrape_interval: 30s
+
+  # Kubernetes metrics (if running on K8s)
+  - job_name: 'kubernetes-apiservers'
+    kubernetes_sd_configs:
+    - role: endpoints
+    scheme: https
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    relabel_configs:
+    - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+      action: keep
+      regex: default;kubernetes;https
+
+  - job_name: 'kubernetes-nodes'
+    kubernetes_sd_configs:
+    - role: node
+    scheme: https
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    relabel_configs:
+    - action: labelmap
+      regex: __meta_kubernetes_node_label_(.+)
+    - target_label: __address__
+      replacement: kubernetes.default.svc:443
+    - source_labels: [__meta_kubernetes_node_name]
+      regex: (.+)
+      target_label: __metrics_path__
+      replacement: /api/v1/nodes/${1}/proxy/metrics
+
+  - job_name: 'kubernetes-pods'
+    kubernetes_sd_configs:
+    - role: pod
+    relabel_configs:
+    - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+      action: keep
+      regex: true
+    - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+      action: replace
+      target_label: __metrics_path__
+      regex: (.+)
+    - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+      action: replace
+      regex: ([^:]+)(?::\d+)?;(\d+)
+      replacement: $1:$2
+      target_label: __address__
+    - action: labelmap
+      regex: __meta_kubernetes_pod_label_(.+)
+    - source_labels: [__meta_kubernetes_namespace]
+      action: replace
+      target_label: kubernetes_namespace
+    - source_labels: [__meta_kubernetes_pod_name]
+      action: replace
+      target_label: kubernetes_pod_name
+
+  # Custom IPFS application metrics
+  - job_name: 'ipfs-custom-metrics'
+    static_configs:
+      - targets:
+        - 'ipfs-node-1:9091'  # Custom metrics port
+        - 'ipfs-node-2:9091'
+        - 'ipfs-node-3:9091'
+    scrape_interval: 30s
+    metrics_path: /metrics/custom
+
+# Remote write configuration for long-term storage
+# remote_write:
+#   - url: "https://prometheus-remote-write.example.com/api/v1/write"
+#     basic_auth:
+#       username: "prometheus"
+#       password: "your-password"
+
+# Remote read configuration
+# remote_read:
+#   - url: "https://prometheus-remote-read.example.com/api/v1/read"
+#     basic_auth:
+#       username: "prometheus"
+#       password: "your-password"

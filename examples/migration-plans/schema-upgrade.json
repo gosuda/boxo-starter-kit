@@ -1,0 +1,112 @@
+{
+  "id": "schema-upgrade-v2",
+  "version": "2.0",
+  "description": "Upgrade datastore schema from v1 to v2 with key prefix changes",
+  "steps": [
+    {
+      "id": "transform-block-keys",
+      "type": "transform",
+      "description": "Transform block keys from /blocks/ to /data/blocks/",
+      "source": {
+        "type": "badger",
+        "path": "./data/v1"
+      },
+      "target": {
+        "type": "badger",
+        "path": "./data/v2"
+      },
+      "transform": {
+        "key_transform": "add_prefix",
+        "value_transform": "",
+        "mappings": {
+          "/blocks/": "/data/blocks/",
+          "/local/": "/metadata/local/",
+          "/pins/": "/metadata/pins/"
+        },
+        "validators": ["cid_validator", "size_validator"]
+      },
+      "filters": [
+        {
+          "type": "key_pattern",
+          "pattern": "/blocks/*",
+          "condition": "match"
+        }
+      ]
+    },
+    {
+      "id": "migrate-pin-data",
+      "type": "transform",
+      "description": "Migrate pin data with new format",
+      "source": {
+        "type": "badger",
+        "path": "./data/v1"
+      },
+      "target": {
+        "type": "badger",
+        "path": "./data/v2"
+      },
+      "transform": {
+        "key_transform": "add_prefix",
+        "value_transform": "update_pin_format",
+        "mappings": {
+          "/pins/": "/metadata/pins/v2/"
+        }
+      },
+      "filters": [
+        {
+          "type": "key_prefix",
+          "pattern": "/pins/",
+          "condition": "include"
+        }
+      ]
+    },
+    {
+      "id": "add-version-metadata",
+      "type": "copy",
+      "description": "Add schema version metadata",
+      "source": {
+        "type": "memory",
+        "connection": "version_data"
+      },
+      "target": {
+        "type": "badger",
+        "path": "./data/v2"
+      }
+    },
+    {
+      "id": "validate-schema",
+      "type": "validate",
+      "description": "Validate new schema structure",
+      "source": {
+        "type": "badger",
+        "path": "./data/v1"
+      },
+      "target": {
+        "type": "badger",
+        "path": "./data/v2"
+      }
+    }
+  ],
+  "rollback": [
+    {
+      "id": "restore-v1-schema",
+      "type": "copy",
+      "description": "Restore v1 schema from backup",
+      "source": {
+        "type": "file",
+        "path": "./backup/schema-v1-backup.tar.gz"
+      },
+      "target": {
+        "type": "badger",
+        "path": "./data/v1"
+      }
+    }
+  ],
+  "config": {
+    "batch_size": 500,
+    "timeout": "7200s",
+    "verify_migration": true,
+    "backup_before": true,
+    "dry_run": false
+  }
+}

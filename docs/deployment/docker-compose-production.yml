@@ -1,0 +1,447 @@
+version: '3.8'
+
+services:
+  # IPFS Cluster Nodes
+  ipfs-node-1:
+    build:
+      context: ../../
+      dockerfile: ./docs/deployment/Dockerfile
+    container_name: ipfs-node-1
+    hostname: node1.ipfs.cluster
+    restart: unless-stopped
+    ports:
+      - "4001:4001"     # libp2p
+      - "5001:5001"     # API
+      - "8080:8080"     # Gateway
+      - "9090:9090"     # Metrics
+    volumes:
+      - ipfs_data_1:/opt/ipfs/data
+      - ipfs_logs_1:/opt/ipfs/logs
+      - ipfs_backups_1:/opt/ipfs/backups
+      - ./configs:/opt/ipfs/configs:ro
+      - ./ssl:/opt/ipfs/ssl:ro
+    environment:
+      - IPFS_NODE_ID=node1
+      - IPFS_CLUSTER_PEERS=node2.ipfs.cluster:4001,node3.ipfs.cluster:4001
+      - IPFS_LOG_LEVEL=info
+      - IPFS_METRICS_ENABLED=true
+      - IPFS_BACKUP_ENABLED=true
+    networks:
+      - ipfs_cluster
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+          cpus: '4'
+        reservations:
+          memory: 4G
+          cpus: '2'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+
+  ipfs-node-2:
+    build:
+      context: ../../
+      dockerfile: ./docs/deployment/Dockerfile
+    container_name: ipfs-node-2
+    hostname: node2.ipfs.cluster
+    restart: unless-stopped
+    ports:
+      - "4002:4001"
+      - "5002:5001"
+      - "8081:8080"
+      - "9091:9090"
+    volumes:
+      - ipfs_data_2:/opt/ipfs/data
+      - ipfs_logs_2:/opt/ipfs/logs
+      - ipfs_backups_2:/opt/ipfs/backups
+      - ./configs:/opt/ipfs/configs:ro
+      - ./ssl:/opt/ipfs/ssl:ro
+    environment:
+      - IPFS_NODE_ID=node2
+      - IPFS_CLUSTER_PEERS=node1.ipfs.cluster:4001,node3.ipfs.cluster:4001
+      - IPFS_LOG_LEVEL=info
+      - IPFS_METRICS_ENABLED=true
+      - IPFS_BACKUP_ENABLED=true
+    networks:
+      - ipfs_cluster
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+          cpus: '4'
+        reservations:
+          memory: 4G
+          cpus: '2'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+
+  ipfs-node-3:
+    build:
+      context: ../../
+      dockerfile: ./docs/deployment/Dockerfile
+    container_name: ipfs-node-3
+    hostname: node3.ipfs.cluster
+    restart: unless-stopped
+    ports:
+      - "4003:4001"
+      - "5003:5001"
+      - "8082:8080"
+      - "9092:9090"
+    volumes:
+      - ipfs_data_3:/opt/ipfs/data
+      - ipfs_logs_3:/opt/ipfs/logs
+      - ipfs_backups_3:/opt/ipfs/backups
+      - ./configs:/opt/ipfs/configs:ro
+      - ./ssl:/opt/ipfs/ssl:ro
+    environment:
+      - IPFS_NODE_ID=node3
+      - IPFS_CLUSTER_PEERS=node1.ipfs.cluster:4001,node2.ipfs.cluster:4001
+      - IPFS_LOG_LEVEL=info
+      - IPFS_METRICS_ENABLED=true
+      - IPFS_BACKUP_ENABLED=true
+    networks:
+      - ipfs_cluster
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+          cpus: '4'
+        reservations:
+          memory: 4G
+          cpus: '2'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+
+  # Load Balancer
+  nginx:
+    image: nginx:1.21-alpine
+    container_name: ipfs-loadbalancer
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/cache:/var/cache/nginx
+      - ./ssl:/etc/nginx/ssl:ro
+      - ./nginx/logs:/var/log/nginx
+    depends_on:
+      - ipfs-node-1
+      - ipfs-node-2
+      - ipfs-node-3
+    networks:
+      - ipfs_cluster
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  # Monitoring Stack
+  prometheus:
+    image: prom/prometheus:v2.40.0
+    container_name: ipfs-prometheus
+    restart: unless-stopped
+    ports:
+      - "9093:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/rules:/etc/prometheus/rules:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    networks:
+      - ipfs_cluster
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2'
+        reservations:
+          memory: 2G
+          cpus: '1'
+
+  grafana:
+    image: grafana/grafana:9.2.0
+    container_name: ipfs-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin123}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+      - GF_SERVER_DOMAIN=${GRAFANA_DOMAIN:-localhost}
+      - GF_SMTP_ENABLED=true
+      - GF_SMTP_HOST=${SMTP_HOST:-localhost:587}
+      - GF_SMTP_USER=${SMTP_USER}
+      - GF_SMTP_PASSWORD=${SMTP_PASSWORD}
+    networks:
+      - ipfs_cluster
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+    depends_on:
+      - prometheus
+
+  alertmanager:
+    image: prom/alertmanager:v0.25.0
+    container_name: ipfs-alertmanager
+    restart: unless-stopped
+    ports:
+      - "9094:9093"
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    networks:
+      - ipfs_cluster
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  # Log Management
+  loki:
+    image: grafana/loki:2.7.0
+    container_name: ipfs-loki
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./monitoring/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - ipfs_cluster
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  promtail:
+    image: grafana/promtail:2.7.0
+    container_name: ipfs-promtail
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - ipfs_cluster
+    depends_on:
+      - loki
+
+  # Backup Service
+  backup-scheduler:
+    build:
+      context: ../../
+      dockerfile: ./docs/deployment/Dockerfile.backup
+    container_name: ipfs-backup-scheduler
+    restart: unless-stopped
+    volumes:
+      - ipfs_data_1:/opt/ipfs/source/node1:ro
+      - ipfs_data_2:/opt/ipfs/source/node2:ro
+      - ipfs_data_3:/opt/ipfs/source/node3:ro
+      - backup_storage:/opt/ipfs/backups
+      - ./configs/backup-config.yml:/opt/ipfs/config.yml:ro
+    environment:
+      - BACKUP_SCHEDULE_ENABLED=true
+      - BACKUP_RETENTION_DAYS=30
+      - BACKUP_COMPRESSION_LEVEL=6
+      - BACKUP_NOTIFICATION_WEBHOOK=${BACKUP_WEBHOOK_URL}
+    networks:
+      - ipfs_cluster
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  # Database for metadata (optional)
+  postgres:
+    image: postgres:14-alpine
+    container_name: ipfs-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    environment:
+      - POSTGRES_DB=ipfs_metadata
+      - POSTGRES_USER=ipfs
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-ipfs_password}
+    networks:
+      - ipfs_cluster
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  # Redis for caching
+  redis:
+    image: redis:7-alpine
+    container_name: ipfs-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./configs/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    command: redis-server /usr/local/etc/redis/redis.conf
+    networks:
+      - ipfs_cluster
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+# Named volumes for persistent storage
+volumes:
+  # IPFS data volumes
+  ipfs_data_1:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/ipfs/data/node1
+  ipfs_data_2:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/ipfs/data/node2
+  ipfs_data_3:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/ipfs/data/node3
+
+  # Log volumes
+  ipfs_logs_1:
+    driver: local
+  ipfs_logs_2:
+    driver: local
+  ipfs_logs_3:
+    driver: local
+
+  # Backup volumes
+  ipfs_backups_1:
+    driver: local
+  ipfs_backups_2:
+    driver: local
+  ipfs_backups_3:
+    driver: local
+  backup_storage:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/ipfs/backups
+
+  # Monitoring volumes
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  alertmanager_data:
+    driver: local
+  loki_data:
+    driver: local
+
+  # Database volumes
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+# Networks
+networks:
+  ipfs_cluster:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1
+    driver_opts:
+      com.docker.network.bridge.name: br-ipfs
+      com.docker.network.driver.mtu: 1500

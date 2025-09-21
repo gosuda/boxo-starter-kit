@@ -1,0 +1,285 @@
+groups:
+  - name: ipfs.node.alerts
+    rules:
+      # Node availability alerts
+      - alert: IPFSNodeDown
+        expr: up{job="ipfs-nodes"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          component: ipfs-node
+        annotations:
+          summary: "IPFS node {{ $labels.instance }} is down"
+          description: "IPFS node {{ $labels.instance }} has been down for more than 5 minutes."
+          runbook_url: "https://docs.example.com/runbooks/ipfs-node-down"
+
+      - alert: IPFSNodeHighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is above 85% on {{ $labels.instance }} for more than 10 minutes. Current usage: {{ $value | humanizePercentage }}"
+
+      - alert: IPFSNodeHighCPUUsage
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 15m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is above 80% on {{ $labels.instance }} for more than 15 minutes. Current usage: {{ $value | humanizePercentage }}"
+
+      - alert: IPFSNodeDiskSpaceLow
+        expr: (node_filesystem_avail_bytes{mountpoint="/opt/ipfs"} / node_filesystem_size_bytes{mountpoint="/opt/ipfs"}) * 100 < 20
+        for: 5m
+        labels:
+          severity: warning
+          component: storage
+        annotations:
+          summary: "Low disk space on {{ $labels.instance }}"
+          description: "Disk space is below 20% on {{ $labels.instance }}. Available: {{ $value | humanizePercentage }}"
+
+      - alert: IPFSNodeDiskSpaceCritical
+        expr: (node_filesystem_avail_bytes{mountpoint="/opt/ipfs"} / node_filesystem_size_bytes{mountpoint="/opt/ipfs"}) * 100 < 10
+        for: 2m
+        labels:
+          severity: critical
+          component: storage
+        annotations:
+          summary: "Critical disk space on {{ $labels.instance }}"
+          description: "Disk space is critically low (< 10%) on {{ $labels.instance }}. Available: {{ $value | humanizePercentage }}"
+
+  - name: ipfs.gateway.alerts
+    rules:
+      # Gateway performance alerts
+      - alert: IPFSGatewayHighLatency
+        expr: histogram_quantile(0.95, rate(ipfs_gateway_request_duration_seconds_bucket[5m])) > 5
+        for: 10m
+        labels:
+          severity: warning
+          component: gateway
+        annotations:
+          summary: "High gateway latency on {{ $labels.instance }}"
+          description: "95th percentile latency is {{ $value }}s for more than 10 minutes on {{ $labels.instance }}"
+
+      - alert: IPFSGatewayHighErrorRate
+        expr: rate(ipfs_gateway_requests_total{status=~"5.."}[5m]) / rate(ipfs_gateway_requests_total[5m]) * 100 > 5
+        for: 5m
+        labels:
+          severity: warning
+          component: gateway
+        annotations:
+          summary: "High error rate on {{ $labels.instance }}"
+          description: "Gateway error rate is {{ $value | humanizePercentage }} for more than 5 minutes on {{ $labels.instance }}"
+
+      - alert: IPFSGatewayNoTraffic
+        expr: rate(ipfs_gateway_requests_total[10m]) == 0
+        for: 15m
+        labels:
+          severity: warning
+          component: gateway
+        annotations:
+          summary: "No gateway traffic on {{ $labels.instance }}"
+          description: "Gateway {{ $labels.instance }} has received no requests for more than 15 minutes"
+
+  - name: ipfs.datastore.alerts
+    rules:
+      # Datastore alerts
+      - alert: IPFSDatastoreHighLatency
+        expr: histogram_quantile(0.95, rate(ipfs_datastore_operation_duration_seconds_bucket[5m])) > 1
+        for: 10m
+        labels:
+          severity: warning
+          component: datastore
+        annotations:
+          summary: "High datastore latency on {{ $labels.instance }}"
+          description: "95th percentile datastore operation latency is {{ $value }}s on {{ $labels.instance }}"
+
+      - alert: IPFSDatastoreErrors
+        expr: rate(ipfs_datastore_operations_total{status="error"}[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: datastore
+        annotations:
+          summary: "High datastore error rate on {{ $labels.instance }}"
+          description: "Datastore error rate is {{ $value }} errors/sec on {{ $labels.instance }}"
+
+      - alert: IPFSDatastoreSize
+        expr: ipfs_datastore_size_bytes / (1024*1024*1024) > 400
+        for: 5m
+        labels:
+          severity: warning
+          component: datastore
+        annotations:
+          summary: "Large datastore size on {{ $labels.instance }}"
+          description: "Datastore size is {{ $value | humanize }}GB on {{ $labels.instance }}"
+
+  - name: ipfs.network.alerts
+    rules:
+      # Networking alerts
+      - alert: IPFSLowPeerCount
+        expr: ipfs_network_connected_peers < 10
+        for: 10m
+        labels:
+          severity: warning
+          component: network
+        annotations:
+          summary: "Low peer count on {{ $labels.instance }}"
+          description: "Connected peers: {{ $value }} on {{ $labels.instance }} (threshold: 10)"
+
+      - alert: IPFSNetworkPartition
+        expr: ipfs_network_connected_peers == 0
+        for: 5m
+        labels:
+          severity: critical
+          component: network
+        annotations:
+          summary: "Network partition detected on {{ $labels.instance }}"
+          description: "No peers connected to {{ $labels.instance }} for more than 5 minutes"
+
+      - alert: IPFSHighBandwidthUsage
+        expr: rate(ipfs_network_bytes_total[5m]) / (1024*1024) > 100
+        for: 15m
+        labels:
+          severity: warning
+          component: network
+        annotations:
+          summary: "High bandwidth usage on {{ $labels.instance }}"
+          description: "Network bandwidth usage is {{ $value | humanize }}MB/s on {{ $labels.instance }}"
+
+  - name: ipfs.backup.alerts
+    rules:
+      # Backup alerts
+      - alert: IPFSBackupFailed
+        expr: increase(backup_operations_total{status="failed"}[1h]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          component: backup
+        annotations:
+          summary: "Backup failed on {{ $labels.instance }}"
+          description: "{{ $value }} backup operations failed in the last hour on {{ $labels.instance }}"
+
+      - alert: IPFSBackupOld
+        expr: time() - backup_last_success_timestamp > 86400
+        for: 1m
+        labels:
+          severity: warning
+          component: backup
+        annotations:
+          summary: "Backup too old on {{ $labels.instance }}"
+          description: "Last successful backup was {{ $value | humanizeDuration }} ago on {{ $labels.instance }}"
+
+      - alert: IPFSBackupSizeAnomaly
+        expr: abs(backup_size_bytes - avg_over_time(backup_size_bytes[7d])) / avg_over_time(backup_size_bytes[7d]) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          component: backup
+        annotations:
+          summary: "Backup size anomaly on {{ $labels.instance }}"
+          description: "Backup size deviates {{ $value | humanizePercentage }} from 7-day average on {{ $labels.instance }}"
+
+  - name: ipfs.cluster.alerts
+    rules:
+      # Cluster health alerts
+      - alert: IPFSClusterQuorumLost
+        expr: count(up{job="ipfs-nodes"} == 1) < 2
+        for: 2m
+        labels:
+          severity: critical
+          component: cluster
+        annotations:
+          summary: "IPFS cluster quorum lost"
+          description: "Less than 2 IPFS nodes are available. Current count: {{ $value }}"
+
+      - alert: IPFSClusterSplitBrain
+        expr: count by (cluster_id) (ipfs_cluster_consensus_leader == 1) > 1
+        for: 5m
+        labels:
+          severity: critical
+          component: cluster
+        annotations:
+          summary: "IPFS cluster split-brain detected"
+          description: "Multiple cluster leaders detected: {{ $value }}"
+
+      - alert: IPFSClusterPinQueueHigh
+        expr: ipfs_cluster_pin_queue_size > 1000
+        for: 10m
+        labels:
+          severity: warning
+          component: cluster
+        annotations:
+          summary: "High pin queue size"
+          description: "Pin queue size is {{ $value }} on {{ $labels.instance }}"
+
+  - name: ipfs.performance.alerts
+    rules:
+      # Performance alerts
+      - alert: IPFSHighRequestLatency
+        expr: histogram_quantile(0.99, rate(ipfs_api_request_duration_seconds_bucket[5m])) > 10
+        for: 10m
+        labels:
+          severity: warning
+          component: performance
+        annotations:
+          summary: "High API request latency on {{ $labels.instance }}"
+          description: "99th percentile API latency is {{ $value }}s on {{ $labels.instance }}"
+
+      - alert: IPFSHighBlockRetrievalTime
+        expr: histogram_quantile(0.95, rate(ipfs_block_retrieval_duration_seconds_bucket[5m])) > 5
+        for: 10m
+        labels:
+          severity: warning
+          component: performance
+        annotations:
+          summary: "High block retrieval time on {{ $labels.instance }}"
+          description: "95th percentile block retrieval time is {{ $value }}s on {{ $labels.instance }}"
+
+      - alert: IPFSLowThroughput
+        expr: rate(ipfs_blocks_added_total[5m]) < 1
+        for: 30m
+        labels:
+          severity: warning
+          component: performance
+        annotations:
+          summary: "Low block throughput on {{ $labels.instance }}"
+          description: "Block addition rate is {{ $value }} blocks/sec on {{ $labels.instance }}"
+
+  - name: ipfs.security.alerts
+    rules:
+      # Security alerts
+      - alert: IPFSUnauthorizedAccess
+        expr: rate(ipfs_api_requests_total{status="401"}[5m]) > 5
+        for: 2m
+        labels:
+          severity: warning
+          component: security
+        annotations:
+          summary: "Unauthorized access attempts on {{ $labels.instance }}"
+          description: "{{ $value }} unauthorized requests/sec on {{ $labels.instance }}"
+
+      - alert: IPFSHighFailedAuthentication
+        expr: rate(ipfs_api_requests_total{status="403"}[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: security
+        annotations:
+          summary: "High authentication failure rate on {{ $labels.instance }}"
+          description: "{{ $value }} authentication failures/sec on {{ $labels.instance }}"
+
+      - alert: IPFSSuspiciousTraffic
+        expr: rate(ipfs_gateway_requests_total[1m]) > 1000
+        for: 2m
+        labels:
+          severity: warning
+          component: security
+        annotations:
+          summary: "Suspicious traffic pattern on {{ $labels.instance }}"
+          description: "{{ $value }} requests/sec detected on {{ $labels.instance }} (potential DDoS)"

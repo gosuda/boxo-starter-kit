@@ -1,0 +1,496 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ipfs-system
+  labels:
+    name: ipfs-system
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ipfs-config
+  namespace: ipfs-system
+data:
+  production.yml: |
+    # IPFS Node Production Configuration
+    api:
+      enabled: true
+      address: "0.0.0.0:5001"
+      cors_origins:
+        - "*"
+      rate_limit:
+        enabled: true
+        requests_per_second: 100
+        burst_size: 200
+
+    gateway:
+      enabled: true
+      address: "0.0.0.0:8080"
+      cache_size: 1000000
+      cache_ttl: "24h"
+      max_request_size: "32MB"
+      timeout: "30s"
+
+    network:
+      listen_addresses:
+        - "/ip4/0.0.0.0/tcp/4001"
+      enable_optimizations: true
+      connection_pool:
+        max_connections: 1000
+        max_per_peer: 5
+        idle_timeout: "30s"
+      message_batching:
+        enabled: true
+        max_batch_size: 100
+        batch_timeout: "10ms"
+
+    datastore:
+      type: "badger"
+      path: "/opt/ipfs/data"
+      options:
+        num_memtables: 4
+        mem_table_size: 67108864  # 64MB
+        num_level_zero: 8
+        sync_writes: false
+
+    metrics:
+      enabled: true
+      address: "0.0.0.0:9090"
+      path: "/metrics"
+
+    logging:
+      level: "info"
+      format: "json"
+
+    backup:
+      enabled: true
+      schedule: "@daily"
+      retention:
+        daily: 7
+        weekly: 4
+        monthly: 12
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ipfs-secrets
+  namespace: ipfs-system
+type: Opaque
+data:
+  # Base64 encoded secrets
+  api-key: Zm9vYmFy  # Replace with actual API key
+  backup-encryption-key: c2VjcmV0a2V5  # Replace with actual backup encryption key
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ipfs-cluster
+  namespace: ipfs-system
+  labels:
+    app: ipfs-node
+spec:
+  serviceName: ipfs-headless
+  replicas: 3
+  selector:
+    matchLabels:
+      app: ipfs-node
+  template:
+    metadata:
+      labels:
+        app: ipfs-node
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+
+      initContainers:
+      - name: init-datastore
+        image: alpine:3.18
+        command: ['sh', '-c']
+        args:
+        - |
+          echo "Initializing datastore for pod $HOSTNAME"
+          mkdir -p /opt/ipfs/data
+          chown 1000:1000 /opt/ipfs/data
+          if [ ! -f /opt/ipfs/data/.initialized ]; then
+            echo "Creating initialization marker"
+            touch /opt/ipfs/data/.initialized
+            chown 1000:1000 /opt/ipfs/data/.initialized
+          fi
+        volumeMounts:
+        - name: ipfs-data
+          mountPath: /opt/ipfs/data
+        securityContext:
+          runAsUser: 0
+          runAsGroup: 0
+
+      containers:
+      - name: ipfs-node
+        image: your-registry/ipfs-node:latest
+        imagePullPolicy: Always
+
+        ports:
+        - name: p2p
+          containerPort: 4001
+          protocol: TCP
+        - name: api
+          containerPort: 5001
+          protocol: TCP
+        - name: gateway
+          containerPort: 8080
+          protocol: TCP
+        - name: metrics
+          containerPort: 9090
+          protocol: TCP
+
+        env:
+        - name: IPFS_NODE_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: IPFS_LOG_LEVEL
+          value: "info"
+        - name: IPFS_CONFIG_FILE
+          value: "/opt/ipfs/configs/production.yml"
+        - name: IPFS_CLUSTER_PEERS
+          value: "ipfs-cluster-0.ipfs-headless.ipfs-system.svc.cluster.local:4001,ipfs-cluster-1.ipfs-headless.ipfs-system.svc.cluster.local:4001,ipfs-cluster-2.ipfs-headless.ipfs-system.svc.cluster.local:4001"
+        - name: IPFS_METRICS_ENABLED
+          value: "true"
+        - name: API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ipfs-secrets
+              key: api-key
+
+        resources:
+          requests:
+            memory: "4Gi"
+            cpu: "2"
+            ephemeral-storage: "10Gi"
+          limits:
+            memory: "8Gi"
+            cpu: "4"
+            ephemeral-storage: "20Gi"
+
+        volumeMounts:
+        - name: ipfs-data
+          mountPath: /opt/ipfs/data
+        - name: ipfs-config
+          mountPath: /opt/ipfs/configs
+          readOnly: true
+        - name: ipfs-logs
+          mountPath: /opt/ipfs/logs
+        - name: tmp
+          mountPath: /tmp
+
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 30
+
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - /bin/sh
+              - -c
+              - |
+                echo "Gracefully stopping IPFS node..."
+                pkill -TERM ipfs-node
+                sleep 30
+
+      volumes:
+      - name: ipfs-config
+        configMap:
+          name: ipfs-config
+      - name: ipfs-logs
+        emptyDir: {}
+      - name: tmp
+        emptyDir:
+          sizeLimit: 1Gi
+
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - ipfs-node
+              topologyKey: kubernetes.io/hostname
+
+      tolerations:
+      - key: "ipfs-node"
+        operator: "Equal"
+        value: "true"
+        effect: "NoSchedule"
+
+  volumeClaimTemplates:
+  - metadata:
+      name: ipfs-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: fast-ssd
+      resources:
+        requests:
+          storage: 500Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ipfs-gateway
+  namespace: ipfs-system
+  labels:
+    app: ipfs-node
+    service: gateway
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: "tcp"
+spec:
+  type: LoadBalancer
+  selector:
+    app: ipfs-node
+  ports:
+  - name: gateway
+    port: 80
+    targetPort: 8080
+    protocol: TCP
+  sessionAffinity: None
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ipfs-api
+  namespace: ipfs-system
+  labels:
+    app: ipfs-node
+    service: api
+spec:
+  type: ClusterIP
+  selector:
+    app: ipfs-node
+  ports:
+  - name: api
+    port: 5001
+    targetPort: 5001
+    protocol: TCP
+  sessionAffinity: ClientIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ipfs-headless
+  namespace: ipfs-system
+  labels:
+    app: ipfs-node
+    service: headless
+spec:
+  clusterIP: None
+  selector:
+    app: ipfs-node
+  ports:
+  - name: p2p
+    port: 4001
+    targetPort: 4001
+    protocol: TCP
+  - name: api
+    port: 5001
+    targetPort: 5001
+    protocol: TCP
+  - name: gateway
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+  - name: metrics
+    port: 9090
+    targetPort: 9090
+    protocol: TCP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ipfs-metrics
+  namespace: ipfs-system
+  labels:
+    app: ipfs-node
+    service: metrics
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9090"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  selector:
+    app: ipfs-node
+  ports:
+  - name: metrics
+    port: 9090
+    targetPort: 9090
+    protocol: TCP
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ipfs-gateway-ingress
+  namespace: ipfs-system
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/rate-limit: "1000"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+spec:
+  tls:
+  - hosts:
+    - ipfs.example.com
+    secretName: ipfs-gateway-tls
+  rules:
+  - host: ipfs.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: ipfs-gateway
+            port:
+              number: 80
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ipfs-network-policy
+  namespace: ipfs-system
+spec:
+  podSelector:
+    matchLabels:
+      app: ipfs-node
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 9090
+  - from: []
+    ports:
+    - protocol: TCP
+      port: 4001
+    - protocol: TCP
+      port: 8080
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ipfs-system
+    ports:
+    - protocol: TCP
+      port: 5001
+  egress:
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 4001
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 53
+    - protocol: UDP
+      port: 53
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: ipfs-pdb
+  namespace: ipfs-system
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: ipfs-node
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ipfs-hpa
+  namespace: ipfs-system
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: ipfs-cluster
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60

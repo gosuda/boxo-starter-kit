@@ -1,0 +1,125 @@
+{
+  "id": "basic-datastore-migration",
+  "version": "1.0",
+  "description": "Basic datastore migration from BadgerDB to PebbleDB",
+  "steps": [
+    {
+      "id": "backup-source",
+      "type": "copy",
+      "description": "Create backup of source datastore",
+      "source": {
+        "type": "badger",
+        "path": "./data/badger",
+        "options": {
+          "read_only": true
+        }
+      },
+      "target": {
+        "type": "file",
+        "path": "./migration-backup.tar.gz"
+      },
+      "filters": [
+        {
+          "type": "key_prefix",
+          "pattern": "/blocks/",
+          "condition": "include"
+        }
+      ]
+    },
+    {
+      "id": "copy-blocks",
+      "type": "copy",
+      "description": "Copy block data to new datastore",
+      "source": {
+        "type": "badger",
+        "path": "./data/badger"
+      },
+      "target": {
+        "type": "pebble",
+        "path": "./data/pebble"
+      },
+      "transform": {
+        "key_transform": "",
+        "value_transform": "",
+        "mappings": {},
+        "validators": ["cid_validator"]
+      },
+      "filters": [
+        {
+          "type": "key_prefix",
+          "pattern": "/blocks/",
+          "condition": "include"
+        },
+        {
+          "type": "value_size",
+          "condition": "max_size",
+          "value": 10485760
+        }
+      ]
+    },
+    {
+      "id": "copy-metadata",
+      "type": "copy",
+      "description": "Copy metadata to new datastore",
+      "source": {
+        "type": "badger",
+        "path": "./data/badger"
+      },
+      "target": {
+        "type": "pebble",
+        "path": "./data/pebble"
+      },
+      "filters": [
+        {
+          "type": "key_prefix",
+          "pattern": "/local/",
+          "condition": "include"
+        }
+      ]
+    },
+    {
+      "id": "validate-migration",
+      "type": "validate",
+      "description": "Validate migrated data integrity",
+      "source": {
+        "type": "badger",
+        "path": "./data/badger"
+      },
+      "target": {
+        "type": "pebble",
+        "path": "./data/pebble"
+      }
+    },
+    {
+      "id": "cleanup-temp",
+      "type": "cleanup",
+      "description": "Clean up temporary migration files",
+      "source": {
+        "type": "file",
+        "path": "./migration-temp"
+      }
+    }
+  ],
+  "rollback": [
+    {
+      "id": "restore-from-backup",
+      "type": "copy",
+      "description": "Restore from backup if migration fails",
+      "source": {
+        "type": "file",
+        "path": "./migration-backup.tar.gz"
+      },
+      "target": {
+        "type": "badger",
+        "path": "./data/badger"
+      }
+    }
+  ],
+  "config": {
+    "batch_size": 1000,
+    "timeout": "3600s",
+    "verify_migration": true,
+    "backup_before": true,
+    "dry_run": false
+  }
+}

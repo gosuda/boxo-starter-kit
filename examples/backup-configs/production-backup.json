@@ -1,0 +1,93 @@
+{
+  "scheduler_config": {
+    "default_backup_dir": "/var/backups/ipfs",
+    "retention_policy": {
+      "keep_daily": 14,
+      "keep_weekly": 8,
+      "keep_monthly": 24,
+      "keep_yearly": 7,
+      "max_age": "8760h"
+    },
+    "concurrent_backups": 3,
+    "health_check_interval": "1h",
+    "notification_config": {
+      "email_on_failure": true,
+      "email_on_success": false,
+      "recipients": ["ops@example.com", "admin@example.com"],
+      "webhook_url": "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+    }
+  },
+  "backup_schedules": [
+    {
+      "id": "critical-data-backup",
+      "name": "critical-data",
+      "schedule": "@daily",
+      "enabled": true,
+      "config": {
+        "compression_level": 9,
+        "chunk_size": 2000,
+        "timeout": "1800s",
+        "verify_integrity": true,
+        "include_metadata": true,
+        "exclude_patterns": [
+          "/temp/*",
+          "/cache/*",
+          "/local/temp/*"
+        ]
+      }
+    },
+    {
+      "id": "full-system-backup",
+      "name": "full-system",
+      "schedule": "@weekly",
+      "enabled": true,
+      "config": {
+        "compression_level": 6,
+        "chunk_size": 5000,
+        "timeout": "7200s",
+        "verify_integrity": true,
+        "include_metadata": true,
+        "exclude_patterns": []
+      }
+    },
+    {
+      "id": "metadata-backup",
+      "name": "metadata",
+      "schedule": "0 */6 * * *",
+      "enabled": true,
+      "config": {
+        "compression_level": 8,
+        "chunk_size": 1000,
+        "timeout": "900s",
+        "verify_integrity": true,
+        "include_metadata": true,
+        "exclude_patterns": [
+          "/blocks/*"
+        ]
+      }
+    }
+  ],
+  "migration_plans": [
+    {
+      "id": "emergency-restore",
+      "description": "Emergency restore from latest backup",
+      "steps": [
+        {
+          "id": "stop-services",
+          "type": "cleanup",
+          "description": "Stop IPFS services"
+        },
+        {
+          "id": "restore-data",
+          "type": "copy",
+          "description": "Restore from latest backup"
+        },
+        {
+          "id": "start-services",
+          "type": "cleanup",
+          "description": "Restart IPFS services"
+        }
+      ]
+    }
+  ]
+}
