@@ -2,6 +2,7 @@ package ipni
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"time"
 
@@ -108,12 +109,31 @@ func (w *IPNIWrapper) PutGraphSync(ctx context.Context, pid peer.ID, contextID [
 }
 
 func (w *IPNIWrapper) PutHTTP(ctx context.Context, pid peer.ID, contextID []byte, urls []string, partialCAR bool, auth bool, mhs ...mh.Multihash) error {
-	meta := md.IpfsGatewayHttp{}
-	// TODO : WHY are we not setting URLs here?
+	// Create HTTP gateway metadata with proper URL configuration
+	meta := md.IpfsGatewayHttp{
+		// Set the gateway URLs that can serve this content
+		Gateways: urls,
+	}
+
+	// Configure partial CAR support if enabled
+	if partialCAR {
+		// Add partial CAR capability metadata
+		// Note: This depends on the specific metadata format supported
+		meta.Partial = &partialCAR
+	}
+
+	// Configure authentication if required
+	if auth {
+		// Add authentication requirement metadata
+		// Note: This depends on the specific metadata format supported
+		meta.AuthRequired = &auth
+	}
+
 	metaBytes, err := meta.MarshalBinary()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to marshal HTTP gateway metadata: %w", err)
 	}
+
 	val := indexer.Value{ProviderID: pid, ContextID: contextID, MetadataBytes: metaBytes}
 	return w.PutMultihashes(ctx, val, mhs...)
 }

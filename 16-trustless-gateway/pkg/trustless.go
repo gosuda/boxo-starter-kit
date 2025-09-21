@@ -7,11 +7,13 @@ import (
 	"time"
 
 	"github.com/ipfs/boxo/gateway"
+	"github.com/gosuda/boxo-starter-kit/pkg/security"
 )
 
 type GatewayWrapper struct {
-	port   int
-	Server *http.Server
+	port     int
+	Server   *http.Server
+	security *security.SecurityMiddleware
 }
 
 func NewGatewayWrapper(port int, urls []string) (*GatewayWrapper, error) {
@@ -20,8 +22,12 @@ func NewGatewayWrapper(port int, urls []string) (*GatewayWrapper, error) {
 		port = 8080
 	}
 
+	// Set up security middleware
+	securityMiddleware := security.NewSecurityMiddleware(security.DefaultSecurityConfig())
+
 	gatewayWrapper := &GatewayWrapper{
-		port: port,
+		port:     port,
+		security: securityMiddleware,
 	}
 
 	fetcher, err := gateway.NewRemoteCarFetcher(urls, nil)
@@ -42,9 +48,12 @@ func NewGatewayWrapper(port int, urls []string) (*GatewayWrapper, error) {
 	mux.Handle("/ipfs/", handler)
 	mux.Handle("/ipns/", handler)
 
+	// Apply security middleware to the entire mux
+	secureHandler := gatewayWrapper.security.Handler()(mux)
+
 	gatewayWrapper.Server = &http.Server{
 		Addr:           fmt.Sprintf(":%d", port),
-		Handler:        mux,
+		Handler:        secureHandler,
 		ReadTimeout:    30 * time.Second,
 		WriteTimeout:   30 * time.Second,
 		IdleTimeout:    60 * time.Second,

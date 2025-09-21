@@ -20,16 +20,16 @@ type IpldWrapper struct {
 	*DagServiceWrapper
 }
 
-func NewIpldWrapper(prefix *cid.Prefix, blockserviceWrapper *bitswap.BlockServiceWrapper) (*IpldWrapper, error) {
+func NewIpldWrapper(ctx context.Context, prefix *cid.Prefix, blockserviceWrapper *bitswap.BlockServiceWrapper) (*IpldWrapper, error) {
 	var err error
 	if blockserviceWrapper == nil {
-		blockserviceWrapper, err = bitswap.NewBlockService(nil, nil)
+		blockserviceWrapper, err = bitswap.NewBlockService(ctx, nil, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create BlockService wrapper: %w", err)
 		}
 	}
 
-	dagServiceWrapper, err := NewDagServiceWrapper(nil, blockserviceWrapper)
+	dagServiceWrapper, err := NewDagServiceWrapper(ctx, prefix, blockserviceWrapper)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create DAGService wrapper: %w", err)
 	}

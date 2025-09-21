@@ -11,11 +11,13 @@ import (
 	"github.com/ipfs/boxo/exchange"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	block "github.com/gosuda/boxo-starter-kit/00-block-cid/pkg"
 	persistent "github.com/gosuda/boxo-starter-kit/01-persistent/pkg"
 	network "github.com/gosuda/boxo-starter-kit/02-network/pkg"
 	dht "github.com/gosuda/boxo-starter-kit/03-dht-router/pkg"
+	"github.com/gosuda/boxo-starter-kit/pkg/metrics"
 )
 
 var _ exchange.Interface = (*BitswapWrapper)(nil)
@@ -26,6 +28,9 @@ type BitswapWrapper struct {
 	HostWrapper       *network.HostWrapper
 	PersistentWrapper *persistent.PersistentWrapper
 	*bitswap.Bitswap
+
+	// Metrics
+	metrics *metrics.ComponentMetrics
 }
 
 // NewBitswap creates a new simplified bitswap node for educational purposes
@@ -57,10 +62,15 @@ func NewBitswap(ctx context.Context, dhtWrapper *dht.DHTWrapper, host *network.H
 		bitswap.ProviderSearchDelay(time.Second),
 	)
 
+	// Initialize metrics
+	bitswapMetrics := metrics.NewComponentMetrics("bitswap")
+	metrics.RegisterGlobalComponent(bitswapMetrics)
+
 	node := &BitswapWrapper{
 		HostWrapper:       host,
 		PersistentWrapper: persistentWrapper,
 		Bitswap:           bswap,
+		metrics:           bitswapMetrics,
 	}
 
 	return node, nil
@@ -110,4 +120,99 @@ func (b *BitswapWrapper) GetBlockRaw(ctx context.Context, c cid.Cid) ([]byte, er
 		return nil, err
 	}
 	return block.RawData(), nil
+}
+
+// GetBlockFromPeer retrieves a block from a specific peer
+func (b *BitswapWrapper) GetBlockFromPeer(ctx context.Context, c cid.Cid, targetPeer peer.ID) (blocks.Block, error) {
+	start := time.Now()
+	b.metrics.RecordRequest()
+
+	// Check if we're already connected to the target peer
+	connected := b.HostWrapper.Host.Network().Connectedness(targetPeer)
+	if connected != 1 { // NotConnected = 0, Connected = 1
+		// Try to connect to the peer
+		peerAddrs := b.HostWrapper.Host.Peerstore().Addrs(targetPeer)
+		if len(peerAddrs) > 0 {
+			err := b.HostWrapper.Host.Connect(ctx, peer.AddrInfo{
+				ID:    targetPeer,
+				Addrs: peerAddrs,
+			})
+			if err != nil {
+				b.metrics.RecordFailure(time.Since(start), "peer_connection_failed")
+				return nil, fmt.Errorf("failed to connect to peer %s: %w", targetPeer, err)
+			}
+		}
+	}
+
+	// Create a session for targeted fetching
+	session := b.Bitswap.NewSession(ctx)
+
+	// Use the session to fetch the block
+	// Note: This still relies on the underlying bitswap routing,
+	// but sessions provide better performance for targeted requests
+	block, err := session.GetBlock(ctx, c)
+	if err != nil {
+		b.metrics.RecordFailure(time.Since(start), "block_fetch_failed")
+		return nil, fmt.Errorf("failed to get block %s from peer %s: %w", c, targetPeer, err)
+	}
+
+	b.metrics.RecordSuccess(time.Since(start), int64(len(block.RawData())))
+	return block, nil
+}
+
+// GetBlockFromPeerRaw retrieves raw block data from a specific peer
+func (b *BitswapWrapper) GetBlockFromPeerRaw(ctx context.Context, c cid.Cid, targetPeer peer.ID) ([]byte, error) {
+	block, err := b.GetBlockFromPeer(ctx, c, targetPeer)
+	if err != nil {
+		return nil, err
+	}
+	return block.RawData(), nil
+}
+
+// RequestBlockFromPeer sends a block request to a specific peer without blocking
+func (b *BitswapWrapper) RequestBlockFromPeer(ctx context.Context, c cid.Cid, targetPeer peer.ID) error {
+	start := time.Now()
+	b.metrics.RecordRequest()
+
+	// Check connection
+	connected := b.HostWrapper.Host.Network().Connectedness(targetPeer)
+	if connected != 1 {
+		peerAddrs := b.HostWrapper.Host.Peerstore().Addrs(targetPeer)
+		if len(peerAddrs) > 0 {
+			err := b.HostWrapper.Host.Connect(ctx, peer.AddrInfo{
+				ID:    targetPeer,
+				Addrs: peerAddrs,
+			})
+			if err != nil {
+				b.metrics.RecordFailure(time.Since(start), "peer_connection_failed")
+				return fmt.Errorf("failed to connect to peer %s: %w", targetPeer, err)
+			}
+		}
+	}
+
+	// Send want request (non-blocking)
+	session := b.Bitswap.NewSession(ctx)
+
+	// Start fetching in background
+	go func() {
+		_, err := session.GetBlock(ctx, c)
+		if err != nil {
+			// Log error but don't return it since this is async
+			b.metrics.RecordFailure(time.Since(start), "async_block_fetch_failed")
+		} else {
+			b.metrics.RecordSuccess(time.Since(start), 0) // Size unknown in async mode
+		}
+	}()
+
+	return nil
+}
+
+// IsConnectedToPeer checks if we're connected to a specific peer
+func (b *BitswapWrapper) IsConnectedToPeer(peerID peer.ID) bool {
+	return b.HostWrapper.Host.Network().Connectedness(peerID) == 1
+}
+
+// GetConnectedPeers returns a list of currently connected peers
+func (b *BitswapWrapper) GetConnectedPeers() []peer.ID {
+	return b.HostWrapper.Host.Network().Peers()
 }

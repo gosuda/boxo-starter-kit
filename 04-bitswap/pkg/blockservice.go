@@ -17,7 +17,7 @@ type BlockServiceWrapper struct {
 	blockservice.BlockService
 }
 
-func NewBlockService(persistentWrapper *persistent.PersistentWrapper, bitswapWrapper *BitswapWrapper) (*BlockServiceWrapper, error) {
+func NewBlockService(ctx context.Context, persistentWrapper *persistent.PersistentWrapper, bitswapWrapper *BitswapWrapper) (*BlockServiceWrapper, error) {
 	var err error
 	if persistentWrapper == nil {
 		if bitswapWrapper != nil && bitswapWrapper.PersistentWrapper != nil {
@@ -32,7 +32,7 @@ func NewBlockService(persistentWrapper *persistent.PersistentWrapper, bitswapWra
 		}
 	}
 	if bitswapWrapper == nil {
-		bitswapWrapper, err = NewBitswap(context.TODO(), nil, nil, persistentWrapper)
+		bitswapWrapper, err = NewBitswap(ctx, nil, nil, persistentWrapper)
 		if err != nil {
 			return nil, fmt.Errorf("init bitswap: %w", err)
 		}

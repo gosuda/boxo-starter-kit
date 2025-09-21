@@ -19,13 +19,13 @@ type DagServiceWrapper struct {
 	format.DAGService
 }
 
-func NewDagServiceWrapper(prefix *cid.Prefix, blockserviceWrapper *bitswap.BlockServiceWrapper) (*DagServiceWrapper, error) {
+func NewDagServiceWrapper(ctx context.Context, prefix *cid.Prefix, blockserviceWrapper *bitswap.BlockServiceWrapper) (*DagServiceWrapper, error) {
 	var err error
 	if prefix == nil {
 		prefix = block.NewV1Prefix(mc.Protobuf, 0, 0)
 	}
 	if blockserviceWrapper == nil {
-		blockserviceWrapper, err = bitswap.NewBlockService(nil, nil)
+		blockserviceWrapper, err = bitswap.NewBlockService(ctx, nil, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create BlockService wrapper: %w", err)
 		}
