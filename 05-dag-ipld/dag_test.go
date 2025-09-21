@@ -17,7 +17,7 @@ func TestDagServiceAddGet(t *testing.T) {
 	ctx, timeout := context.WithTimeout(context.Background(), time.Second*5)
 	defer timeout()
 
-	d, err := dag.NewDagServiceWrapper(nil, nil)
+	d, err := dag.NewDagServiceWrapper(ctx, nil, nil)
 	require.NoError(t, err)
 
 	// make a dag-pb node
@@ -58,7 +58,7 @@ func TestPutAndGetNode(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
-	w, err := dag.NewIpldWrapper(nil, nil)
+	w, err := dag.NewIpldWrapper(ctx, nil, nil)
 	require.NoError(t, err)
 
 	c1, err := w.AddRaw(ctx, []byte("hello"))
@@ -74,7 +74,7 @@ func TestResolvePath_ByName(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
-	w, err := dag.NewIpldWrapper(nil, nil)
+	w, err := dag.NewIpldWrapper(ctx, nil, nil)
 	require.NoError(t, err)
 
 	// Build: root --a--> mid --b--> leaf
@@ -103,7 +103,7 @@ func TestResolvePath_ByIndex(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
-	w, err := dag.NewIpldWrapper(nil, nil)
+	w, err := dag.NewIpldWrapper(ctx, nil, nil)
 	require.NoError(t, err)
 
 	// Build same chain but use indices "0/0"
@@ -131,7 +131,7 @@ func TestResolvePath_MixedNameIndex(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
-	w, err := dag.NewIpldWrapper(nil, nil)
+	w, err := dag.NewIpldWrapper(ctx, nil, nil)
 	require.NoError(t, err)
 
 	leaf1 := newLeaf("L1")
@@ -166,7 +166,7 @@ func TestResolvePath_EmptyPathReturnsRoot(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
-	w, err := dag.NewIpldWrapper(nil, nil)
+	w, err := dag.NewIpldWrapper(ctx, nil, nil)
 	require.NoError(t, err)
 
 	root := merkledag.NodeWithData(nil)
@@ -183,7 +183,7 @@ func TestResolvePath_Errors(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
-	w, err := dag.NewIpldWrapper(nil, nil)
+	w, err := dag.NewIpldWrapper(ctx, nil, nil)
 	require.NoError(t, err)
 
 	leaf := newLeaf("leaf")

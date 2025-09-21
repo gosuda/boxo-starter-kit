@@ -42,14 +42,14 @@ func TestBlockService(t *testing.T) {
 	bswap1, err := bitswap.NewBitswap(ctx, nil, nil, nil)
 	require.NoError(t, err)
 
-	bs1, err := bitswap.NewBlockService(nil, bswap1)
+	bs1, err := bitswap.NewBlockService(ctx, nil, bswap1)
 	require.NoError(t, err)
 	defer bs1.Close()
 
 	bswap2, err := bitswap.NewBitswap(ctx, nil, nil, nil)
 	require.NoError(t, err)
 
-	bs2, err := bitswap.NewBlockService(nil, bswap2)
+	bs2, err := bitswap.NewBlockService(ctx, nil, bswap2)
 	require.NoError(t, err)
 	defer bs2.Close()
 

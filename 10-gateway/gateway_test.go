@@ -26,7 +26,7 @@ func TestGateway(t *testing.T) {
 	defer cancel()
 
 	// Setup
-	dagWrapper, err := dag.NewIpldWrapper(nil, nil)
+	dagWrapper, err := dag.NewIpldWrapper(ctx, nil, nil)
 	require.NoError(t, err)
 	defer dagWrapper.BlockServiceWrapper.Close()
 
@@ -177,7 +177,7 @@ func TestGatewayAPI(t *testing.T) {
 	defer cancel()
 
 	// Setup
-	dagWrapper, err := dag.NewIpldWrapper(nil, nil)
+	dagWrapper, err := dag.NewIpldWrapper(ctx, nil, nil)
 	require.NoError(t, err)
 	defer dagWrapper.BlockServiceWrapper.Close()
 
@@ -231,7 +231,7 @@ func TestGatewayAPI(t *testing.T) {
 }
 
 func TestGatewayConfig(t *testing.T) {
-	dagWrapper, err := dag.NewIpldWrapper(nil, nil)
+	dagWrapper, err := dag.NewIpldWrapper(ctx, nil, nil)
 	require.NoError(t, err)
 	defer dagWrapper.BlockServiceWrapper.Close()
 
