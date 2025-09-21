@@ -10,7 +10,11 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/gosuda/boxo-starter-kit/01-persistent/pkg"
+	"github.com/ipfs/go-datastore"
+	dssync "github.com/ipfs/go-datastore/sync"
+	badgerds "github.com/ipfs/go-ds-badger"
+	pebbleds "github.com/ipfs/go-ds-pebble"
+
 	"github.com/gosuda/boxo-starter-kit/pkg/backup"
 )
 
@@ -27,7 +31,6 @@ func main() {
 		verify         = flag.Bool("verify", true, "Verify backup integrity")
 		dryRun         = flag.Bool("dry-run", false, "Dry run mode (don't make changes)")
 		schedule       = flag.String("schedule", "", "Cron schedule expression")
-		output         = flag.String("output", "", "Output file path")
 	)
 	flag.Parse()
 
@@ -340,27 +343,38 @@ func runInfo(ctx context.Context, backupPath string) {
 	}
 }
 
-func openDatastore(path, dsType string) (*persistent.DatastoreWrapper, error) {
-	config := &persistent.DatastoreConfig{
-		Type: dsType,
-		Path: path,
+func openDatastore(path, dsType string) (datastore.Datastore, error) {
+	switch dsType {
+	case "memory":
+		return dssync.MutexWrap(datastore.NewMapDatastore()), nil
+	case "file":
+		// Create directory if needed
+		if err := os.MkdirAll(path, 0755); err != nil {
+			return nil, fmt.Errorf("failed to create directory: %w", err)
+		}
+		return datastore.NewMapDatastore(), nil // Simple in-memory for demo
+	case "badger":
+		if err := os.MkdirAll(path, 0755); err != nil {
+			return nil, fmt.Errorf("failed to create directory: %w", err)
+		}
+		return badgerds.NewDatastore(path, nil)
+	case "pebble":
+		if err := os.MkdirAll(path, 0755); err != nil {
+			return nil, fmt.Errorf("failed to create directory: %w", err)
+		}
+		return pebbleds.NewDatastore(path)
+	default:
+		return nil, fmt.Errorf("unknown datastore type: %s", dsType)
 	}
-
-	return persistent.NewDatastoreWrapper(config)
 }
 
-func createDatastore(path, dsType string) (*persistent.DatastoreWrapper, error) {
+func createDatastore(path, dsType string) (datastore.Datastore, error) {
 	// Ensure directory exists
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return nil, err
 	}
 
-	config := &persistent.DatastoreConfig{
-		Type: dsType,
-		Path: path,
-	}
-
-	return persistent.NewDatastoreWrapper(config)
+	return openDatastore(path, dsType)
 }
 
 func loadMigrationPlan(configPath string) (*backup.MigrationPlan, error) {

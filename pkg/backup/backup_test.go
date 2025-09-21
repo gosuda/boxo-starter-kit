@@ -2,10 +2,10 @@ package backup
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/sync"
