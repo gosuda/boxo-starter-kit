@@ -65,10 +65,10 @@ type Manager struct {
 
 // Config holds configuration for the health manager
 type Config struct {
-	CheckInterval    time.Duration // How often to run checks
-	Timeout          time.Duration // Timeout for individual checks
-	UnhealthyThreshold int         // Number of consecutive failures to mark as unhealthy
-	EnableAutoCheck  bool          // Whether to run checks automatically
+	CheckInterval      time.Duration // How often to run checks
+	Timeout            time.Duration // Timeout for individual checks
+	UnhealthyThreshold int           // Number of consecutive failures to mark as unhealthy
+	EnableAutoCheck    bool          // Whether to run checks automatically
 }
 
 // DefaultConfig returns sensible defaults
@@ -288,14 +288,14 @@ func (m *Manager) Start(ctx context.Context) {
 
 // SystemSummary provides a high-level view of system health
 type SystemSummary struct {
-	OverallStatus    Status                    `json:"overall_status"`
-	TotalComponents  int                       `json:"total_components"`
-	HealthyCount     int                       `json:"healthy_count"`
-	DegradedCount    int                       `json:"degraded_count"`
-	UnhealthyCount   int                       `json:"unhealthy_count"`
-	UnknownCount     int                       `json:"unknown_count"`
-	LastUpdated      time.Time                 `json:"last_updated"`
-	ComponentDetails map[string]CheckResult    `json:"component_details"`
+	OverallStatus    Status                 `json:"overall_status"`
+	TotalComponents  int                    `json:"total_components"`
+	HealthyCount     int                    `json:"healthy_count"`
+	DegradedCount    int                    `json:"degraded_count"`
+	UnhealthyCount   int                    `json:"unhealthy_count"`
+	UnknownCount     int                    `json:"unknown_count"`
+	LastUpdated      time.Time              `json:"last_updated"`
+	ComponentDetails map[string]CheckResult `json:"component_details"`
 }
 
 // GetSystemSummary returns a comprehensive health summary

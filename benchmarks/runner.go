@@ -15,16 +15,16 @@ import (
 
 // BenchmarkResult represents a single benchmark result
 type BenchmarkResult struct {
-	Name          string  `json:"name"`
-	Iterations    int     `json:"iterations"`
-	NsPerOp       int64   `json:"ns_per_op"`
-	MBPerSec      float64 `json:"mb_per_sec,omitempty"`
-	BytesPerOp    int64   `json:"bytes_per_op"`
-	AllocsPerOp   int64   `json:"allocs_per_op"`
-	Timestamp     string  `json:"timestamp"`
-	GoVersion     string  `json:"go_version"`
-	OS            string  `json:"os"`
-	Arch          string  `json:"arch"`
+	Name        string  `json:"name"`
+	Iterations  int     `json:"iterations"`
+	NsPerOp     int64   `json:"ns_per_op"`
+	MBPerSec    float64 `json:"mb_per_sec,omitempty"`
+	BytesPerOp  int64   `json:"bytes_per_op"`
+	AllocsPerOp int64   `json:"allocs_per_op"`
+	Timestamp   string  `json:"timestamp"`
+	GoVersion   string  `json:"go_version"`
+	OS          string  `json:"os"`
+	Arch        string  `json:"arch"`
 }
 
 // BenchmarkSuite contains multiple benchmark results

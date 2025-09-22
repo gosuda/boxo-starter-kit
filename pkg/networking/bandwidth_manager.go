@@ -96,12 +96,12 @@ type trafficQueue struct {
 
 // peerBandwidth tracks bandwidth usage per peer
 type peerBandwidth struct {
-	peer        peer.ID
-	uploadUsed  int64
-	downloadUsed int64
-	uploadLimit int64
+	peer          peer.ID
+	uploadUsed    int64
+	downloadUsed  int64
+	uploadLimit   int64
 	downloadLimit int64
-	lastUpdate  time.Time
+	lastUpdate    time.Time
 }
 
 // bandwidthLimits tracks global bandwidth limits
@@ -518,20 +518,20 @@ func (bm *BandwidthManager) GetStats() BandwidthStats {
 	defer bm.mu.RUnlock()
 
 	stats := BandwidthStats{
-		UploadUsed:     atomic.LoadInt64(&bm.uploadUsed),
-		DownloadUsed:   atomic.LoadInt64(&bm.downloadUsed),
-		UploadLimit:    bm.config.MaxUpload,
-		DownloadLimit:  bm.config.MaxDownload,
-		ActivePeers:    len(bm.peerLimits),
-		QoSEnabled:     bm.config.QoSEnabled,
+		UploadUsed:    atomic.LoadInt64(&bm.uploadUsed),
+		DownloadUsed:  atomic.LoadInt64(&bm.downloadUsed),
+		UploadLimit:   bm.config.MaxUpload,
+		DownloadLimit: bm.config.MaxDownload,
+		ActivePeers:   len(bm.peerLimits),
+		QoSEnabled:    bm.config.QoSEnabled,
 	}
 
 	if bm.config.QoSEnabled {
 		stats.QoSQueues = make(map[TrafficClass]QoSQueueStats)
 		for class, queue := range bm.qosQueues {
 			stats.QoSQueues[class] = QoSQueueStats{
-				Allocated:      queue.allocated,
-				Used:           queue.used,
+				Allocated:       queue.allocated,
+				Used:            queue.used,
 				PendingRequests: len(queue.requests),
 				AvailableTokens: len(queue.tokens),
 			}

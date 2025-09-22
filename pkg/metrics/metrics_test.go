@@ -48,7 +48,7 @@ func TestComponentMetrics_SuccessTracking(t *testing.T) {
 	assert.Equal(t, int64(2), snapshot.SuccessfulRequests)
 	assert.Equal(t, int64(0), snapshot.FailedRequests)
 	assert.Equal(t, 100.0, snapshot.SuccessRate)
-	assert.Equal(t, int64(3072), snapshot.BytesProcessed) // 1024 + 2048
+	assert.Equal(t, int64(3072), snapshot.BytesProcessed)          // 1024 + 2048
 	assert.Equal(t, 150*time.Millisecond, snapshot.AverageLatency) // (100+200)/2
 }
 

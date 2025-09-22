@@ -118,11 +118,11 @@ func MetricsBasedHealthCheck(componentName string, config MetricsHealthConfig) H
 
 // MetricsHealthConfig configures metrics-based health checks
 type MetricsHealthConfig struct {
-	MinRequests           int64         // Minimum requests before checking success rate
-	UnhealthySuccessRate  float64       // Success rate below this is unhealthy
-	DegradedSuccessRate   float64       // Success rate below this is degraded
-	UnhealthyLatency      time.Duration // Latency above this is unhealthy
-	DegradedLatency       time.Duration // Latency above this is degraded
+	MinRequests          int64         // Minimum requests before checking success rate
+	UnhealthySuccessRate float64       // Success rate below this is unhealthy
+	DegradedSuccessRate  float64       // Success rate below this is degraded
+	UnhealthyLatency     time.Duration // Latency above this is unhealthy
+	DegradedLatency      time.Duration // Latency above this is degraded
 }
 
 // DefaultMetricsHealthConfig returns sensible defaults

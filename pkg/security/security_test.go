@@ -145,9 +145,9 @@ func TestCIDValidation(t *testing.T) {
 		cid   string
 		valid bool
 	}{
-		{"QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG", false}, // CIDv0
-		{"bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi", true},  // CIDv1
-		{"", false},       // Empty
+		{"QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG", false},             // CIDv0
+		{"bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi", true}, // CIDv1
+		{"", false},        // Empty
 		{"invalid", false}, // Invalid format
 	}
 
@@ -175,11 +175,11 @@ func TestIPFSPathValidation(t *testing.T) {
 	}{
 		{"/ipfs/QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG", true},
 		{"/ipfs/QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG/file.txt", true},
-		{"/ipfs/QmBlocked123", false}, // Blocked prefix
-		{"/ipns/example.com", false},  // Not allowed prefix
+		{"/ipfs/QmBlocked123", false},   // Blocked prefix
+		{"/ipns/example.com", false},    // Not allowed prefix
 		{"/ipfs/QmTest/a/b/c/d", false}, // Too deep
-		{"", false}, // Empty
-		{"/invalid", false}, // Invalid format
+		{"", false},                     // Empty
+		{"/invalid", false},             // Invalid format
 	}
 
 	for _, test := range tests {
@@ -196,7 +196,7 @@ func TestIPFSPathValidation(t *testing.T) {
 func TestSecurityMiddlewareStack(t *testing.T) {
 	config := security.DefaultSecurityConfig()
 	config.RateLimit.RequestsPerSecond = 100 // High enough for test
-	config.EnableAuth = false // Disable auth for this test
+	config.EnableAuth = false                // Disable auth for this test
 
 	sm := security.NewSecurityMiddleware(config)
 	middleware := sm.Handler()

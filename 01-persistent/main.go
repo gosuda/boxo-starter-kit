@@ -10,7 +10,7 @@ import (
 
 	cid "github.com/ipfs/go-cid"
 
-	"github.com/gosuda/boxo-starter-kit/01-persistent/pkg"
+	persistent "github.com/gosuda/boxo-starter-kit/01-persistent/pkg"
 )
 
 func main() {
@@ -57,9 +57,9 @@ func main() {
 
 func demonstrateAllBackends(ctx context.Context, baseDir string) {
 	backends := []struct {
-		name string
-		pType persistent.PersistentType
-		path string
+		name        string
+		pType       persistent.PersistentType
+		path        string
 		description string
 	}{
 		{"Memory", persistent.Memory, "", "In-memory storage (fastest, volatile)"},
@@ -139,9 +139,9 @@ func demonstrateAllBackends(ctx context.Context, baseDir string) {
 
 func benchmarkBackends(ctx context.Context, baseDir string) {
 	backends := []struct {
-		name string
+		name  string
 		pType persistent.PersistentType
-		path string
+		path  string
 	}{
 		{"Memory", persistent.Memory, ""},
 		{"File", persistent.File, filepath.Join(baseDir, "bench_file")},
@@ -397,9 +397,9 @@ func demonstrateStorageEfficiency(ctx context.Context, baseDir string) {
 	}
 
 	backends := []struct {
-		name string
+		name  string
 		pType persistent.PersistentType
-		path string
+		path  string
 	}{
 		{"File", persistent.File, filepath.Join(baseDir, "eff_file")},
 		{"BadgerDB", persistent.Badgerdb, filepath.Join(baseDir, "eff_badger")},

@@ -123,11 +123,11 @@ func (h *HTTPHandler) handleHealth(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := map[string]interface{}{
-		"timestamp":           time.Now().UTC(),
-		"status":              health,
-		"total_components":    agg.TotalComponents,
-		"total_requests":      agg.TotalRequests,
-		"overall_success_rate": agg.OverallSuccessRate,
+		"timestamp":             time.Now().UTC(),
+		"status":                health,
+		"total_components":      agg.TotalComponents,
+		"total_requests":        agg.TotalRequests,
+		"overall_success_rate":  agg.OverallSuccessRate,
 		"total_bytes_processed": agg.TotalBytesProcessed,
 	}
 
@@ -148,9 +148,9 @@ func (h *HTTPHandler) handleHealth(w http.ResponseWriter, r *http.Request) {
 // handleIndex returns API documentation
 func (h *HTTPHandler) handleIndex(w http.ResponseWriter, r *http.Request) {
 	response := map[string]interface{}{
-		"title":       "Boxo Metrics API",
-		"version":     "1.0.0",
-		"timestamp":   time.Now().UTC(),
+		"title":     "Boxo Metrics API",
+		"version":   "1.0.0",
+		"timestamp": time.Now().UTC(),
 		"endpoints": map[string]string{
 			"GET /metrics":            "All metrics data (components + aggregated)",
 			"GET /metrics/components": "Individual component metrics (use ?name=component_name for specific component)",

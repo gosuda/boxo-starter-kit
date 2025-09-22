@@ -47,26 +47,26 @@ func DefaultBackupConfig() BackupConfig {
 
 // BackupMetadata contains information about a backup
 type BackupMetadata struct {
-	Version     string            `json:"version"`
-	Timestamp   time.Time         `json:"timestamp"`
-	TotalKeys   int64             `json:"total_keys"`
-	TotalSize   int64             `json:"total_size"`
-	Compression string            `json:"compression"`
-	Checksum    string            `json:"checksum"`
-	Config      BackupConfig      `json:"config"`
-	Statistics  BackupStatistics  `json:"statistics"`
+	Version       string                 `json:"version"`
+	Timestamp     time.Time              `json:"timestamp"`
+	TotalKeys     int64                  `json:"total_keys"`
+	TotalSize     int64                  `json:"total_size"`
+	Compression   string                 `json:"compression"`
+	Checksum      string                 `json:"checksum"`
+	Config        BackupConfig           `json:"config"`
+	Statistics    BackupStatistics       `json:"statistics"`
 	DatastoreInfo map[string]interface{} `json:"datastore_info"`
 }
 
 // BackupStatistics tracks backup operation metrics
 type BackupStatistics struct {
-	Duration        time.Duration `json:"duration"`
-	KeysProcessed   int64         `json:"keys_processed"`
-	BytesProcessed  int64         `json:"bytes_processed"`
-	BytesCompressed int64         `json:"bytes_compressed"`
+	Duration         time.Duration `json:"duration"`
+	KeysProcessed    int64         `json:"keys_processed"`
+	BytesProcessed   int64         `json:"bytes_processed"`
+	BytesCompressed  int64         `json:"bytes_compressed"`
 	CompressionRatio float64       `json:"compression_ratio"`
-	ErrorCount      int64         `json:"error_count"`
-	SkippedKeys     int64         `json:"skipped_keys"`
+	ErrorCount       int64         `json:"error_count"`
+	SkippedKeys      int64         `json:"skipped_keys"`
 }
 
 // NewBackupManager creates a new backup manager

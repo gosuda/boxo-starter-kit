@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gosuda/boxo-starter-kit/pkg/metrics"
 	network "github.com/gosuda/boxo-starter-kit/02-network/pkg"
+	"github.com/gosuda/boxo-starter-kit/pkg/metrics"
 )
 
 func main() {

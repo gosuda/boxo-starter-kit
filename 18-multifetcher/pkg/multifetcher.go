@@ -20,12 +20,12 @@ import (
 
 // FetchResult represents the result of a fetch operation
 type FetchResult struct {
-	Protocol  string
-	Provider  string
-	Data      []byte
-	Error     error
-	Duration  time.Duration
-	CID       cid.Cid
+	Protocol string
+	Provider string
+	Data     []byte
+	Error    error
+	Duration time.Duration
+	CID      cid.Cid
 }
 
 // FetcherConfig contains configuration for the multifetcher
@@ -48,13 +48,13 @@ func DefaultConfig() FetcherConfig {
 
 // MultiFetcher orchestrates parallel fetching across multiple protocols
 type MultiFetcher struct {
-	config       FetcherConfig
-	ipni         *ipni.IPNIWrapper
-	graphsync    *graphsync.GraphSyncWrapper
-	bitswap      *bitswap.BitswapWrapper
-	httpFetcher  *HTTPFetcher
-	mu           sync.RWMutex
-	metrics      *Metrics
+	config      FetcherConfig
+	ipni        *ipni.IPNIWrapper
+	graphsync   *graphsync.GraphSyncWrapper
+	bitswap     *bitswap.BitswapWrapper
+	httpFetcher *HTTPFetcher
+	mu          sync.RWMutex
+	metrics     *Metrics
 }
 
 // Metrics tracks performance across protocols
@@ -67,11 +67,11 @@ type Metrics struct {
 }
 
 type ProtocolMetrics struct {
-	Attempts        int64
-	Successes       int64
-	Failures        int64
-	AvgLatency      time.Duration
-	TotalLatency    time.Duration
+	Attempts         int64
+	Successes        int64
+	Failures         int64
+	AvgLatency       time.Duration
+	TotalLatency     time.Duration
 	BytesTransferred int64
 }
 

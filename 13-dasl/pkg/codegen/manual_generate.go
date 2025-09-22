@@ -36,8 +36,8 @@ func main() {
 	for name, typ := range allTypes {
 		// Skip built-in types that might cause issues
 		if name == "Any" || name == "Bool" || name == "String" || name == "Bytes" ||
-		   name == "Int" || name == "Float" || name == "Link" || name == "List" ||
-		   name == "Map" || name == "List__String" {
+			name == "Int" || name == "Float" || name == "Link" || name == "List" ||
+			name == "Map" || name == "List__String" {
 			continue
 		}
 

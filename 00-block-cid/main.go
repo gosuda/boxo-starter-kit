@@ -10,7 +10,7 @@ import (
 	mc "github.com/multiformats/go-multicodec"
 	mh "github.com/multiformats/go-multihash"
 
-	"github.com/gosuda/boxo-starter-kit/00-block-cid/pkg"
+	block "github.com/gosuda/boxo-starter-kit/00-block-cid/pkg"
 )
 
 func main() {

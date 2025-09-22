@@ -65,7 +65,6 @@ func TestMultiFetcher_Creation(t *testing.T) {
 	assert.NotNil(t, metrics.ProtocolStats["http"])
 }
 
-
 func TestMultiFetcher_HTTPFetcher(t *testing.T) {
 	fetcher := NewHTTPFetcher()
 	require.NotNil(t, fetcher)

@@ -15,8 +15,8 @@ import (
 
 // BackupScheduler manages automatic backup scheduling and execution
 type BackupScheduler struct {
-	metrics      *metrics.ComponentMetrics
-	config       SchedulerConfig
+	metrics       *metrics.ComponentMetrics
+	config        SchedulerConfig
 	backupManager *BackupManager
 
 	mu        sync.RWMutex
@@ -29,19 +29,19 @@ type BackupScheduler struct {
 
 // SchedulerConfig defines scheduler parameters
 type SchedulerConfig struct {
-	DefaultBackupDir   string        // Default directory for backups
-	RetentionPolicy    RetentionPolicy // How long to keep backups
-	ConcurrentBackups  int           // Maximum concurrent backup operations
-	HealthCheckInterval time.Duration // How often to check backup health
-	NotificationConfig NotificationConfig // Alert settings
+	DefaultBackupDir    string             // Default directory for backups
+	RetentionPolicy     RetentionPolicy    // How long to keep backups
+	ConcurrentBackups   int                // Maximum concurrent backup operations
+	HealthCheckInterval time.Duration      // How often to check backup health
+	NotificationConfig  NotificationConfig // Alert settings
 }
 
 // RetentionPolicy defines backup retention rules
 type RetentionPolicy struct {
-	KeepDaily   int // Number of daily backups to keep
-	KeepWeekly  int // Number of weekly backups to keep
-	KeepMonthly int // Number of monthly backups to keep
-	KeepYearly  int // Number of yearly backups to keep
+	KeepDaily   int           // Number of daily backups to keep
+	KeepWeekly  int           // Number of weekly backups to keep
+	KeepMonthly int           // Number of monthly backups to keep
+	KeepYearly  int           // Number of yearly backups to keep
 	MaxAge      time.Duration // Maximum age for any backup
 }
 
@@ -55,16 +55,16 @@ type NotificationConfig struct {
 
 // ScheduledBackup represents a scheduled backup job
 type ScheduledBackup struct {
-	ID          string          `json:"id"`
-	Name        string          `json:"name"`
-	Schedule    string          `json:"schedule"` // Cron expression
-	Datastore   datastore.Datastore `json:"-"`
-	Config      BackupConfig    `json:"config"`
-	Enabled     bool            `json:"enabled"`
-	LastRun     time.Time       `json:"last_run"`
-	NextRun     time.Time       `json:"next_run"`
-	LastResult  *BackupResult   `json:"last_result"`
-	Statistics  BackupJobStats  `json:"statistics"`
+	ID         string              `json:"id"`
+	Name       string              `json:"name"`
+	Schedule   string              `json:"schedule"` // Cron expression
+	Datastore  datastore.Datastore `json:"-"`
+	Config     BackupConfig        `json:"config"`
+	Enabled    bool                `json:"enabled"`
+	LastRun    time.Time           `json:"last_run"`
+	NextRun    time.Time           `json:"next_run"`
+	LastResult *BackupResult       `json:"last_result"`
+	Statistics BackupJobStats      `json:"statistics"`
 
 	// Internal fields
 	cronSchedule *cronSchedule
@@ -73,25 +73,25 @@ type ScheduledBackup struct {
 
 // BackupResult contains the result of a backup operation
 type BackupResult struct {
-	Success    bool          `json:"success"`
-	StartTime  time.Time     `json:"start_time"`
-	Duration   time.Duration `json:"duration"`
-	FilePath   string        `json:"file_path"`
-	FileSize   int64         `json:"file_size"`
-	KeyCount   int64         `json:"key_count"`
-	ErrorMsg   string        `json:"error_msg"`
-	Metadata   *BackupMetadata `json:"metadata"`
+	Success   bool            `json:"success"`
+	StartTime time.Time       `json:"start_time"`
+	Duration  time.Duration   `json:"duration"`
+	FilePath  string          `json:"file_path"`
+	FileSize  int64           `json:"file_size"`
+	KeyCount  int64           `json:"key_count"`
+	ErrorMsg  string          `json:"error_msg"`
+	Metadata  *BackupMetadata `json:"metadata"`
 }
 
 // BackupJobStats tracks statistics for a backup job
 type BackupJobStats struct {
-	TotalRuns      int64         `json:"total_runs"`
-	SuccessfulRuns int64         `json:"successful_runs"`
-	FailedRuns     int64         `json:"failed_runs"`
+	TotalRuns       int64         `json:"total_runs"`
+	SuccessfulRuns  int64         `json:"successful_runs"`
+	FailedRuns      int64         `json:"failed_runs"`
 	AverageDuration time.Duration `json:"average_duration"`
-	LastSuccess    time.Time     `json:"last_success"`
-	LastFailure    time.Time     `json:"last_failure"`
-	SuccessRate    float64       `json:"success_rate"`
+	LastSuccess     time.Time     `json:"last_success"`
+	LastFailure     time.Time     `json:"last_failure"`
+	SuccessRate     float64       `json:"success_rate"`
 }
 
 // cronSchedule represents a cron-like schedule
@@ -103,7 +103,7 @@ type cronSchedule struct {
 // DefaultSchedulerConfig returns sensible defaults
 func DefaultSchedulerConfig() SchedulerConfig {
 	return SchedulerConfig{
-		DefaultBackupDir:   "./backups",
+		DefaultBackupDir: "./backups",
 		RetentionPolicy: RetentionPolicy{
 			KeepDaily:   7,
 			KeepWeekly:  4,

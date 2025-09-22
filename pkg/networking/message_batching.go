@@ -235,8 +235,8 @@ func (mb *MessageBatcher) serializeBatch(messages []BatchedMessage) ([]byte, err
 
 	// Write batch header
 	header := struct {
-		Version     uint8
-		Compressed  uint8
+		Version      uint8
+		Compressed   uint8
 		MessageCount uint32
 	}{
 		Version:      1,
@@ -313,8 +313,8 @@ func (mb *MessageBatcher) DeserializeBatch(data []byte) ([]BatchedMessage, error
 
 	// Read header
 	var header struct {
-		Version     uint8
-		Compressed  uint8
+		Version      uint8
+		Compressed   uint8
 		MessageCount uint32
 	}
 
@@ -444,8 +444,8 @@ func (mb *MessageBatcher) GetStats() BatchingStats {
 	defer mb.mu.Unlock()
 
 	stats := BatchingStats{
-		PendingBatches:   len(mb.batches),
-		PendingMessages:  0,
+		PendingBatches:  len(mb.batches),
+		PendingMessages: 0,
 		QueuedJobs:      len(mb.outgoing),
 	}
 

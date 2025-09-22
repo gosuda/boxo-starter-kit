@@ -37,8 +37,8 @@ type BenchmarkConfig struct {
 func DefaultConfig() *BenchmarkConfig {
 	return &BenchmarkConfig{
 		// Block sizes
-		SmallBlockSize:  1024,        // 1KB
-		MediumBlockSize: 1024 * 1024, // 1MB
+		SmallBlockSize:  1024,             // 1KB
+		MediumBlockSize: 1024 * 1024,      // 1MB
 		LargeBlockSize:  10 * 1024 * 1024, // 10MB
 
 		// Operation counts
