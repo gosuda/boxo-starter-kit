@@ -52,7 +52,7 @@ func main() {
 	}
 
 	// Setup IPNI for provider discovery
-	ipniWrapper, err := ipni.NewIPNIWrapper("/tmp/multifetcher-ipni")
+	ipniWrapper, err := ipni.NewIPNIWrapper("/tmp/multifetcher-ipni", nil)
 	if err != nil {
 		log.Fatalf("Failed to create IPNI wrapper: %v", err)
 	}

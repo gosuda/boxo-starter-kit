@@ -11,25 +11,33 @@ import (
 	"github.com/ipni/go-indexer-core/cache/radixcache"
 	"github.com/ipni/go-indexer-core/engine"
 	"github.com/ipni/go-indexer-core/store/pebble"
+	dagsync "github.com/ipni/go-libipni/dagsync"
+	"github.com/ipni/go-libipni/find/model"
 	md "github.com/ipni/go-libipni/metadata"
 	"github.com/libp2p/go-libp2p/core/peer"
 	mh "github.com/multiformats/go-multihash"
+	"github.com/rs/zerolog/log"
 )
-
-// -----------------------------
-// Fetcher: Remote indexer fetcher
-// -----------------------------
 
 type IPNIWrapper struct {
 	Engine       *engine.Engine
 	Planner      *Planner
 	HealthScorer HealthScorer
 	DefaultTTL   time.Duration
+
+	Subscriber *SubscriberWrapper
 }
 
-func NewIPNIWrapper(path string) (*IPNIWrapper, error) {
+func NewIPNIWrapper(path string, subscriber *SubscriberWrapper) (*IPNIWrapper, error) {
+	var err error
 	if path == "" {
 		path = os.TempDir() + "/ipni"
+	}
+	if subscriber == nil {
+		subscriber, err = NewSubscriberWrapper(nil, nil)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	store, err := pebble.New(path, nil)
@@ -49,6 +57,7 @@ func NewIPNIWrapper(path string) (*IPNIWrapper, error) {
 		Planner:      pl,
 		HealthScorer: nil,              // can be set via SetHealthScorer
 		DefaultTTL:   60 * time.Second, // used when composing Providers
+		Subscriber:   subscriber,
 	}, nil
 }
 
@@ -133,6 +142,29 @@ func (w *IPNIWrapper) PutHTTP(ctx context.Context, pid peer.ID, contextID []byte
 
 	val := indexer.Value{ProviderID: pid, ContextID: contextID, MetadataBytes: metaBytes}
 	return w.PutMultihashes(ctx, val, mhs...)
+}
+
+func (w *IPNIWrapper) Subscribe() {
+	if w.Subscriber == nil {
+		fmt.Println("Subscriber not initialized")
+		return
+	}
+	selector := cid.Undef
+	err := w.Subscriber.Start(func(ev *dagsync.SyncFinished, provider *model.ProviderInfo) error {
+		if ev.Err != nil {
+			log.Error().Err(ev.Err).Msg("DAG sync error")
+			return ev.Err
+		}
+		pub := provider.Publisher.ID
+
+		return nil
+	})
+	if err != nil {
+		fmt.Printf("Failed to subscribe: %v\n", err)
+		return
+	}
+	fmt.Println("Subscribed successfully")
+
 }
 
 // Planning helpers (scoring-only)

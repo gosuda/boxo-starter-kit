@@ -110,6 +110,17 @@ type Plan struct {
 	}
 }
 
+type Provider struct {
+	db indexer.Interface
+
+	ID         string
+	Addrs      []string // multiaddr or URLs
+	Transports []Transport
+	Region     string
+	ASN        uint32
+	Meta       map[string]string
+}
+
 type Providers struct {
 	Items       []Provider
 	ObservedTTL time.Duration

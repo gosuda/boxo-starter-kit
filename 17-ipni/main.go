@@ -26,7 +26,7 @@ func main() {
 	fmt.Println("🔧 1. Setting up IPNI wrapper:")
 
 	// Create IPNI wrapper with default storage path
-	ipniWrapper, err := ipni.NewIPNIWrapper("/tmp/ipni-demo")
+	ipniWrapper, err := ipni.NewIPNIWrapper("/tmp/ipni-demo", nil)
 	if err != nil {
 		log.Fatalf("Failed to create IPNI wrapper: %v", err)
 	}
