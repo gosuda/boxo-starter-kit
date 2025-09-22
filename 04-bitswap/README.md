@@ -133,9 +133,8 @@ func (b *BitswapWrapper) PutBlockRaw(ctx context.Context, data []byte) (cid.Cid,
 - **10-gateway**: Explore HTTP interfaces for IPFS
 
 ## 📚 Additional Resources
-- [Bitswap Specification](https://github.com/ipfs/specs/blob/main/BITSWAP.md)
+- [Bitswap Specification](https://specs.ipfs.tech/bitswap-protocol/)
 - [IPFS Bitswap Documentation](https://docs.ipfs.tech/concepts/bitswap/)
-- [libp2p Networking Concepts](https://docs.libp2p.io/concepts/)
 
 ## 🛠 Troubleshooting
 
