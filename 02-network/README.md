@@ -17,10 +17,19 @@ Through this module, you will learn:
 
 ## 📋 Prerequisites
 
-- **00-block-cid** module completion (Block and CID understanding)
-- **01-persistent** module completion (Data persistence concepts)
-- Basic understanding of networking concepts (TCP/IP, P2P)
-- Knowledge of Go concurrency patterns (goroutines, channels)
+Before starting this module, ensure you have completed:
+
+- **00-block-cid**: Understanding of content-addressed blocks and CID generation
+  - You'll need to understand how blocks are identified and verified using CIDs
+  - Block validation concepts are essential for secure P2P communication
+- **01-persistent**: Knowledge of data storage and persistence patterns
+  - Understanding of different storage backends (memory, file, database)
+  - Familiarity with block storage and retrieval operations
+
+**Additional Knowledge Required:**
+- Basic understanding of networking concepts (TCP/IP, P2P networking)
+- Knowledge of Go concurrency patterns (goroutines, channels, context)
+- Familiarity with cryptographic concepts (public key cryptography, peer identity)
 
 ## 🔑 Key Concepts
 
@@ -320,14 +329,30 @@ func (nm *NetworkManager) selectBestPeers(candidates []peer.ID) []peer.ID {
 
 ## 📚 Next Steps
 
-### Related Modules
-1. **03-dht-router**: Implement a distributed hash table for peer and content routing
-2. **04-bitswap**: Dive deeper into the Bitswap protocol for block exchange
+### Immediate Next Steps
+1. **[03-dht-router](../03-dht-router)**: Learn distributed hash table for peer and content discovery
+   - **Connection**: Use the P2P networking foundation to build content routing
+   - **Why Next**: DHT provides the missing piece for finding content across the network
+   - **Learning Focus**: Decentralized content discovery and peer routing
 
-### Advanced Topics
-- Network topology optimization
-- Content routing algorithms
-- DHT performance tuning
+2. **[04-bitswap](../04-bitswap)**: Implement efficient peer-to-peer block exchange
+   - **Connection**: Combines networking (02-network) with DHT discovery (03-dht-router)
+   - **Why Important**: The actual protocol for exchanging blocks between peers
+   - **Learning Focus**: Content trading strategies and peer cooperation
+
+### Related Modules
+3. **[05-dag-ipld](../05-dag-ipld)**: Complex data structures that benefit from P2P distribution
+   - **Connection**: Networked exchange of linked data structures
+   - **When to Learn**: After understanding basic block exchange
+
+4. **[10-gateway](../10-gateway)**: HTTP gateway that serves networked content
+   - **Connection**: Provides HTTP interface to P2P networked data
+   - **Relevance**: Bridge between P2P and traditional web infrastructure
+
+### Alternative Learning Paths
+- **For Data Structure Focus**: Go to **[05-dag-ipld](../05-dag-ipld)** to learn about complex data before networking protocols
+- **For File System Focus**: Jump to **[06-unixfs-car](../06-unixfs-car)** to understand file systems that benefit from networking
+- **For Storage Focus**: Explore **[08-pin-gc](../08-pin-gc)** to understand content persistence strategies in distributed networks
 
 ## 🎓 Practice Exercises
 

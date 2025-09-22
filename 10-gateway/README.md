@@ -1,4 +1,4 @@
-# 06-gateway: HTTP Gateway and Web Integration
+# 10-gateway: HTTP Gateway and Web Integration
 
 ## 🎯 Learning Objectives
 
@@ -14,9 +14,9 @@ Through this module, you will learn:
 
 - **00-block-cid** module completed (understanding Blocks and CIDs)
 - **01-persistent** module completed (understanding data persistence)
-- **02-dag-ipld** module completed (understanding DAG and IPLD)
-- **03-unixfs** module completed (understanding file systems and chunking)
-- **04-pin-gc** module completed (understanding pin management)
+- **05-dag-ipld** module completed (understanding DAG and IPLD)
+- **06-unixfs-car** module completed (understanding file systems and chunking)
+- **08-pin-gc** module completed (understanding pin management)
 - Basic concepts of HTTP protocols and web servers
 - Understanding of web development and REST APIs
 
@@ -374,7 +374,7 @@ func (gw *Gateway) formatSize(size int64) string {
 ### 1. Basic Execution
 
 ```bash
-cd 06-gateway
+cd 10-gateway
 go run main.go
 ```
 
@@ -889,9 +889,31 @@ func (gw *Gateway) corsMiddleware(next http.Handler) http.Handler {
 - [Gateway Implementation Guide](https://docs.ipfs.io/how-to/configure-gateway/)
 - [Web Integration Patterns](https://docs.ipfs.io/how-to/websites-on-ipfs/)
 
-### Next Steps
-1. **09-ipns**: Dynamic naming and mutable content
-2. **99-kubo-api-demo**: Full IPFS network integration
+## 📚 Next Steps
+
+### Immediate Next Steps
+1. **[11-kubo-api-demo](../11-kubo-api-demo)**: Complete IPFS network integration
+   - **Connection**: Deploy gateway functionality in real IPFS network context
+   - **Why Next**: Production-ready gateway applications
+   - **Learning Focus**: Full network integration and deployment patterns
+
+### Related Modules
+2. **[09-ipns](../09-ipns)**: Dynamic naming and mutable content for gateway
+   - **Connection**: Serve IPNS-resolved content through HTTP gateway
+   - **When to Learn**: When building dynamic web applications
+
+3. **[16-trustless-gateway](../16-trustless-gateway)**: Enhanced gateway with verification
+   - **Connection**: Advanced gateway functionality with cryptographic verification
+   - **Advanced Use**: High-security content serving requirements
+
+4. **[17-ipni](../17-ipni)**: Content indexing for better gateway performance
+   - **Connection**: Enhanced content discovery for gateway operations
+   - **Relevance**: Large-scale gateway deployments
+
+### Alternative Learning Paths
+- **For Production Deployment**: Jump to **[11-kubo-api-demo](../11-kubo-api-demo)** for complete integration
+- **For Dynamic Content**: Go to **[09-ipns](../09-ipns)** to learn mutable content serving
+- **For Advanced Security**: Explore **[16-trustless-gateway](../16-trustless-gateway)** for verified content serving
 
 ## 🍳 Cookbook - Ready-to-use Code
 
@@ -909,7 +931,7 @@ import (
     "time"
 
     gateway "github.com/your-org/boxo-starter-kit/07-gateway/pkg"
-    dag "github.com/your-org/boxo-starter-kit/02-dag-ipld/pkg"
+    dag "github.com/your-org/boxo-starter-kit/05-dag-ipld/pkg"
 )
 
 // Complete website hosting gateway

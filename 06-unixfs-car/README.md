@@ -1,4 +1,4 @@
-# 03-unixfs: File System Abstraction and Large File Processing
+# 06-unixfs-car: File System Abstraction and Large File Processing
 
 ## 🎯 Learning Objectives
 
@@ -14,7 +14,7 @@ Through this module, you will learn:
 
 - **00-block-cid** module completed (understanding Blocks and CIDs)
 - **01-persistent** module completed (understanding data persistence)
-- **02-dag-ipld** module completed (understanding DAG and IPLD)
+- **05-dag-ipld** module completed (understanding DAG and IPLD)
 - Basic file system concepts (files, directories, paths)
 - Stream processing and I/O concepts
 
@@ -284,7 +284,7 @@ func (ufs *UnixFsWrapper) GetPath(ctx context.Context, rootCID cid.Cid, path str
 ### 1. Basic Execution
 
 ```bash
-cd 03-unixfs
+cd 06-unixfs-car
 go run main.go
 ```
 
@@ -908,10 +908,36 @@ func putFileWithCompression(ufs *UnixFsWrapper, file files.File,
 - [Merkle DAG Structure](https://docs.ipfs.io/concepts/merkle-dag/)
 - [Chunking Strategies](https://docs.ipfs.io/concepts/file-systems/#chunking)
 
-### Next Steps
-1. **04-network-bitswap**: File block exchange in P2P networks
-2. **05-pin-gc**: File lifecycle management and garbage collection
-3. **06-gateway**: HTTP access to files via web
+## 📚 Next Steps
+
+### Immediate Next Steps
+1. **[07-mfs](../07-mfs)**: Learn Mutable File System for dynamic file operations
+   - **Connection**: Build mutable file system interface on top of UnixFS foundations
+   - **Why Next**: Add real-time file editing capabilities to static file storage
+   - **Learning Focus**: File system mutations and versioning over content-addressed storage
+
+2. **[08-pin-gc](../08-pin-gc)**: Master file lifecycle management and garbage collection
+   - **Connection**: Manage storage lifecycle of UnixFS files and directories
+   - **Why Important**: Ensure important files persist while optimizing storage usage
+   - **Learning Focus**: Content persistence strategies and automatic cleanup
+
+### Related Modules
+3. **[04-bitswap](../04-bitswap)**: Learn how UnixFS files are exchanged in P2P networks
+   - **Connection**: Distribute UnixFS chunks across peer-to-peer networks
+   - **When to Learn**: When building networked file sharing applications
+
+4. **[10-gateway](../10-gateway)**: Serve UnixFS files via HTTP gateway
+   - **Connection**: Provide web access to UnixFS content through HTTP interface
+   - **Relevance**: Bridge IPFS file systems with traditional web infrastructure
+
+5. **[16-trustless-gateway](../16-trustless-gateway)**: Advanced gateway with verification
+   - **Connection**: Enhanced gateway functionality with cryptographic verification
+   - **Advanced Use**: High-security file serving requirements
+
+### Alternative Learning Paths
+- **For Network Distribution**: Go to **[02-network](../02-network)** → **[04-bitswap](../04-bitswap)** to learn P2P file distribution
+- **For Web Applications**: Jump to **[10-gateway](../10-gateway)** for immediate HTTP file serving
+- **For Advanced Processing**: Skip to **[18-multifetcher](../18-multifetcher)** for parallel file processing
 
 ## 🎓 Practice Exercises
 

@@ -211,8 +211,25 @@ if !cid.IsValid() {
 - [CID Specification](https://github.com/multiformats/cid)
 - [Multihash Specification](https://github.com/multiformats/multihash)
 
-### Next Steps
-- [01-persistent](./01-persistent): Learn various storage backends
+## 📚 Next Steps
+
+### Immediate Next Steps
+1. **[01-persistent](../01-persistent)**: Learn data persistence and storage backend selection
+   - **Connection**: Build on block storage concepts with persistent storage backends
+   - **Why Next**: Essential for real-world applications that need data durability
+   - **Learning Focus**: Memory, File, Badger, and Pebble backend comparisons
+
+### Related Modules
+2. **[05-dag-ipld](../05-dag-ipld)**: Learn about complex data structures using CIDs
+   - **Connection**: Uses CID linking to create Directed Acyclic Graphs
+   - **When to Learn**: After understanding persistent storage fundamentals
+
+3. **[06-unixfs-car](../06-unixfs-car)**: Understand file system abstractions
+   - **Connection**: File chunking and directory structures built on block foundations
+
+### Alternative Learning Paths
+- **For Network Focus**: Jump to **[02-network](../02-network)** to understand P2P communication before storage
+- **For Data Structure Focus**: Go directly to **[05-dag-ipld](../05-dag-ipld)** to see how blocks link together
 
 ## 🎓 Practice Problems
 

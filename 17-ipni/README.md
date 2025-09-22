@@ -569,9 +569,51 @@ func (h *HealthMonitor) checkHealth(ctx context.Context) {
 - **Geographic Optimization**: Regional provider preference
 - **Fault Tolerance**: Multiple provider fallbacks
 
-## 🔗 Related Modules
+## 📚 Next Steps
 
-- **[18-multifetcher](../18-multifetcher)**: Multifetcher using Bitswap, GraphSync, and HTTP in parallel
+### Immediate Next Steps
+With IPNI expertise, advance to the ultimate content retrieval optimization:
+
+1. **[18-multifetcher](../18-multifetcher)**: Multi-Protocol Content Optimization
+   - Apply IPNI provider intelligence to multi-source content fetching
+   - Build resilient content retrieval with intelligent failover
+   - Master the integration of all protocols (Bitswap, GraphSync, HTTP)
+
+2. **Production Implementation Paths**: Choose your specialization:
+   - **Large-Scale Indexing**: Enterprise IPNI deployment and management
+   - **Content Discovery Networks**: Build comprehensive discovery systems
+   - **Performance Analytics**: Advanced indexing performance optimization
+
+### Related Modules
+**Prerequisites (Essential foundation):**
+- [00-block-cid](../00-block-cid): Content addressing fundamentals
+- [02-network](../02-network): P2P networking concepts
+- [15-graphsync](../15-graphsync): Data transfer protocol understanding
+- [16-trustless-gateway](../16-trustless-gateway): HTTP gateway patterns
+
+**Integration Foundations:**
+- [04-bitswap](../04-bitswap): Block exchange protocol for provider networks
+- [14-traversal-selector](../14-traversal-selector): Advanced content selection
+- [12-ipld-prime](../12-ipld-prime): High-performance IPLD operations
+
+**Advanced Applications:**
+- [18-multifetcher](../18-multifetcher): Ultimate content retrieval system
+- Production Systems: Enterprise-scale IPFS deployments
+- Network Analytics: Content discovery performance optimization
+
+### Alternative Learning Paths
+
+**For Distributed Systems Architecture:**
+17-ipni → 18-multifetcher → Large-Scale System Design → Enterprise IPFS
+
+**For Performance Engineering:**
+17-ipni → Custom Indexing Solutions → High-Performance Content Networks
+
+**For Research and Development:**
+17-ipni → IPNI Protocol Extensions → Academic Research → Standards Development
+
+**For Blockchain Integration:**
+17-ipni → Web3 Content Discovery → Decentralized Storage Networks → DeFi Applications
 
 ## 📚 Further Reading
 
