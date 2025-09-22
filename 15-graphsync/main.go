@@ -11,8 +11,8 @@ import (
 	mc "github.com/multiformats/go-multicodec"
 
 	block "github.com/gosuda/boxo-starter-kit/00-block-cid/pkg"
-	network "github.com/gosuda/boxo-starter-kit/02-network/pkg"
 	persistent "github.com/gosuda/boxo-starter-kit/01-persistent/pkg"
+	network "github.com/gosuda/boxo-starter-kit/02-network/pkg"
 	ipldprime "github.com/gosuda/boxo-starter-kit/12-ipld-prime/pkg"
 	traversalselector "github.com/gosuda/boxo-starter-kit/14-traversal-selector/pkg"
 	graphsync "github.com/gosuda/boxo-starter-kit/15-graphsync/pkg"
@@ -124,21 +124,21 @@ func main() {
 	// Create research papers
 	papers := []map[string]interface{}{
 		{
-			"id":       "paper001",
-			"title":    "Advanced IPLD Protocols",
-			"authors":  []interface{}{"Dr. Smith", "Prof. Johnson"},
-			"abstract": "This paper explores advanced IPLD protocol implementations...",
-			"keywords": []interface{}{"IPLD", "protocols", "distributed"},
-			"pages":    45,
+			"id":        "paper001",
+			"title":     "Advanced IPLD Protocols",
+			"authors":   []interface{}{"Dr. Smith", "Prof. Johnson"},
+			"abstract":  "This paper explores advanced IPLD protocol implementations...",
+			"keywords":  []interface{}{"IPLD", "protocols", "distributed"},
+			"pages":     45,
 			"published": "2024-01-10",
 		},
 		{
-			"id":       "paper002",
-			"title":    "GraphSync Optimization Strategies",
-			"authors":  []interface{}{"Dr. Brown", "Dr. Wilson"},
-			"abstract": "Techniques for optimizing GraphSync performance in large-scale deployments...",
-			"keywords": []interface{}{"GraphSync", "performance", "optimization"},
-			"pages":    32,
+			"id":        "paper002",
+			"title":     "GraphSync Optimization Strategies",
+			"authors":   []interface{}{"Dr. Brown", "Dr. Wilson"},
+			"abstract":  "Techniques for optimizing GraphSync performance in large-scale deployments...",
+			"keywords":  []interface{}{"GraphSync", "performance", "optimization"},
+			"pages":     32,
 			"published": "2024-01-12",
 		},
 	}
@@ -156,11 +156,11 @@ func main() {
 	// Create experiment data
 	experiments := []map[string]interface{}{
 		{
-			"id":          "exp001",
-			"name":        "Network Latency Analysis",
+			"id":            "exp001",
+			"name":          "Network Latency Analysis",
 			"related_paper": paperCIDs[1], // Link to GraphSync paper
-			"methodology": "Controlled network conditions with varying latency",
-			"data_points": 1000,
+			"methodology":   "Controlled network conditions with varying latency",
+			"data_points":   1000,
 			"results": map[string]interface{}{
 				"avg_latency_ms": 125.5,
 				"max_latency_ms": 450.2,
@@ -168,11 +168,11 @@ func main() {
 			},
 		},
 		{
-			"id":          "exp002",
-			"name":        "IPLD Traversal Performance",
+			"id":            "exp002",
+			"name":          "IPLD Traversal Performance",
 			"related_paper": paperCIDs[0], // Link to IPLD paper
-			"methodology": "Benchmark traversal across different DAG structures",
-			"data_points": 5000,
+			"methodology":   "Benchmark traversal across different DAG structures",
+			"data_points":   5000,
 			"results": map[string]interface{}{
 				"avg_traversal_time_ms": 23.1,
 				"max_traversal_time_ms": 89.7,
@@ -197,9 +197,9 @@ func main() {
 		"papers":      paperCIDs,
 		"experiments": experimentCIDs,
 		"statistics": map[string]interface{}{
-			"total_papers":     len(paperCIDs),
+			"total_papers":      len(paperCIDs),
 			"total_experiments": len(experimentCIDs),
-			"last_updated":     "2024-01-15T10:30:00Z",
+			"last_updated":      "2024-01-15T10:30:00Z",
 		},
 		"access_policy": map[string]interface{}{
 			"public_metadata": true,
@@ -435,7 +435,7 @@ streamingDone:
 	fmt.Printf("   📊 Final statistics:\n")
 	fmt.Printf("     • Provider peer ID: %s\n", providerHost.ID())
 	fmt.Printf("     • Requestor peer ID: %s\n", requestorHost.ID())
-	fmt.Printf("     • Objects synced: %d\n", len(paperCIDs) + len(experimentCIDs) + 2) // +2 for metadata and root
+	fmt.Printf("     • Objects synced: %d\n", len(paperCIDs)+len(experimentCIDs)+2) // +2 for metadata and root
 	fmt.Printf("     • Sync strategies tested: %d\n", len(strategies))
 	fmt.Printf("     • Connection status: %s\n", requestorHost.Network().Connectedness(providerHost.ID()))
 

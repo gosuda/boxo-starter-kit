@@ -170,11 +170,11 @@ func TestBackupManager_ExcludePatterns(t *testing.T) {
 
 	// Add test data with patterns to exclude
 	testData := map[string][]byte{
-		"/blocks/test1":     []byte("include this"),
-		"/blocks/test2":     []byte("include this too"),
-		"/temp/temporary":   []byte("exclude this"),
-		"/cache/cached":     []byte("exclude this too"),
-		"/local/important":  []byte("include this"),
+		"/blocks/test1":    []byte("include this"),
+		"/blocks/test2":    []byte("include this too"),
+		"/temp/temporary":  []byte("exclude this"),
+		"/cache/cached":    []byte("exclude this too"),
+		"/local/important": []byte("include this"),
 	}
 
 	for key, value := range testData {

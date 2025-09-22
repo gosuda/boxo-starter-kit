@@ -9,9 +9,9 @@ import (
 	"github.com/ipfs/go-cid"
 	mh "github.com/multiformats/go-multihash"
 
-	"github.com/gosuda/boxo-starter-kit/01-persistent/pkg"
+	persistent "github.com/gosuda/boxo-starter-kit/01-persistent/pkg"
 	network "github.com/gosuda/boxo-starter-kit/02-network/pkg"
-	"github.com/gosuda/boxo-starter-kit/03-dht-router/pkg"
+	dht "github.com/gosuda/boxo-starter-kit/03-dht-router/pkg"
 )
 
 func main() {

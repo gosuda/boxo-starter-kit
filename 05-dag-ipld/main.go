@@ -413,8 +413,8 @@ func demonstrateJSONHandling(ctx context.Context) {
 					"bio":      "Software engineer interested in distributed systems",
 				},
 				"preferences": map[string]interface{}{
-					"theme":       "dark",
-					"language":    "en",
+					"theme":         "dark",
+					"language":      "en",
 					"notifications": true,
 				},
 			},
@@ -521,10 +521,10 @@ func demonstratePathResolution(ctx context.Context) {
 
 	// Create leaf nodes for files
 	files := map[string]string{
-		"readme.txt":   "This is the README file for the project",
-		"config.json":  `{"version": "1.0", "debug": true}`,
-		"main.go":      "package main\n\nfunc main() {\n\tfmt.Println(\"Hello!\")\n}",
-		"test.go":      "package main\n\nimport \"testing\"\n\nfunc TestMain(t *testing.T) {}",
+		"readme.txt":  "This is the README file for the project",
+		"config.json": `{"version": "1.0", "debug": true}`,
+		"main.go":     "package main\n\nfunc main() {\n\tfmt.Println(\"Hello!\")\n}",
+		"test.go":     "package main\n\nimport \"testing\"\n\nfunc TestMain(t *testing.T) {}",
 	}
 
 	fileCids := make(map[string]cid.Cid)
@@ -585,9 +585,9 @@ func demonstratePathResolution(ctx context.Context) {
 
 	// Test various path resolutions
 	testPaths := []string{
-		"",           // Root
-		"README.txt", // File in root
-		"src",        // Directory
+		"",            // Root
+		"README.txt",  // File in root
+		"src",         // Directory
 		"src/main.go", // File in subdirectory
 		"src/test.go", // Another file in subdirectory
 	}

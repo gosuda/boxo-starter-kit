@@ -130,17 +130,17 @@ func (m *ComponentMetrics) Reset() {
 
 // MetricsSnapshot represents a point-in-time view of metrics
 type MetricsSnapshot struct {
-	ComponentName      string            `json:"component_name"`
-	TotalRequests      int64             `json:"total_requests"`
-	SuccessfulRequests int64             `json:"successful_requests"`
-	FailedRequests     int64             `json:"failed_requests"`
-	SuccessRate        float64           `json:"success_rate_percent"`
-	AverageLatency     time.Duration     `json:"average_latency"`
-	MinLatency         time.Duration     `json:"min_latency"`
-	MaxLatency         time.Duration     `json:"max_latency"`
-	BytesProcessed     int64             `json:"bytes_processed"`
-	ErrorsByType       map[string]int64  `json:"errors_by_type"`
-	UptimeSince        time.Time         `json:"uptime_since"`
+	ComponentName      string           `json:"component_name"`
+	TotalRequests      int64            `json:"total_requests"`
+	SuccessfulRequests int64            `json:"successful_requests"`
+	FailedRequests     int64            `json:"failed_requests"`
+	SuccessRate        float64          `json:"success_rate_percent"`
+	AverageLatency     time.Duration    `json:"average_latency"`
+	MinLatency         time.Duration    `json:"min_latency"`
+	MaxLatency         time.Duration    `json:"max_latency"`
+	BytesProcessed     int64            `json:"bytes_processed"`
+	ErrorsByType       map[string]int64 `json:"errors_by_type"`
+	UptimeSince        time.Time        `json:"uptime_since"`
 }
 
 // MetricsCollector aggregates metrics from multiple components
@@ -222,13 +222,13 @@ func (c *MetricsCollector) GetAggregatedSnapshot() AggregatedSnapshot {
 
 // AggregatedSnapshot represents system-wide metrics
 type AggregatedSnapshot struct {
-	TotalComponents      int                       `json:"total_components"`
-	TotalRequests        int64                     `json:"total_requests"`
-	TotalSuccesses       int64                     `json:"total_successes"`
-	TotalFailures        int64                     `json:"total_failures"`
-	OverallSuccessRate   float64                   `json:"overall_success_rate_percent"`
-	TotalBytesProcessed  int64                     `json:"total_bytes_processed"`
-	ComponentStats       map[string]ComponentStats `json:"component_stats"`
+	TotalComponents     int                       `json:"total_components"`
+	TotalRequests       int64                     `json:"total_requests"`
+	TotalSuccesses      int64                     `json:"total_successes"`
+	TotalFailures       int64                     `json:"total_failures"`
+	OverallSuccessRate  float64                   `json:"overall_success_rate_percent"`
+	TotalBytesProcessed int64                     `json:"total_bytes_processed"`
+	ComponentStats      map[string]ComponentStats `json:"component_stats"`
 }
 
 // ComponentStats represents summarized stats for a component

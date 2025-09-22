@@ -249,13 +249,13 @@ func demonstrateDirectoryOperations(ctx context.Context) {
 
 	// Create files and subdirectories
 	testStructure := map[string]string{
-		"README.md":           "# UnixFS Demo\n\nThis demonstrates directory operations.",
-		"config.json":         `{"version": "1.0", "debug": true}`,
-		"src/main.go":         "package main\n\nfunc main() {\n\tprintln(\"Hello UnixFS!\")\n}",
-		"src/utils.go":        "package main\n\nfunc helper() string {\n\treturn \"utility\"\n}",
-		"docs/guide.txt":      "UnixFS User Guide\n\n1. Create files\n2. Store in IPFS\n3. Retrieve as needed",
-		"data/sample.csv":     "id,name,value\n1,test,100\n2,demo,200",
-		"assets/icon.txt":     "ASCII art icon would go here",
+		"README.md":       "# UnixFS Demo\n\nThis demonstrates directory operations.",
+		"config.json":     `{"version": "1.0", "debug": true}`,
+		"src/main.go":     "package main\n\nfunc main() {\n\tprintln(\"Hello UnixFS!\")\n}",
+		"src/utils.go":    "package main\n\nfunc helper() string {\n\treturn \"utility\"\n}",
+		"docs/guide.txt":  "UnixFS User Guide\n\n1. Create files\n2. Store in IPFS\n3. Retrieve as needed",
+		"data/sample.csv": "id,name,value\n1,test,100\n2,demo,200",
+		"assets/icon.txt": "ASCII art icon would go here",
 	}
 
 	for filePath, content := range testStructure {
@@ -543,7 +543,7 @@ func demonstratePerformanceChunking(ctx context.Context) {
 			}
 
 			// Calculate throughput
-			storeThroughput := float64(len(test.data)) / storeTime.Seconds() / (1024 * 1024) // MB/s
+			storeThroughput := float64(len(test.data)) / storeTime.Seconds() / (1024 * 1024)           // MB/s
 			retrieveThroughput := float64(len(retrievedData)) / retrieveTime.Seconds() / (1024 * 1024) // MB/s
 
 			fmt.Printf("   📊 %s: store %v (%.1f MB/s), retrieve %v (%.1f MB/s)\n",
@@ -593,22 +593,22 @@ func demonstrateImportExportWorkflows(ctx context.Context) {
 	fmt.Printf("\n🏗️  Creating complex project structure:\n")
 
 	projectStructure := map[string]string{
-		"README.md":                    "# Demo Project\n\nThis is a complete project structure.",
-		"LICENSE":                      "MIT License\n\nCopyright (c) 2024",
-		"package.json":                 `{"name": "demo", "version": "1.0.0"}`,
-		"src/main.js":                  "console.log('Hello from main.js');",
-		"src/components/Header.js":     "export default function Header() { return 'Header'; }",
-		"src/components/Footer.js":     "export default function Footer() { return 'Footer'; }",
-		"src/utils/helpers.js":         "export const helper = () => 'utility function';",
-		"tests/main.test.js":           "test('main function', () => { expect(true).toBe(true); });",
+		"README.md":                       "# Demo Project\n\nThis is a complete project structure.",
+		"LICENSE":                         "MIT License\n\nCopyright (c) 2024",
+		"package.json":                    `{"name": "demo", "version": "1.0.0"}`,
+		"src/main.js":                     "console.log('Hello from main.js');",
+		"src/components/Header.js":        "export default function Header() { return 'Header'; }",
+		"src/components/Footer.js":        "export default function Footer() { return 'Footer'; }",
+		"src/utils/helpers.js":            "export const helper = () => 'utility function';",
+		"tests/main.test.js":              "test('main function', () => { expect(true).toBe(true); });",
 		"tests/components/Header.test.js": "test('Header component', () => {});",
-		"docs/API.md":                  "# API Documentation\n\n## Endpoints",
-		"docs/guide/installation.md":   "# Installation Guide\n\n1. Download\n2. Install",
-		"config/development.json":      `{"debug": true, "port": 3000}`,
-		"config/production.json":       `{"debug": false, "port": 8080}`,
-		"assets/images/logo.txt":       "ASCII logo representation",
-		"assets/styles/main.css":       "body { font-family: Arial, sans-serif; }",
-		"build/output.js":              "// Compiled output\nconsole.log('compiled');",
+		"docs/API.md":                     "# API Documentation\n\n## Endpoints",
+		"docs/guide/installation.md":      "# Installation Guide\n\n1. Download\n2. Install",
+		"config/development.json":         `{"debug": true, "port": 3000}`,
+		"config/production.json":          `{"debug": false, "port": 8080}`,
+		"assets/images/logo.txt":          "ASCII logo representation",
+		"assets/styles/main.css":          "body { font-family: Arial, sans-serif; }",
+		"build/output.js":                 "// Compiled output\nconsole.log('compiled');",
 	}
 
 	// Create the project structure

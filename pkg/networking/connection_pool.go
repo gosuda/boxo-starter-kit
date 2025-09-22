@@ -33,35 +33,35 @@ type ConnectionPool struct {
 // ConnectionPoolConfig defines connection pool parameters
 type ConnectionPoolConfig struct {
 	MaxConnections      int           // Maximum total connections
-	MaxPerPeer         int           // Maximum connections per peer
-	IdleTimeout        time.Duration // Time before closing idle connections
+	MaxPerPeer          int           // Maximum connections per peer
+	IdleTimeout         time.Duration // Time before closing idle connections
 	HealthCheckInterval time.Duration // How often to check connection health
-	ConnectTimeout     time.Duration // Timeout for new connections
-	RetryAttempts      int           // Number of retry attempts for failed connections
-	RetryBackoff       time.Duration // Backoff between retry attempts
+	ConnectTimeout      time.Duration // Timeout for new connections
+	RetryAttempts       int           // Number of retry attempts for failed connections
+	RetryBackoff        time.Duration // Backoff between retry attempts
 }
 
 // DefaultConnectionPoolConfig returns sensible defaults
 func DefaultConnectionPoolConfig() ConnectionPoolConfig {
 	return ConnectionPoolConfig{
 		MaxConnections:      1000,
-		MaxPerPeer:         3,
-		IdleTimeout:        30 * time.Second,
+		MaxPerPeer:          3,
+		IdleTimeout:         30 * time.Second,
 		HealthCheckInterval: 10 * time.Second,
-		ConnectTimeout:     5 * time.Second,
-		RetryAttempts:      3,
-		RetryBackoff:       time.Second,
+		ConnectTimeout:      5 * time.Second,
+		RetryAttempts:       3,
+		RetryBackoff:        time.Second,
 	}
 }
 
 // pooledConnection represents a connection in the pool
 type pooledConnection struct {
-	conn       network.Conn
-	streams    map[protocol.ID]network.Stream
-	lastUsed   time.Time
-	healthy    bool
-	inUse      int
-	mu         sync.Mutex
+	conn     network.Conn
+	streams  map[protocol.ID]network.Stream
+	lastUsed time.Time
+	healthy  bool
+	inUse    int
+	mu       sync.Mutex
 }
 
 // NewConnectionPool creates a new connection pool
@@ -402,8 +402,8 @@ func (cp *ConnectionPool) GetStats() ConnectionPoolStats {
 
 	stats := ConnectionPoolStats{
 		TotalConnections: len(cp.connections),
-		ActiveStreams:   0,
-		IdleConnections: 0,
+		ActiveStreams:    0,
+		IdleConnections:  0,
 	}
 
 	for _, pooled := range cp.connections {

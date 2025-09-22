@@ -36,9 +36,9 @@ func (e ValidationErrors) Error() string {
 
 // RequestValidator provides request validation functionality
 type RequestValidator struct {
-	MaxBodySize   int64
-	AllowedPaths  []string
-	BlockedPaths  []string
+	MaxBodySize     int64
+	AllowedPaths    []string
+	BlockedPaths    []string
 	RequiredHeaders []string
 }
 

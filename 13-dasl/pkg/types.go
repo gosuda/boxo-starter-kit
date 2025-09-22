@@ -6,7 +6,7 @@ import (
 	"github.com/ipfs/go-cid"
 )
 
-//go:embed schema.dasl
+//go:embed codegen/schema.dasl
 var schemaDasl string
 
 type User struct {

@@ -39,23 +39,23 @@ func DefaultMigrationConfig() MigrationConfig {
 
 // MigrationPlan defines a complete migration strategy
 type MigrationPlan struct {
-	ID          string              `json:"id"`
-	Version     string              `json:"version"`
-	Description string              `json:"description"`
-	Steps       []MigrationStep     `json:"steps"`
-	Rollback    []MigrationStep     `json:"rollback"`
-	Config      MigrationConfig     `json:"config"`
+	ID          string          `json:"id"`
+	Version     string          `json:"version"`
+	Description string          `json:"description"`
+	Steps       []MigrationStep `json:"steps"`
+	Rollback    []MigrationStep `json:"rollback"`
+	Config      MigrationConfig `json:"config"`
 }
 
 // MigrationStep represents a single migration operation
 type MigrationStep struct {
-	ID          string                 `json:"id"`
-	Type        MigrationType          `json:"type"`
-	Description string                 `json:"description"`
-	Source      DatastoreConfig        `json:"source"`
-	Target      DatastoreConfig        `json:"target"`
-	Transform   TransformationConfig   `json:"transform"`
-	Filters     []FilterConfig         `json:"filters"`
+	ID          string               `json:"id"`
+	Type        MigrationType        `json:"type"`
+	Description string               `json:"description"`
+	Source      DatastoreConfig      `json:"source"`
+	Target      DatastoreConfig      `json:"target"`
+	Transform   TransformationConfig `json:"transform"`
+	Filters     []FilterConfig       `json:"filters"`
 }
 
 // MigrationType defines the type of migration operation
@@ -95,14 +95,14 @@ type FilterConfig struct {
 
 // MigrationResult contains migration execution results
 type MigrationResult struct {
-	PlanID       string              `json:"plan_id"`
-	StartTime    time.Time           `json:"start_time"`
-	EndTime      time.Time           `json:"end_time"`
-	Duration     time.Duration       `json:"duration"`
-	Success      bool                `json:"success"`
-	StepResults  []StepResult        `json:"step_results"`
-	Statistics   MigrationStatistics `json:"statistics"`
-	ErrorLog     []string            `json:"error_log"`
+	PlanID      string              `json:"plan_id"`
+	StartTime   time.Time           `json:"start_time"`
+	EndTime     time.Time           `json:"end_time"`
+	Duration    time.Duration       `json:"duration"`
+	Success     bool                `json:"success"`
+	StepResults []StepResult        `json:"step_results"`
+	Statistics  MigrationStatistics `json:"statistics"`
+	ErrorLog    []string            `json:"error_log"`
 }
 
 // StepResult contains individual step execution results

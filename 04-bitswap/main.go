@@ -375,11 +375,11 @@ func demonstratePerformance(ctx context.Context) {
 		name string
 		size int
 	}{
-		{"Tiny", 100},        // 100B
-		{"Small", 1024},      // 1KB
-		{"Medium", 16384},    // 16KB
-		{"Large", 262144},    // 256KB
-		{"XLarge", 1048576},  // 1MB
+		{"Tiny", 100},       // 100B
+		{"Small", 1024},     // 1KB
+		{"Medium", 16384},   // 16KB
+		{"Large", 262144},   // 256KB
+		{"XLarge", 1048576}, // 1MB
 	}
 
 	fmt.Printf("\n⏱️  Block storage performance:\n")

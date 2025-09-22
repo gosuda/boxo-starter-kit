@@ -209,7 +209,7 @@ func main() {
 
 	// Create a Root object that contains both User and Post
 	root := &dasl.Root{
-		Users: *updatedUser1, // Embed user data
+		Users: *updatedUser1,   // Embed user data
 		Posts: *retrievedPost1, // Embed post data
 	}
 

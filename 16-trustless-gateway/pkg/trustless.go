@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ipfs/boxo/gateway"
 	"github.com/gosuda/boxo-starter-kit/pkg/security"
+	"github.com/ipfs/boxo/gateway"
 )
 
 type GatewayWrapper struct {

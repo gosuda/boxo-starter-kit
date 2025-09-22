@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ipfs/go-datastore"
-	dsync "github.com/ipfs/go-datastore/sync"
 	blockstore "github.com/ipfs/boxo/blockstore"
 	blocks "github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-datastore"
+	dsync "github.com/ipfs/go-datastore/sync"
 
 	blockpkg "github.com/gosuda/boxo-starter-kit/00-block-cid/pkg"
 )

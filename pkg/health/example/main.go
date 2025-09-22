@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"time"
 
+	network "github.com/gosuda/boxo-starter-kit/02-network/pkg"
 	"github.com/gosuda/boxo-starter-kit/pkg/health"
 	"github.com/gosuda/boxo-starter-kit/pkg/metrics"
-	network "github.com/gosuda/boxo-starter-kit/02-network/pkg"
 )
 
 func main() {
@@ -300,8 +300,8 @@ func createSampleApplication() {
 	// Create custom health manager for this application
 	appHealthManager := health.NewManager(health.Config{
 		CheckInterval:      10 * time.Second, // Check every 10 seconds
-		Timeout:            3 * time.Second,   // 3 second timeout
-		UnhealthyThreshold: 2,                 // 2 consecutive failures = unhealthy
+		Timeout:            3 * time.Second,  // 3 second timeout
+		UnhealthyThreshold: 2,                // 2 consecutive failures = unhealthy
 		EnableAutoCheck:    true,
 	})
 

@@ -11,19 +11,19 @@ import (
 
 // RateLimiter provides rate limiting functionality for HTTP endpoints
 type RateLimiter struct {
-	mu       sync.RWMutex
-	limiters map[string]*rate.Limiter
-	rate     rate.Limit
-	burst    int
-	cleanupInterval  time.Duration
-	lastSeen map[string]time.Time
+	mu              sync.RWMutex
+	limiters        map[string]*rate.Limiter
+	rate            rate.Limit
+	burst           int
+	cleanupInterval time.Duration
+	lastSeen        map[string]time.Time
 }
 
 // RateLimitConfig configures rate limiting behavior
 type RateLimitConfig struct {
-	RequestsPerSecond float64       // Requests per second allowed
-	BurstSize         int           // Maximum burst size
-	CleanupInterval   time.Duration // How often to cleanup old entries
+	RequestsPerSecond float64                    // Requests per second allowed
+	BurstSize         int                        // Maximum burst size
+	CleanupInterval   time.Duration              // How often to cleanup old entries
 	KeyExtractor      func(*http.Request) string // Function to extract rate limit key
 }
 
@@ -40,11 +40,11 @@ func DefaultRateLimitConfig() RateLimitConfig {
 // NewRateLimiter creates a new rate limiter with the given configuration
 func NewRateLimiter(config RateLimitConfig) *RateLimiter {
 	rl := &RateLimiter{
-		limiters: make(map[string]*rate.Limiter),
-		rate:     rate.Limit(config.RequestsPerSecond),
-		burst:    config.BurstSize,
-		cleanupInterval:  config.CleanupInterval,
-		lastSeen: make(map[string]time.Time),
+		limiters:        make(map[string]*rate.Limiter),
+		rate:            rate.Limit(config.RequestsPerSecond),
+		burst:           config.BurstSize,
+		cleanupInterval: config.CleanupInterval,
+		lastSeen:        make(map[string]time.Time),
 	}
 
 	// Start cleanup goroutine

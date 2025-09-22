@@ -21,16 +21,16 @@ import (
 // Command line tool for backup and migration operations
 func main() {
 	var (
-		command        = flag.String("cmd", "", "Command: backup, restore, migrate, schedule, verify")
-		datastorePath  = flag.String("datastore", "./data", "Path to datastore")
-		datastoreType  = flag.String("type", "badger", "Datastore type: memory, file, badger, pebble")
-		backupPath     = flag.String("backup", "", "Path to backup file")
-		configPath     = flag.String("config", "", "Path to configuration file")
+		command          = flag.String("cmd", "", "Command: backup, restore, migrate, schedule, verify")
+		datastorePath    = flag.String("datastore", "./data", "Path to datastore")
+		datastoreType    = flag.String("type", "badger", "Datastore type: memory, file, badger, pebble")
+		backupPath       = flag.String("backup", "", "Path to backup file")
+		configPath       = flag.String("config", "", "Path to configuration file")
 		compressionLevel = flag.Int("compression", 6, "Compression level (1-9)")
-		chunkSize      = flag.Int("chunk-size", 1000, "Chunk size for processing")
-		verify         = flag.Bool("verify", true, "Verify backup integrity")
-		dryRun         = flag.Bool("dry-run", false, "Dry run mode (don't make changes)")
-		schedule       = flag.String("schedule", "", "Cron schedule expression")
+		chunkSize        = flag.Int("chunk-size", 1000, "Chunk size for processing")
+		verify           = flag.Bool("verify", true, "Verify backup integrity")
+		dryRun           = flag.Bool("dry-run", false, "Dry run mode (don't make changes)")
+		schedule         = flag.String("schedule", "", "Cron schedule expression")
 	)
 	flag.Parse()
 

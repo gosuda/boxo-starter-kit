@@ -27,12 +27,12 @@ type AdaptiveTimeouts struct {
 
 // TimeoutConfig defines adaptive timeout parameters
 type TimeoutConfig struct {
-	MinTimeout          time.Duration // Minimum timeout value
-	MaxTimeout          time.Duration // Maximum timeout value
-	InitialTimeout      time.Duration // Initial timeout for new peers
-	RTTMultiplier       float64       // Multiplier for RTT-based timeout calculation
-	VarianceMultiplier  float64       // Multiplier for RTT variance
-	AdaptationRate      float64       // How quickly to adapt (0-1)
+	MinTimeout         time.Duration // Minimum timeout value
+	MaxTimeout         time.Duration // Maximum timeout value
+	InitialTimeout     time.Duration // Initial timeout for new peers
+	RTTMultiplier      float64       // Multiplier for RTT-based timeout calculation
+	VarianceMultiplier float64       // Multiplier for RTT variance
+	AdaptationRate     float64       // How quickly to adapt (0-1)
 	DecayRate          float64       // How quickly old samples decay (0-1)
 	SampleWindowSize   int           // Number of samples to keep for calculation
 	CleanupInterval    time.Duration // How often to clean up old peer stats
@@ -100,8 +100,8 @@ func NewAdaptiveTimeouts(config TimeoutConfig) *AdaptiveTimeouts {
 		config:    config,
 		peerStats: make(map[peer.ID]*peerTimeoutStats),
 		global: &globalTimeoutStats{
-			averageRTT:    config.InitialTimeout / 2,
-			lastUpdate:    time.Now(),
+			averageRTT: config.InitialTimeout / 2,
+			lastUpdate: time.Now(),
 		},
 		ctx:    ctx,
 		cancel: cancel,
@@ -267,12 +267,12 @@ func (at *AdaptiveTimeouts) initializePeer(peerID peer.ID) {
 // createPeerStats creates new peer statistics
 func (at *AdaptiveTimeouts) createPeerStats(peerID peer.ID) *peerTimeoutStats {
 	return &peerTimeoutStats{
-		peer:         peerID,
-		rttSamples:   make([]time.Duration, 0, at.config.SampleWindowSize),
-		timeouts:     make([]time.Duration, 0, at.config.SampleWindowSize),
-		lastSeen:     time.Now(),
-		currentRTT:   at.config.InitialTimeout / 2,
-		strategy:     StrategyAdaptive,
+		peer:       peerID,
+		rttSamples: make([]time.Duration, 0, at.config.SampleWindowSize),
+		timeouts:   make([]time.Duration, 0, at.config.SampleWindowSize),
+		lastSeen:   time.Now(),
+		currentRTT: at.config.InitialTimeout / 2,
+		strategy:   StrategyAdaptive,
 	}
 }
 
@@ -420,11 +420,11 @@ func (at *AdaptiveTimeouts) GetStats() AdaptiveTimeoutStats {
 	defer at.mu.RUnlock()
 
 	stats := AdaptiveTimeoutStats{
-		TrackedPeers:      len(at.peerStats),
-		GlobalAverageRTT:  at.global.averageRTT,
-		TotalRequests:     at.global.totalRequests,
-		TotalTimeouts:     at.global.totalTimeouts,
-		PeerStats:         make(map[peer.ID]PeerTimeoutSummary),
+		TrackedPeers:     len(at.peerStats),
+		GlobalAverageRTT: at.global.averageRTT,
+		TotalRequests:    at.global.totalRequests,
+		TotalTimeouts:    at.global.totalTimeouts,
+		PeerStats:        make(map[peer.ID]PeerTimeoutSummary),
 	}
 
 	// Calculate timeout rate
