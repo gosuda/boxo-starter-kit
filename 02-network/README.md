@@ -321,7 +321,8 @@ func (nm *NetworkManager) selectBestPeers(candidates []peer.ID) []peer.ID {
 ## 📚 Next Steps
 
 ### Related Modules
-1. **04-bitswap**: Dive deeper into the Bitswap protocol for block exchange
+1. **03-dht-router**: Implement a distributed hash table for peer and content routing
+2. **04-bitswap**: Dive deeper into the Bitswap protocol for block exchange
 
 ### Advanced Topics
 - Network topology optimization

@@ -12,7 +12,7 @@ A sophisticated content fetching system that orchestrates parallel retrieval acr
 
 ## 📋 Prerequisites
 
-- **Previous Chapters**: 04-bitswap, 15-graphsync, 17-ipni (understanding of protocols)
+- **Previous Chapters**: 04-bitswap, 15-graphsync, 16-trustless-gateway, 17-ipni (understanding of protocols)
 - **Technical Knowledge**: Concurrency patterns, HTTP protocols, performance optimization
 - **Go Experience**: Goroutines, channels, context handling, synchronization
 

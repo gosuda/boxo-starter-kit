@@ -16,6 +16,7 @@ By the end of this module, you will understand:
 - Completion of [00-block-cid](../00-block-cid) - Content addressing fundamentals
 - Understanding of [02-network](../02-network) - P2P networking concepts
 - Familiarity with [15-graphsync](../15-graphsync) - Data transfer protocols
+- Familiarity with [16-trustless-gateway](../16-trustless-gateway) - HTTP gateway concepts
 - Knowledge of distributed systems and content discovery
 - Understanding of DHT and content routing concepts
 - Basic knowledge of database storage systems
@@ -570,10 +571,7 @@ func (h *HealthMonitor) checkHealth(ctx context.Context) {
 
 ## 🔗 Related Modules
 
-- **[15-graphsync](../15-graphsync)**: GraphSync transport protocol
-- **[16-trustless-gateway](../16-trustless-gateway)**: HTTP transport protocol
-- **[02-network](../02-network)**: P2P networking foundation
-- **[00-block-cid](../00-block-cid)**: Content addressing fundamentals
+- **[18-multifetcher](../18-multifetcher)**: Multifetcher using Bitswap, GraphSync, and HTTP in parallel
 
 ## 📚 Further Reading
 

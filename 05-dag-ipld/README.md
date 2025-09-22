@@ -667,9 +667,8 @@ func (cdw *CachedDagWrapper) GetAny(ctx context.Context, c cid.Cid) (any, error)
 - [Graph Theory Basics](https://en.wikipedia.org/wiki/Directed_acyclic_graph)
 
 ### Next Steps
-1. **05-unixfs**: IPLD representation of file and directory structures
-2. **04-bitswap**: DAG node exchange in distributed networks
-3. **09-ipns**: Updating DAG roots with mutable pointers
+1. **06-unixfs-car**: IPLD representation of file and directory structures
+2. **08-pin-gc**: Data persistence and garbage collection strategies
 
 ## 🎓 Practice Problems
 

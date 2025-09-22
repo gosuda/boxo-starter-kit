@@ -533,10 +533,7 @@ var (
 
 ## 🔗 Related Modules
 
-- **[06-unixfs-car](../06-unixfs-car)**: CAR file operations and UnixFS
-- **[15-graphsync](../15-graphsync)**: P2P alternative to HTTP gateways
-- **[00-block-cid](../00-block-cid)**: Content addressing fundamentals
-- **[02-network](../02-network)**: Networking foundation concepts
+- **[17-ipni](../17-ipni)**: Content indexing and discovery
 
 ## 📚 Further Reading
 

@@ -342,7 +342,6 @@ After mastering MFS, explore:
 1. **08-pin-gc**: Pin important MFS states and manage storage
 2. **09-ipns**: Publish MFS content with mutable addresses
 3. **10-gateway**: Serve MFS content over HTTP
-4. **Advanced Topics**: Conflict resolution, collaborative editing
 
 ## 🐛 Troubleshooting
 

@@ -520,10 +520,7 @@ func diagnosePeerConnection(gs *graphsync.GraphSyncWrapper, peerID peer.ID) {
 
 ## 🔗 Related Modules
 
-- **[14-traversal-selector](../14-traversal-selector)**: Selector building and usage
-- **[12-ipld-prime](../12-ipld-prime)**: Underlying IPLD operations
-- **[02-network](../02-network)**: libp2p networking foundation
-- **[16-trustless-gateway](../16-trustless-gateway)**: HTTP-based data access
+- **[17-ipni](../17-ipni)**: Content indexing and discovery
 
 ## 📚 Further Reading
 

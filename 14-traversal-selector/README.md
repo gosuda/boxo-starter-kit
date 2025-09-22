@@ -431,10 +431,7 @@ func loadLink(t *testing.T, n datamodel.Node, key string) cid.Cid
 
 ## 🔗 Related Modules
 
-- **[12-ipld-prime](../12-ipld-prime)**: Underlying IPLD operations
-- **[13-dasl](../13-dasl)**: Schema-based data structures
 - **[15-graphsync](../15-graphsync)**: Network-based selective sync
-- **[05-dag-ipld](../05-dag-ipld)**: Basic IPLD concepts
 
 ## 📚 Further Reading
 

@@ -334,10 +334,8 @@ func TestIpldLink(t *testing.T) {
 
 ## 🔗 Related Modules
 
-- **[05-dag-ipld](../05-dag-ipld)**: Basic IPLD operations and concepts
-- **[14-traversal-selector](../14-traversal-selector)**: Advanced data traversal
 - **[13-dasl](../13-dasl)**: Data modeling and schema language
-- **[00-block-cid](../00-block-cid)**: Underlying block and CID concepts
+- **[14-traversal-selector](../14-traversal-selector)**: Advanced data traversal
 
 ## 📚 Further Reading
 

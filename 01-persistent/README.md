@@ -342,9 +342,8 @@ func checkDiskSpace(path string) error {
 ## 📚 Next Steps
 
 ### Related Modules
-1. **02-dag-ipld**: Learn about complex data structures and linking
-2. **03-unixfs**: Understand file system abstraction over blocks
-3. **04-network-bitswap**: Explore peer-to-peer data exchange
+1. **02-network**: Explore peer-to-peer data exchange using libp2p
+2. **05-dag-ipld**: Learn about complex data structures and linking
 
 ### Advanced Topics
 - Database migration between backends

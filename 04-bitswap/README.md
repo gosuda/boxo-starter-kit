@@ -130,7 +130,7 @@ func (b *BitswapWrapper) PutBlockRaw(ctx context.Context, data []byte) (cid.Cid,
 ## 🔗 Next Steps
 - **05-dag-ipld**: Learn about structured data with DAGs
 - **06-pin-gc**: Understand data persistence and garbage collection
-- **07-gateway**: Explore HTTP interfaces for IPFS
+- **10-gateway**: Explore HTTP interfaces for IPFS
 
 ## 📚 Additional Resources
 - [Bitswap Specification](https://github.com/ipfs/specs/blob/main/BITSWAP.md)
