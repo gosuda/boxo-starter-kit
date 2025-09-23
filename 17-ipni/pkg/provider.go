@@ -35,10 +35,6 @@ func NewProviderWrapper(path, topic string, persistentWrapper *persistent.Persis
 	}
 	path += "/ipni-provider"
 
-	if topic == "" {
-		topic = MakeTopic("index")
-	}
-
 	var err error
 	if persistentWrapper == nil {
 		persistentWrapper, err = persistent.New(persistent.Memory, "")
@@ -90,6 +86,10 @@ func (p *ProviderWrapper) Start(ctx context.Context) error {
 		return fmt.Errorf("provider engine start: %w", err)
 	}
 	return nil
+}
+
+func (p *ProviderWrapper) AnnounceMultihashes(ctx context.Context, contextID []byte, meta md.Metadata) (cid.Cid, error) {
+	return p.engine.NotifyPut(ctx, p.provider, contextID, meta)
 }
 
 func (p *ProviderWrapper) PutCAR(ctx context.Context, contextID []byte, md md.Metadata) (cid.Cid, error) {

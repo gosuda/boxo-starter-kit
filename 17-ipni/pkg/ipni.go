@@ -37,6 +37,9 @@ func New(path, topic string, persistentWrapper *persistent.PersistentWrapper, ho
 			return nil, fmt.Errorf("failed to create pebble store: %w", err)
 		}
 	}
+	if topic == "" {
+		topic = MakeTopic("index")
+	}
 
 	if persistentWrapper == nil {
 		persistentWrapper, err = persistent.New(persistent.Memory, "")
@@ -62,7 +65,7 @@ func New(path, topic string, persistentWrapper *persistent.PersistentWrapper, ho
 		return nil, fmt.Errorf("failed to create provider: %w", err)
 	}
 
-	subscriber, err := NewSubscriberWrapper(hostWrapper, ipldWrapper, provider)
+	subscriber, err := NewSubscriberWrapper(topic, hostWrapper, ipldWrapper, provider)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create subscriber: %w", err)
 	}
@@ -87,6 +90,7 @@ func (w *IPNIWrapper) Start(ctx context.Context) error {
 	if err := w.Subscriber.Start(ctx, w.Put, w.Remove); err != nil {
 		return fmt.Errorf("subscriber start: %w", err)
 	}
+
 	return nil
 }
 

@@ -28,12 +28,16 @@ type SubscriberWrapper struct {
 	cancel context.CancelFunc
 }
 
-func NewSubscriberWrapper(hostWrapper *network.HostWrapper, ipldWrapper *ipldprime.IpldWrapper, providerWrapper *ProviderWrapper, sourceUrl ...string) (*SubscriberWrapper, error) {
+func NewSubscriberWrapper(topic string, hostWrapper *network.HostWrapper, ipldWrapper *ipldprime.IpldWrapper, providerWrapper *ProviderWrapper, sourceUrl ...string) (*SubscriberWrapper, error) {
 	if len(sourceUrl) == 0 {
 		sourceUrl = append(sourceUrl, "https://cid.contact")
 	}
 
-	subscriber, err := dagsync.NewSubscriber(hostWrapper.Host, ipldWrapper.LinkSystem)
+	subscriber, err := dagsync.NewSubscriber(
+		hostWrapper.Host,
+		ipldWrapper.LinkSystem,
+		dagsync.RecvAnnounce(topic),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +48,6 @@ func NewSubscriberWrapper(hostWrapper *network.HostWrapper, ipldWrapper *ipldpri
 	)
 	if err != nil {
 		return nil, err
-
 	}
 
 	return &SubscriberWrapper{

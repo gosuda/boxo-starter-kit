@@ -96,6 +96,14 @@ func TestIPNIPlanner(t *testing.T) {
 	require.Equal(t, ipni.THTTP, attempts[1].Proto)
 	require.Equal(t, ipni.TBitswap, attempts[2].Proto)
 
+	attempts, hit, err = ipniWrapper.PlanByCID(ctx, c, ipni.Intent{
+		BitswapOnly: true,
+	})
+	require.NoError(t, err)
+	require.True(t, hit)
+	require.Len(t, attempts, 1)
+
+	require.Equal(t, ipni.TBitswap, attempts[0].Proto)
 }
 
 func TestIPNITransport(t *testing.T) {
