@@ -11,7 +11,6 @@ import (
 	"github.com/ipni/go-indexer-core/engine"
 	"github.com/ipni/go-indexer-core/store/pebble"
 	md "github.com/ipni/go-libipni/metadata"
-	provengine "github.com/ipni/index-provider/engine"
 	"github.com/libp2p/go-libp2p/core/peer"
 	mh "github.com/multiformats/go-multihash"
 
@@ -52,15 +51,16 @@ func NewIPNIWrapper(path string, persistentWrapper *persistent.PersistentWrapper
 		}
 	}
 
-	subscriber, err := NewSubscriberWrapper(hostWrapper, ipldWrapper, "https://cid.contact")
-	if err != nil {
-		return nil, fmt.Errorf("failed to create subscriber: %w", err)
-	}
-
 	provider, err := NewProviderWrapper("", persistentWrapper, hostWrapper)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create provider: %w", err)
 	}
+
+	subscriber, err := NewSubscriberWrapper(hostWrapper, ipldWrapper, provider)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create subscriber: %w", err)
+	}
+
 	pl := NewPlanner(nil)
 
 	store, err := pebble.New(path, nil)
@@ -80,10 +80,8 @@ func NewIPNIWrapper(path string, persistentWrapper *persistent.PersistentWrapper
 
 func (w *IPNIWrapper) Start(ctx context.Context) error {
 	// start provider
-	if pe, ok := w.Provider.Interface.(*provengine.Engine); ok {
-		if err := pe.Start(ctx); err != nil {
-			return fmt.Errorf("provider engine start: %w", err)
-		}
+	if err := w.Provider.Start(ctx); err != nil {
+		return fmt.Errorf("provider engine start: %w", err)
 	}
 
 	// start subscriber
@@ -98,27 +96,27 @@ func (w *IPNIWrapper) Flush() error                   { return w.Engine.Flush() 
 func (w *IPNIWrapper) Size() (int64, error)           { return w.Engine.Size() }
 func (w *IPNIWrapper) Stats() (*indexer.Stats, error) { return w.Engine.Stats() }
 
-func (w *IPNIWrapper) PutMultihashes(ctx context.Context, val indexer.Value, mhs ...mh.Multihash) error {
+func (w *IPNIWrapper) PutMultihashes(val indexer.Value, mhs ...mh.Multihash) error {
 	if len(mhs) == 0 {
 		return nil
 	}
 	return w.Engine.Put(val, mhs...)
 }
 
-func (w *IPNIWrapper) PutCID(ctx context.Context, val indexer.Value, c cid.Cid) error {
-	return w.PutMultihashes(ctx, val, c.Hash())
+func (w *IPNIWrapper) PutCID(val indexer.Value, c cid.Cid) error {
+	return w.PutMultihashes(val, c.Hash())
 }
 
-func (w *IPNIWrapper) Put(ctx context.Context, providerID peer.ID, contextID []byte, metadataBytes []byte, mhs []mh.Multihash) error {
+func (w *IPNIWrapper) Put(providerID peer.ID, contextID []byte, metadataBytes []byte, mhs []mh.Multihash) error {
 	val := indexer.Value{ProviderID: providerID, ContextID: contextID, MetadataBytes: metadataBytes}
-	return w.PutMultihashes(ctx, val, mhs...)
+	return w.PutMultihashes(val, mhs...)
 }
 
-func (w *IPNIWrapper) RemoveMultihashes(ctx context.Context, val indexer.Value, mhs ...mh.Multihash) error {
+func (w *IPNIWrapper) RemoveMultihashes(val indexer.Value, mhs ...mh.Multihash) error {
 	return w.Engine.Remove(val, mhs...)
 }
 
-func (w *IPNIWrapper) Remove(ctx context.Context, id peer.ID, contextID []byte) error {
+func (w *IPNIWrapper) Remove(id peer.ID, contextID []byte) error {
 	return w.Engine.RemoveProviderContext(id, contextID)
 }
 
@@ -126,15 +124,15 @@ func (w *IPNIWrapper) RemoveProvider(ctx context.Context, id peer.ID) error {
 	return w.Engine.RemoveProvider(ctx, id)
 }
 
-func (w *IPNIWrapper) GetProvidersByCID(ctx context.Context, c cid.Cid) ([]indexer.Value, bool, error) {
+func (w *IPNIWrapper) GetProvidersByCID(c cid.Cid) ([]indexer.Value, bool, error) {
 	return w.Engine.Get(c.Hash())
 }
 
-func (w *IPNIWrapper) GetProviders(ctx context.Context, mh mh.Multihash) ([]indexer.Value, bool, error) {
+func (w *IPNIWrapper) GetProviders(mh mh.Multihash) ([]indexer.Value, bool, error) {
 	return w.Engine.Get(mh)
 }
 
-func (w *IPNIWrapper) PutBitswap(ctx context.Context, pid peer.ID, contextID []byte, mhs ...mh.Multihash) error {
+func (w *IPNIWrapper) PutBitswap(pid peer.ID, contextID []byte, mhs ...mh.Multihash) error {
 	meta := md.Bitswap{}
 	metaBytes, err := meta.MarshalBinary()
 	if err != nil {
@@ -142,10 +140,10 @@ func (w *IPNIWrapper) PutBitswap(ctx context.Context, pid peer.ID, contextID []b
 	}
 
 	val := indexer.Value{ProviderID: pid, ContextID: contextID, MetadataBytes: metaBytes}
-	return w.PutMultihashes(ctx, val, mhs...)
+	return w.PutMultihashes(val, mhs...)
 }
 
-func (w *IPNIWrapper) PutGraphSync(ctx context.Context, pid peer.ID, contextID []byte, mhs ...mh.Multihash) error {
+func (w *IPNIWrapper) PutGraphSync(pid peer.ID, contextID []byte, mhs ...mh.Multihash) error {
 	// For demo purposes, use Bitswap metadata for GraphSync
 	// In a real implementation, proper GraphSync metadata would be used
 	meta := md.Bitswap{}
@@ -155,10 +153,10 @@ func (w *IPNIWrapper) PutGraphSync(ctx context.Context, pid peer.ID, contextID [
 	}
 
 	val := indexer.Value{ProviderID: pid, ContextID: contextID, MetadataBytes: metaBytes}
-	return w.PutMultihashes(ctx, val, mhs...)
+	return w.PutMultihashes(val, mhs...)
 }
 
-func (w *IPNIWrapper) PutHTTP(ctx context.Context, pid peer.ID, contextID []byte, urls []string, partialCAR bool, auth bool, mhs ...mh.Multihash) error {
+func (w *IPNIWrapper) PutHTTP(pid peer.ID, contextID []byte, urls []string, partialCAR bool, auth bool, mhs ...mh.Multihash) error {
 	// Create HTTP gateway metadata
 	// Note: The current version of IpfsGatewayHttp doesn't support additional fields
 	// URL information would be stored in the contextID or handled separately
@@ -174,7 +172,7 @@ func (w *IPNIWrapper) PutHTTP(ctx context.Context, pid peer.ID, contextID []byte
 	}
 
 	val := indexer.Value{ProviderID: pid, ContextID: contextID, MetadataBytes: metaBytes}
-	return w.PutMultihashes(ctx, val, mhs...)
+	return w.PutMultihashes(val, mhs...)
 }
 
 // Planning helpers (scoring-only)

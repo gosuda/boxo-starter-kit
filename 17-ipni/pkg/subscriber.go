@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	network "github.com/gosuda/boxo-starter-kit/02-network/pkg"
-	ipldprime "github.com/gosuda/boxo-starter-kit/12-ipld-prime/pkg"
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-ipld-prime"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
@@ -17,6 +15,9 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	mh "github.com/multiformats/go-multihash"
 	"github.com/rs/zerolog/log"
+
+	network "github.com/gosuda/boxo-starter-kit/02-network/pkg"
+	ipldprime "github.com/gosuda/boxo-starter-kit/12-ipld-prime/pkg"
 )
 
 func MakeTopic(topic string) string {
@@ -31,7 +32,7 @@ type SubscriberWrapper struct {
 	cancel context.CancelFunc
 }
 
-func NewSubscriberWrapper(hostWrapper *network.HostWrapper, ipldWrapper *ipldprime.IpldWrapper, sourceUrl ...string) (*SubscriberWrapper, error) {
+func NewSubscriberWrapper(hostWrapper *network.HostWrapper, ipldWrapper *ipldprime.IpldWrapper, providerWrapper *ProviderWrapper, sourceUrl ...string) (*SubscriberWrapper, error) {
 	if len(sourceUrl) == 0 {
 		sourceUrl = append(sourceUrl, "https://cid.contact")
 	}
@@ -42,6 +43,7 @@ func NewSubscriberWrapper(hostWrapper *network.HostWrapper, ipldWrapper *ipldpri
 	}
 
 	pc, err := pcache.New(
+		pcache.WithSource(providerWrapper),
 		pcache.WithSourceURL(sourceUrl...),
 	)
 	if err != nil {
@@ -56,8 +58,8 @@ func NewSubscriberWrapper(hostWrapper *network.HostWrapper, ipldWrapper *ipldpri
 	}, nil
 }
 
-type OnPutFn func(ctx context.Context, providerID peer.ID, contextID []byte, metadataBytes []byte, mhs []mh.Multihash) error
-type OnRemoveFn func(ctx context.Context, providerID peer.ID, contextID []byte) error
+type OnPutFn func(providerID peer.ID, contextID []byte, metadataBytes []byte, mhs []mh.Multihash) error
+type OnRemoveFn func(providerID peer.ID, contextID []byte) error
 
 func (s *SubscriberWrapper) Start(ctx context.Context, onPut OnPutFn, onRemove OnRemoveFn) error {
 	if onPut == nil || onRemove == nil {
@@ -104,7 +106,7 @@ func (s *SubscriberWrapper) handleAd(ctx context.Context, adCid cid.Cid, onPut O
 	}
 
 	if ad.IsRm {
-		return onRemove(ctx, pid, ad.ContextID)
+		return onRemove(pid, ad.ContextID)
 	}
 
 	meta := md.Default.New()
@@ -125,7 +127,7 @@ func (s *SubscriberWrapper) handleAd(ctx context.Context, adCid cid.Cid, onPut O
 	if len(mhs) == 0 {
 		return nil
 	}
-	return onPut(ctx, pid, ad.ContextID, mdBytes, mhs)
+	return onPut(pid, ad.ContextID, mdBytes, mhs)
 }
 
 func (s *SubscriberWrapper) collectMultihashes(ctx context.Context, entries ipld.Link) ([]mh.Multihash, error) {

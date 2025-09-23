@@ -113,7 +113,7 @@ func main() {
 
 	// Add Bitswap provider metadata
 	contextID := []byte("bitswap-context-001")
-	err = ipniWrapper.PutBitswap(ctx, providerID, contextID, multihashes...)
+	err = ipniWrapper.PutBitswap(providerID, contextID, multihashes...)
 	if err != nil {
 		log.Fatalf("Failed to index content with Bitswap: %v", err)
 	}
@@ -149,7 +149,7 @@ func main() {
 
 	// Add GraphSync provider metadata
 	gsContextID := []byte("graphsync-001")
-	err = ipniWrapper.PutGraphSync(ctx, graphsyncProviderID, gsContextID, multihashes...)
+	err = ipniWrapper.PutGraphSync(graphsyncProviderID, gsContextID, multihashes...)
 	if err != nil {
 		log.Fatalf("Failed to index content with GraphSync: %v", err)
 	}
@@ -164,7 +164,7 @@ func main() {
 
 	// Query providers for each content item
 	for i, contentCID := range contentCIDs {
-		providers, found, err := ipniWrapper.GetProvidersByCID(ctx, contentCID)
+		providers, found, err := ipniWrapper.GetProvidersByCID(contentCID)
 		if err != nil {
 			log.Printf("Failed to get providers for %s: %v", contentCID, err)
 			continue
@@ -192,7 +192,7 @@ func main() {
 
 	// Use the planner to get ranked fetchers
 	testCID := contentCIDs[0]
-	providers, found, err := ipniWrapper.GetProvidersByCID(ctx, testCID)
+	providers, found, err := ipniWrapper.GetProvidersByCID(testCID)
 	if err != nil {
 		log.Fatalf("Failed to get providers: %v", err)
 	}
@@ -217,7 +217,7 @@ func main() {
 
 	// Remove a specific provider context
 	fmt.Printf("   📝 Removing GraphSync provider context...\n")
-	err = ipniWrapper.Remove(ctx, graphsyncProviderID, gsContextID)
+	err = ipniWrapper.Remove(graphsyncProviderID, gsContextID)
 	if err != nil {
 		log.Printf("Failed to remove provider context: %v", err)
 	} else {
@@ -225,7 +225,7 @@ func main() {
 	}
 
 	// Verify removal
-	providers, found, err = ipniWrapper.GetProvidersByCID(ctx, contentCIDs[0])
+	providers, found, err = ipniWrapper.GetProvidersByCID(contentCIDs[0])
 	if err != nil {
 		log.Printf("Failed to verify removal: %v", err)
 	} else if found {

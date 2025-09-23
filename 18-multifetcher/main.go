@@ -124,7 +124,7 @@ func main() {
 	provider3, _ := peer.Decode("12D3KooWQYhTNmY1kZXCJM3BFrwCNhkJQYxWqHN7TAWkqLmZv6wC")
 
 	// Index with Bitswap provider
-	err = ipniWrapper.PutBitswap(ctx, provider1, []byte("bitswap-ctx"), multihashes...)
+	err = ipniWrapper.PutBitswap(provider1, []byte("bitswap-ctx"), multihashes...)
 	if err != nil {
 		log.Printf("Failed to index with Bitswap: %v", err)
 	}
@@ -133,7 +133,7 @@ func main() {
 	fmt.Printf("   ⚠️  HTTP gateway indexing skipped due to library updates\n")
 
 	// Index with GraphSync provider
-	err = ipniWrapper.PutGraphSync(ctx, provider3, []byte("graphsync-ctx"), multihashes...)
+	err = ipniWrapper.PutGraphSync(provider3, []byte("graphsync-ctx"), multihashes...)
 	if err != nil {
 		log.Printf("Failed to index with GraphSync: %v", err)
 	}

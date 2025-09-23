@@ -4,22 +4,26 @@ import (
 	"context"
 	"fmt"
 
-	persistent "github.com/gosuda/boxo-starter-kit/01-persistent/pkg"
-	network "github.com/gosuda/boxo-starter-kit/02-network/pkg"
-
 	"github.com/ipfs/go-cid"
+	"github.com/ipni/go-libipni/find/model"
 	md "github.com/ipni/go-libipni/metadata"
-	iprov "github.com/ipni/index-provider"
+	"github.com/ipni/go-libipni/pcache"
 	provengine "github.com/ipni/index-provider/engine"
 	carsupplier "github.com/ipni/index-provider/supplier"
 	"github.com/libp2p/go-libp2p/core/peer"
+
+	persistent "github.com/gosuda/boxo-starter-kit/01-persistent/pkg"
+	network "github.com/gosuda/boxo-starter-kit/02-network/pkg"
 )
+
+var _ pcache.ProviderSource = (*ProviderWrapper)(nil)
 
 type ProviderWrapper struct {
 	provider *peer.AddrInfo
-	iprov.Interface
-	topic  string
-	carSup *carsupplier.CarSupplier
+	topic    string
+	engine   *provengine.Engine
+
+	*carsupplier.CarSupplier
 }
 
 func NewProviderWrapper(topic string, persistentWrapper *persistent.PersistentWrapper, hostWrapper *network.HostWrapper) (*ProviderWrapper, error) {
@@ -58,23 +62,58 @@ func NewProviderWrapper(topic string, persistentWrapper *persistent.PersistentWr
 	carSup := carsupplier.NewCarSupplier(eng, persistentWrapper.Batching)
 
 	return &ProviderWrapper{
-		topic:     topic,
-		provider:  provider,
-		Interface: eng,
-		carSup:    carSup,
+		topic:       topic,
+		provider:    provider,
+		engine:      eng,
+		CarSupplier: carSup,
 	}, nil
 }
 
+func (p *ProviderWrapper) Start(ctx context.Context) error {
+	err := p.engine.Start(ctx)
+	if err != nil {
+		return fmt.Errorf("provider engine start: %w", err)
+	}
+	return nil
+}
+
 func (p *ProviderWrapper) PutCAR(ctx context.Context, contextID []byte, carPath string, md md.Metadata) (cid.Cid, error) {
-	if p.carSup == nil {
+	if p.CarSupplier == nil {
 		return cid.Undef, fmt.Errorf("car supplier not initialized")
 	}
-	return p.carSup.Put(ctx, contextID, carPath, md)
+	return p.CarSupplier.Put(ctx, contextID, carPath, md)
 }
 
 func (p *ProviderWrapper) RemoveCAR(ctx context.Context, contextID []byte) (cid.Cid, error) {
-	if p.carSup == nil {
+	if p.CarSupplier == nil {
 		return cid.Undef, fmt.Errorf("car supplier not initialized")
 	}
-	return p.carSup.Remove(ctx, contextID)
+	return p.CarSupplier.Remove(ctx, contextID)
+}
+
+func (p *ProviderWrapper) Fetch(ctx context.Context, pid peer.ID) (*model.ProviderInfo, error) {
+	if pid != "" && pid != p.provider.ID {
+		return nil, nil
+	}
+	return p.buildProviderInfo(), nil
+}
+
+func (p *ProviderWrapper) FetchAll(ctx context.Context) ([]*model.ProviderInfo, error) {
+	return []*model.ProviderInfo{p.buildProviderInfo()}, nil
+}
+
+func (p *ProviderWrapper) String() string { return "local-provider" }
+
+func (p *ProviderWrapper) buildProviderInfo() *model.ProviderInfo {
+	lastCid, _, err := p.engine.GetLatestAdv(context.Background())
+	if err != nil {
+		return nil
+	}
+
+	pi := &model.ProviderInfo{
+		AddrInfo:          *p.provider,
+		Publisher:         p.provider,
+		LastAdvertisement: lastCid,
+	}
+	return pi
 }
