@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipni/go-indexer-core"
@@ -24,11 +23,9 @@ import (
 type IPNIWrapper struct {
 	Engine *engine.Engine
 
-	Provider     *ProviderWrapper
-	Subscriber   *SubscriberWrapper
-	Planner      *Planner
-	HealthScorer HealthScorer
-	DefaultTTL   time.Duration
+	Provider   *ProviderWrapper
+	Subscriber *SubscriberWrapper
+	Planner    *Planner
 }
 
 func NewIPNIWrapper(path string, persistentWrapper *persistent.PersistentWrapper, hostWrapper *network.HostWrapper, ipldWrapper *ipldprime.IpldWrapper) (*IPNIWrapper, error) {
@@ -74,12 +71,10 @@ func NewIPNIWrapper(path string, persistentWrapper *persistent.PersistentWrapper
 	eng := engine.New(store, engine.WithCache(cache), engine.WithCacheOnPut(true))
 
 	return &IPNIWrapper{
-		Engine:       eng,
-		Provider:     provider,
-		Subscriber:   subscriber,
-		Planner:      pl,
-		HealthScorer: nil,              // can be set via SetHealthScorer
-		DefaultTTL:   60 * time.Second, // used when composing Providers
+		Engine:     eng,
+		Provider:   provider,
+		Subscriber: subscriber,
+		Planner:    pl,
 	}, nil
 }
 
@@ -103,11 +98,6 @@ func (w *IPNIWrapper) Flush() error                   { return w.Engine.Flush() 
 func (w *IPNIWrapper) Size() (int64, error)           { return w.Engine.Size() }
 func (w *IPNIWrapper) Stats() (*indexer.Stats, error) { return w.Engine.Stats() }
 
-func (w *IPNIWrapper) Put(ctx context.Context, providerID peer.ID, contextID []byte, metadataBytes []byte, mhs []mh.Multihash) error {
-	val := indexer.Value{ProviderID: providerID, ContextID: contextID, MetadataBytes: metadataBytes}
-	return w.PutMultihashes(ctx, val, mhs...)
-}
-
 func (w *IPNIWrapper) PutMultihashes(ctx context.Context, val indexer.Value, mhs ...mh.Multihash) error {
 	if len(mhs) == 0 {
 		return nil
@@ -116,19 +106,24 @@ func (w *IPNIWrapper) PutMultihashes(ctx context.Context, val indexer.Value, mhs
 }
 
 func (w *IPNIWrapper) PutCID(ctx context.Context, val indexer.Value, c cid.Cid) error {
-	return w.Engine.Put(val, c.Hash())
+	return w.PutMultihashes(ctx, val, c.Hash())
+}
+
+func (w *IPNIWrapper) Put(ctx context.Context, providerID peer.ID, contextID []byte, metadataBytes []byte, mhs []mh.Multihash) error {
+	val := indexer.Value{ProviderID: providerID, ContextID: contextID, MetadataBytes: metadataBytes}
+	return w.PutMultihashes(ctx, val, mhs...)
 }
 
 func (w *IPNIWrapper) RemoveMultihashes(ctx context.Context, val indexer.Value, mhs ...mh.Multihash) error {
 	return w.Engine.Remove(val, mhs...)
 }
 
-func (w *IPNIWrapper) RemoveProvider(ctx context.Context, id peer.ID) error {
-	return w.Engine.RemoveProvider(ctx, id)
-}
-
 func (w *IPNIWrapper) Remove(ctx context.Context, id peer.ID, contextID []byte) error {
 	return w.Engine.RemoveProviderContext(id, contextID)
+}
+
+func (w *IPNIWrapper) RemoveProvider(ctx context.Context, id peer.ID) error {
+	return w.Engine.RemoveProvider(ctx, id)
 }
 
 func (w *IPNIWrapper) GetProvidersByCID(ctx context.Context, c cid.Cid) ([]indexer.Value, bool, error) {
@@ -138,10 +133,6 @@ func (w *IPNIWrapper) GetProvidersByCID(ctx context.Context, c cid.Cid) ([]index
 func (w *IPNIWrapper) GetProviders(ctx context.Context, mh mh.Multihash) ([]indexer.Value, bool, error) {
 	return w.Engine.Get(mh)
 }
-
-// =====================================================================
-// PUT helpers (wrap MetadataBytes creation for each transport)
-// =====================================================================
 
 func (w *IPNIWrapper) PutBitswap(ctx context.Context, pid peer.ID, contextID []byte, mhs ...mh.Multihash) error {
 	meta := md.Bitswap{}
@@ -235,11 +226,10 @@ func (w *IPNIWrapper) PlanByCID(ctx context.Context, c cid.Cid, in RouteIntent) 
 		return Plan{}, hit, err
 	}
 	provs := Providers{
-		Items:       Normalize(vals), // normalize indexer.Value -> Provider
-		ObservedTTL: w.DefaultTTL,
-		Source:      "local-engine",
+		Items:  Normalize(vals), // normalize indexer.Value -> Provider
+		Source: "local-engine",
 	}
-	pl := w.Planner.Plan(ctx, provs, in, w.HealthScorer)
+	pl := w.Planner.Plan(ctx, provs, in)
 	return pl, hit, nil
 }
 
@@ -250,10 +240,9 @@ func (w *IPNIWrapper) Plan(ctx context.Context, mh mh.Multihash, in RouteIntent)
 		return Plan{}, hit, err
 	}
 	provs := Providers{
-		Items:       Normalize(vals),
-		ObservedTTL: w.DefaultTTL,
-		Source:      "local-engine",
+		Items:  Normalize(vals),
+		Source: "local-engine",
 	}
-	pl := w.Planner.Plan(ctx, provs, in, w.HealthScorer)
+	pl := w.Planner.Plan(ctx, provs, in)
 	return pl, hit, nil
 }

@@ -26,7 +26,6 @@ const (
 
 type ScoringPolicy struct {
 	TransportBase  map[TransportKind]float64 // prior per transport
-	HealthWeight   float64                   // 0..1 scale for health influence
 	RegionBonus    float64                   // bonus on region match
 	PartialBonus   float64                   // bonus if HTTP supports partial CAR and intent wants it
 	LocalBias      float64                   // small bias for local
@@ -48,7 +47,6 @@ func (ScoringPolicy) Defaults() ScoringPolicy {
 			TGraphSync: 0.6,
 			TBitswap:   0.4,
 		},
-		HealthWeight:   0.6,
 		RegionBonus:    0.2,
 		PartialBonus:   0.5,
 		LocalBias:      0.6,
@@ -122,14 +120,13 @@ type Provider struct {
 }
 
 type Providers struct {
-	Items       []Provider
-	ObservedTTL time.Duration
-	Source      string // which indexer
+	Items  []Provider
+	Source string // which indexer
 }
 
-// HealthScorer returns a normalized score (~0..1) for (providerID, transport).
-// The planner never updates health; it only reads via this function.
-type HealthScorer func(providerID string, proto TransportKind) float64
+// -----------------------------
+// Planner
+// -----------------------------
 
 type Planner struct {
 	Policy ScoringPolicy
@@ -144,8 +141,8 @@ func NewPlanner(policy *ScoringPolicy) *Planner {
 }
 
 // Plan ranks candidates and emits a transport-agnostic attempt list.
-// There is no caching, no health updates here—pure scoring.
-func (p *Planner) Plan(ctx context.Context, provs Providers, in RouteIntent, health HealthScorer) Plan {
+// No health scoring.
+func (p *Planner) Plan(ctx context.Context, provs Providers, in RouteIntent) Plan {
 	items := provs.Items
 	wantPartialHTTP := (strings.ToLower(in.Format) == "car" && strings.ToLower(in.Scope) != "block")
 
@@ -175,9 +172,6 @@ func (p *Planner) Plan(ctx context.Context, provs Providers, in RouteIntent, hea
 	scoreOf := func(pr Provider, tk TransportKind) float64 {
 		s := base[tk]
 
-		if health != nil && p.Policy.HealthWeight > 0 {
-			s += p.Policy.HealthWeight * health(pr.ID, tk)
-		}
 		if in.PreferRegion != "" && pr.Region == in.PreferRegion {
 			s += p.Policy.RegionBonus
 		}
