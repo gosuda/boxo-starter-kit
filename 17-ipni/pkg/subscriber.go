@@ -20,10 +20,6 @@ import (
 	ipldprime "github.com/gosuda/boxo-starter-kit/12-ipld-prime/pkg"
 )
 
-func MakeTopic(topic string) string {
-	return "/indexer/ingest/" + topic
-}
-
 type SubscriberWrapper struct {
 	*dagsync.Subscriber
 	pcache *pcache.ProviderCache

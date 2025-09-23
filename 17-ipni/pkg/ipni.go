@@ -10,6 +10,7 @@ import (
 	"github.com/ipni/go-indexer-core/cache/radixcache"
 	"github.com/ipni/go-indexer-core/engine"
 	"github.com/ipni/go-indexer-core/store/pebble"
+	"github.com/ipni/go-libipni/find/model"
 	md "github.com/ipni/go-libipni/metadata"
 	"github.com/libp2p/go-libp2p/core/peer"
 	mh "github.com/multiformats/go-multihash"
@@ -223,11 +224,10 @@ func (w *IPNIWrapper) PlanByCID(ctx context.Context, c cid.Cid, in RouteIntent) 
 	if err != nil {
 		return Plan{}, hit, err
 	}
-	provs := Providers{
-		Items:  Normalize(vals), // normalize indexer.Value -> Provider
-		Source: "local-engine",
-	}
-	pl := w.Planner.Plan(ctx, provs, in)
+	pvs := NormalizeFromEngine(ctx, vals, func(ctx context.Context, pid peer.ID) (*model.ProviderInfo, error) {
+		return w.Subscriber.ProviderInfo(ctx, pid)
+	})
+	pl := w.Planner.Plan(ctx, pvs, in)
 	return pl, hit, nil
 }
 
@@ -237,10 +237,9 @@ func (w *IPNIWrapper) Plan(ctx context.Context, mh mh.Multihash, in RouteIntent)
 	if err != nil {
 		return Plan{}, hit, err
 	}
-	provs := Providers{
-		Items:  Normalize(vals),
-		Source: "local-engine",
-	}
-	pl := w.Planner.Plan(ctx, provs, in)
+	pvs := NormalizeFromEngine(ctx, vals, func(ctx context.Context, pid peer.ID) (*model.ProviderInfo, error) {
+		return w.Subscriber.ProviderInfo(ctx, pid)
+	})
+	pl := w.Planner.Plan(ctx, pvs, in)
 	return pl, hit, nil
 }

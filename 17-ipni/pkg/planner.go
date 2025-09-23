@@ -9,6 +9,8 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipni/go-indexer-core"
+	"github.com/ipni/go-libipni/find/model"
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 // -----------------------------
@@ -24,19 +26,19 @@ const (
 	TBitswap   TransportKind = "bitswap"
 )
 
+type Transport struct {
+	Kind       TransportKind
+	PartialCAR bool              // http partial CAR(IPIP-402) support
+	Auth       bool              // http auth support
+	Meta       map[string]string // free-form
+}
+
 type ScoringPolicy struct {
 	TransportBase  map[TransportKind]float64 // prior per transport
 	RegionBonus    float64                   // bonus on region match
 	PartialBonus   float64                   // bonus if HTTP supports partial CAR and intent wants it
 	LocalBias      float64                   // small bias for local
 	DefaultStagger time.Duration             // stagger for racing
-}
-
-type Transport struct {
-	Kind       TransportKind
-	PartialCAR bool // http partial CAR(IPIP-402) support
-	Auth       bool // http auth support
-	Meta       map[string]string
 }
 
 func (ScoringPolicy) Defaults() ScoringPolicy {
@@ -60,7 +62,7 @@ type Prefs struct {
 }
 
 // -----------------------------
-// Planner inputs
+// Planner inputs (intent)
 // -----------------------------
 
 type CachePolicy struct {
@@ -89,6 +91,20 @@ type RouteIntent struct {
 	Prefs        *Prefs
 }
 
+type ProviderInfoGetter func(ctx context.Context, pid peer.ID) (*model.ProviderInfo, error)
+
+type ProviderView struct {
+	ID         string
+	Info       *model.ProviderInfo
+	Transports []Transport
+	Meta       map[string]string
+}
+
+type Providers struct {
+	Items  []ProviderView
+	Source string // e.g. "local-engine"
+}
+
 type Attempt struct {
 	ProviderID string
 	Proto      TransportKind
@@ -106,22 +122,6 @@ type Plan struct {
 		ObservedProviders int
 		Source            string
 	}
-}
-
-type Provider struct {
-	db indexer.Interface
-
-	ID         string
-	Addrs      []string // multiaddr or URLs
-	Transports []Transport
-	Region     string
-	ASN        uint32
-	Meta       map[string]string
-}
-
-type Providers struct {
-	Items  []Provider
-	Source string // which indexer
 }
 
 // -----------------------------
@@ -169,13 +169,20 @@ func (p *Planner) Plan(ctx context.Context, provs Providers, in RouteIntent) Pla
 		}
 	}
 
-	scoreOf := func(pr Provider, tk TransportKind) float64 {
+	regionOf := func(pv ProviderView) string {
+		if pv.Info == nil {
+			return ""
+		}
+		return ""
+	}
+
+	scoreOf := func(pv ProviderView, tk TransportKind) float64 {
 		s := base[tk]
 
-		if in.PreferRegion != "" && pr.Region == in.PreferRegion {
+		if in.PreferRegion != "" && regionOf(pv) == in.PreferRegion {
 			s += p.Policy.RegionBonus
 		}
-		if tk == THTTP && wantPartialHTTP && providerSupportsPartial(pr) {
+		if tk == THTTP && wantPartialHTTP && providerSupportsPartial(pv) {
 			s += p.Policy.PartialBonus
 		}
 		if tk == TLocal {
@@ -191,18 +198,16 @@ func (p *Planner) Plan(ctx context.Context, provs Providers, in RouteIntent) Pla
 	type cand struct {
 		id   string
 		tk   TransportKind
-		reg  string
 		wt   float64
 		part bool
 	}
 	var cs []cand
-	for _, pr := range items {
-		for _, t := range pr.Transports {
+	for _, pv := range items {
+		for _, t := range pv.Transports {
 			cs = append(cs, cand{
-				id:   pr.ID,
+				id:   pv.ID,
 				tk:   t.Kind,
-				reg:  pr.Region,
-				wt:   scoreOf(pr, t.Kind),
+				wt:   scoreOf(pv, t.Kind),
 				part: (t.Kind == THTTP && t.PartialCAR),
 			})
 		}
@@ -220,7 +225,7 @@ func (p *Planner) Plan(ctx context.Context, provs Providers, in RouteIntent) Pla
 	pl.Policy.Source = provs.Source
 
 	for i, c := range cs {
-		meta := map[string]string{"region": c.reg}
+		meta := map[string]string{}
 		if c.tk == THTTP && c.part {
 			meta["partial_car"] = "true"
 		}
@@ -235,41 +240,38 @@ func (p *Planner) Plan(ctx context.Context, provs Providers, in RouteIntent) Pla
 	return pl
 }
 
-func providerSupportsPartial(p Provider) bool {
-	for _, t := range p.Transports {
+func providerSupportsPartial(pv ProviderView) bool {
+	for _, t := range pv.Transports {
 		if t.Kind == THTTP && t.PartialCAR {
 			return true
 		}
 	}
 	return false
 }
-
-func Normalize(vals []indexer.Value) []Provider {
-	out := make([]Provider, 0, len(vals))
+func NormalizeFromEngine(ctx context.Context, vals []indexer.Value, get ProviderInfoGetter) Providers {
+	out := make([]ProviderView, 0, len(vals))
 	for _, v := range vals {
-		p := Provider{
+		pv := ProviderView{
 			ID:         v.ProviderID.String(),
-			Addrs:      nil,
+			Info:       nil,
 			Transports: []Transport{},
-			Region:     "",
-			ASN:        0,
 			Meta:       map[string]string{},
 		}
-
+		if get != nil {
+			if pi, err := get(ctx, v.ProviderID); err == nil {
+				pv.Info = pi
+			}
+		}
 		if len(v.ContextID) > 0 {
-			p.Meta["context_id"] = hex.EncodeToString(v.ContextID)
+			pv.Meta["context_id"] = hex.EncodeToString(v.ContextID)
 		}
 		if len(v.MetadataBytes) > 0 {
-			// TODO: decode actual metadata spec. For now, just hex store.
-			p.Meta["metadata_hex"] = hex.EncodeToString(v.MetadataBytes)
-			// naive heuristic: if MetadataBytes present, assume GraphSync
-			p.Transports = append(p.Transports, Transport{Kind: TGraphSync})
+			pv.Meta["metadata_hex"] = hex.EncodeToString(v.MetadataBytes)
+			pv.Transports = append(pv.Transports, Transport{Kind: TGraphSync})
 		} else {
-			// fallback to Bitswap if no metadata
-			p.Transports = append(p.Transports, Transport{Kind: TBitswap})
+			pv.Transports = append(pv.Transports, Transport{Kind: TBitswap})
 		}
-
-		out = append(out, p)
+		out = append(out, pv)
 	}
-	return out
+	return Providers{Items: out, Source: "engine"}
 }
