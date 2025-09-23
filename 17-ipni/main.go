@@ -8,7 +8,6 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
 	mc "github.com/multiformats/go-multicodec"
-	mh "github.com/multiformats/go-multihash"
 
 	block "github.com/gosuda/boxo-starter-kit/00-block-cid/pkg"
 	persistent "github.com/gosuda/boxo-starter-kit/01-persistent/pkg"
@@ -26,7 +25,7 @@ func main() {
 	fmt.Println("🔧 1. Setting up IPNI wrapper:")
 
 	// Create IPNI wrapper with default storage path
-	ipniWrapper, err := ipni.NewIPNIWrapper("/tmp/ipni-demo", nil, nil, nil)
+	ipniWrapper, err := ipni.New("/tmp/ipni-demo", "ipni-topic", nil, nil, nil)
 	if err != nil {
 		log.Fatalf("Failed to create IPNI wrapper: %v", err)
 	}
@@ -89,14 +88,12 @@ func main() {
 	}
 
 	var contentCIDs []cid.Cid
-	var multihashes []mh.Multihash
 	for i, content := range contentItems {
 		contentCID, err := ipldWrapper.PutIPLDAny(ctx, content)
 		if err != nil {
 			log.Fatalf("Failed to store content %d: %v", i, err)
 		}
 		contentCIDs = append(contentCIDs, contentCID)
-		multihashes = append(multihashes, contentCID.Hash())
 		fmt.Printf("   📦 Stored %s: %s\n", content["type"], contentCID)
 	}
 	fmt.Printf("   📈 Total content items created: %d\n", len(contentCIDs))
@@ -113,12 +110,12 @@ func main() {
 
 	// Add Bitswap provider metadata
 	contextID := []byte("bitswap-context-001")
-	err = ipniWrapper.PutBitswap(providerID, contextID, multihashes...)
+	err = ipniWrapper.PutBitswap(providerID, contextID, contentCIDs...)
 	if err != nil {
 		log.Fatalf("Failed to index content with Bitswap: %v", err)
 	}
 
-	fmt.Printf("   ✅ Indexed %d items with Bitswap provider\n", len(multihashes))
+	fmt.Printf("   ✅ Indexed %d items with Bitswap provider\n", len(contentCIDs))
 	fmt.Printf("   👤 Provider: %s\n", providerID)
 	fmt.Printf("   🆔 Context ID: %s\n", string(contextID))
 	fmt.Println()
@@ -149,12 +146,12 @@ func main() {
 
 	// Add GraphSync provider metadata
 	gsContextID := []byte("graphsync-001")
-	err = ipniWrapper.PutGraphSync(graphsyncProviderID, gsContextID, multihashes...)
+	err = ipniWrapper.PutGraphSyncFilecoin(graphsyncProviderID, contentCIDs[0], false, false, gsContextID, contentCIDs...)
 	if err != nil {
 		log.Fatalf("Failed to index content with GraphSync: %v", err)
 	}
 
-	fmt.Printf("   ✅ Indexed %d items with GraphSync provider\n", len(multihashes))
+	fmt.Printf("   ✅ Indexed %d items with GraphSync provider\n", len(contentCIDs))
 	fmt.Printf("   👤 Provider: %s\n", graphsyncProviderID)
 	fmt.Printf("   🆔 Context ID: %s\n", string(gsContextID))
 	fmt.Println()

@@ -108,8 +108,7 @@ func (mf *MultiFetcher) FetchBlock(ctx context.Context, c cid.Cid) (*FetchResult
 	mf.recordRequest()
 
 	// Get ranked fetchers from IPNI
-	intent := ipni.RouteIntent{
-		Root:   c,
+	intent := ipni.Intent{
 		Format: "raw",
 		Scope:  "block",
 	}
@@ -136,22 +135,9 @@ func (mf *MultiFetcher) FetchBlock(ctx context.Context, c cid.Cid) (*FetchResult
 func (mf *MultiFetcher) FetchDAG(ctx context.Context, root cid.Cid, selector ipld.Node) (*FetchResult, error) {
 	mf.recordRequest()
 
-	// Encode selector to CBOR for IPNI intent
-	var selCBOR []byte
-	if selector != nil {
-		var err error
-		selCBOR, err = encodeSelectorToCBOR(selector)
-		if err != nil {
-			// Log error but continue without selector
-			selCBOR = nil
-		}
-	}
-
-	intent := ipni.RouteIntent{
-		Root:    root,
-		Format:  "car",
-		Scope:   "entity",
-		SelCBOR: selCBOR,
+	intent := ipni.Intent{
+		Format: "car",
+		Scope:  "entity",
 	}
 
 	rankedFetchers, found, err := mf.ipni.RankedFetchersByCID(ctx, root, intent)

@@ -3,6 +3,7 @@ package ipni
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipni/go-libipni/find/model"
@@ -19,14 +20,21 @@ import (
 var _ pcache.ProviderSource = (*ProviderWrapper)(nil)
 
 type ProviderWrapper struct {
+	path  string
+	topic string
+
 	provider *peer.AddrInfo
-	topic    string
 	engine   *provengine.Engine
 
 	*carsupplier.CarSupplier
 }
 
-func NewProviderWrapper(topic string, persistentWrapper *persistent.PersistentWrapper, hostWrapper *network.HostWrapper) (*ProviderWrapper, error) {
+func NewProviderWrapper(path, topic string, persistentWrapper *persistent.PersistentWrapper, hostWrapper *network.HostWrapper) (*ProviderWrapper, error) {
+	if path == "" {
+		path = os.TempDir()
+	}
+	path += "/ipni-provider"
+
 	if topic == "" {
 		topic = MakeTopic("index")
 	}
@@ -54,6 +62,8 @@ func NewProviderWrapper(topic string, persistentWrapper *persistent.PersistentWr
 		provengine.WithDatastore(persistentWrapper.Batching),
 		provengine.WithHost(hostWrapper.Host),
 		provengine.WithTopicName(topic),
+		provengine.WithPublisherKind(provengine.Libp2pHttpPublisher),
+		provengine.WithPubsubAnnounce(true),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create index provider: %w", err)
@@ -62,11 +72,16 @@ func NewProviderWrapper(topic string, persistentWrapper *persistent.PersistentWr
 	carSup := carsupplier.NewCarSupplier(eng, persistentWrapper.Batching)
 
 	return &ProviderWrapper{
+		path:        path,
 		topic:       topic,
 		provider:    provider,
 		engine:      eng,
 		CarSupplier: carSup,
 	}, nil
+}
+
+func (p *ProviderWrapper) ProviderID() peer.ID {
+	return p.provider.ID
 }
 
 func (p *ProviderWrapper) Start(ctx context.Context) error {
@@ -77,11 +92,11 @@ func (p *ProviderWrapper) Start(ctx context.Context) error {
 	return nil
 }
 
-func (p *ProviderWrapper) PutCAR(ctx context.Context, contextID []byte, carPath string, md md.Metadata) (cid.Cid, error) {
+func (p *ProviderWrapper) PutCAR(ctx context.Context, contextID []byte, md md.Metadata) (cid.Cid, error) {
 	if p.CarSupplier == nil {
 		return cid.Undef, fmt.Errorf("car supplier not initialized")
 	}
-	return p.CarSupplier.Put(ctx, contextID, carPath, md)
+	return p.CarSupplier.Put(ctx, contextID, p.path, md)
 }
 
 func (p *ProviderWrapper) RemoveCAR(ctx context.Context, contextID []byte) (cid.Cid, error) {

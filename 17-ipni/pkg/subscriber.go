@@ -54,7 +54,7 @@ func NewSubscriberWrapper(hostWrapper *network.HostWrapper, ipldWrapper *ipldpri
 	}, nil
 }
 
-type OnPutFn func(providerID peer.ID, contextID []byte, metadataBytes []byte, mhs []mh.Multihash) error
+type OnPutFn func(providerID peer.ID, contextID []byte, metadataBytes []byte, mhs ...mh.Multihash) error
 type OnRemoveFn func(providerID peer.ID, contextID []byte) error
 
 func (s *SubscriberWrapper) Start(ctx context.Context, onPut OnPutFn, onRemove OnRemoveFn) error {
@@ -67,6 +67,7 @@ func (s *SubscriberWrapper) Start(ctx context.Context, onPut OnPutFn, onRemove O
 
 	go func() {
 		for ev := range ch {
+			log.Info().Str("peer", ev.PeerID.String()).Str("cid", ev.Cid.String()).Msg("dagsync event")
 			if ev.Err != nil {
 				log.Error().Err(ev.Err).Msg("dagsync error")
 				continue
@@ -123,7 +124,7 @@ func (s *SubscriberWrapper) handleAd(ctx context.Context, adCid cid.Cid, onPut O
 	if len(mhs) == 0 {
 		return nil
 	}
-	return onPut(pid, ad.ContextID, mdBytes, mhs)
+	return onPut(pid, ad.ContextID, mdBytes, mhs...)
 }
 
 func (s *SubscriberWrapper) collectMultihashes(ctx context.Context, entries ipld.Link) ([]mh.Multihash, error) {
@@ -161,6 +162,7 @@ func (s *SubscriberWrapper) collectMultihashes(ctx context.Context, entries ipld
 	}
 	return out, nil
 }
+
 func (s *SubscriberWrapper) Stop() error {
 	if s.cancel != nil {
 		s.cancel()

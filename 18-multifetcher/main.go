@@ -9,7 +9,6 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
 	mc "github.com/multiformats/go-multicodec"
-	mh "github.com/multiformats/go-multihash"
 
 	block "github.com/gosuda/boxo-starter-kit/00-block-cid/pkg"
 	persistent "github.com/gosuda/boxo-starter-kit/01-persistent/pkg"
@@ -52,7 +51,7 @@ func main() {
 	}
 
 	// Setup IPNI for provider discovery
-	ipniWrapper, err := ipni.NewIPNIWrapper("/tmp/multifetcher-ipni", nil, nil, nil)
+	ipniWrapper, err := ipni.New("/tmp/multifetcher-ipni", "topic", nil, nil, nil)
 	if err != nil {
 		log.Fatalf("Failed to create IPNI wrapper: %v", err)
 	}
@@ -106,14 +105,12 @@ func main() {
 	}
 
 	var contentCIDs []cid.Cid
-	var multihashes []mh.Multihash
 	for i, content := range contentData {
 		contentCID, err := ipldWrapper.PutIPLDAny(ctx, content)
 		if err != nil {
 			log.Fatalf("Failed to store content %d: %v", i, err)
 		}
 		contentCIDs = append(contentCIDs, contentCID)
-		multihashes = append(multihashes, contentCID.Hash())
 		fmt.Printf("   📦 Stored %s: %s (priority: %v)\n",
 			content["type"], contentCID, content["priority"])
 	}
@@ -124,7 +121,7 @@ func main() {
 	provider3, _ := peer.Decode("12D3KooWQYhTNmY1kZXCJM3BFrwCNhkJQYxWqHN7TAWkqLmZv6wC")
 
 	// Index with Bitswap provider
-	err = ipniWrapper.PutBitswap(provider1, []byte("bitswap-ctx"), multihashes...)
+	err = ipniWrapper.PutBitswap(provider1, []byte("bitswap-ctx"), contentCIDs...)
 	if err != nil {
 		log.Printf("Failed to index with Bitswap: %v", err)
 	}
@@ -133,7 +130,7 @@ func main() {
 	fmt.Printf("   ⚠️  HTTP gateway indexing skipped due to library updates\n")
 
 	// Index with GraphSync provider
-	err = ipniWrapper.PutGraphSync(provider3, []byte("graphsync-ctx"), multihashes...)
+	err = ipniWrapper.PutGraphSyncFilecoin(provider3, contentCIDs[0], false, true, []byte("graphsync-ctx"), contentCIDs...)
 	if err != nil {
 		log.Printf("Failed to index with GraphSync: %v", err)
 	}
