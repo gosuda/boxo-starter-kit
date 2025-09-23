@@ -25,7 +25,7 @@ func TestDHTBootstrap(t *testing.T) {
 		require.NoError(t, err)
 		hosts = append(hosts, h)
 
-		w, err := dht.New(ctx, 5*time.Second, h, nil)
+		w, err := dht.New(ctx, h, nil)
 		require.NoError(t, err)
 		dhts = append(dhts, w)
 	}
@@ -65,9 +65,9 @@ func TestProvideFindProvidersCID(t *testing.T) {
 	require.NoError(t, err)
 	defer hB.Close()
 
-	dA, err := dht.New(ctx, 5*time.Second, hA, nil)
+	dA, err := dht.New(ctx, hA, nil)
 	require.NoError(t, err)
-	dB, err := dht.New(ctx, 5*time.Second, hB, nil)
+	dB, err := dht.New(ctx, hB, nil)
 	require.NoError(t, err)
 
 	require.NoError(t, hB.ConnectToPeer(ctx, hA.GetFullAddresses()...))

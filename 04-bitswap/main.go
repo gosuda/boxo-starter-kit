@@ -11,7 +11,7 @@ import (
 	persistent "github.com/gosuda/boxo-starter-kit/01-persistent/pkg"
 	network "github.com/gosuda/boxo-starter-kit/02-network/pkg"
 	dht "github.com/gosuda/boxo-starter-kit/03-dht-router/pkg"
-	"github.com/gosuda/boxo-starter-kit/04-bitswap/pkg"
+	bitswap "github.com/gosuda/boxo-starter-kit/04-bitswap/pkg"
 )
 
 func main() {
@@ -85,7 +85,7 @@ func demonstrateBitswapSetup(ctx context.Context) {
 	}
 	defer host.Close()
 
-	dhtRouter, err := dht.New(ctx, 5*time.Second, host, persistentStore)
+	dhtRouter, err := dht.New(ctx, host, persistentStore)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -476,7 +476,7 @@ func demonstrateAdvancedFeatures(ctx context.Context) {
 		} else {
 			defer host.Close()
 
-			dhtRouter, err := dht.New(ctx, 5*time.Second, host, badgerStore)
+			dhtRouter, err := dht.New(ctx, host, badgerStore)
 			if err != nil {
 				fmt.Printf("   ❌ Failed to create DHT: %v\n", err)
 			} else {

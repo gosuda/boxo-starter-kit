@@ -67,7 +67,7 @@ func demonstrateDHTSetup(ctx context.Context) {
 	}
 	defer host1.Close()
 
-	dht1, err := dht.New(ctx, 5*time.Second, host1, memPersistent)
+	dht1, err := dht.New(ctx, host1, memPersistent)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -90,7 +90,7 @@ func demonstrateDHTSetup(ctx context.Context) {
 	}
 	defer host2.Close()
 
-	dht2, err := dht.New(ctx, 5*time.Second, host2, filePersistent)
+	dht2, err := dht.New(ctx, host2, filePersistent)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -98,17 +98,6 @@ func demonstrateDHTSetup(ctx context.Context) {
 	fmt.Printf("   ✅ DHT created with host ID: %s\n", host2.ID().String()[:20]+"...")
 	fmt.Printf("   ✅ Routing table size: %d peers\n", dht2.RoutingTableSize())
 	fmt.Printf("   ✅ Storage: File-based (persistent)\n")
-
-	// 3. DHT with custom timeout
-	fmt.Printf("\n⏱️  3. Custom timeout DHT:\n")
-	customTimeout := 2 * time.Second
-	_, err = dht.New(ctx, customTimeout, nil, nil) // Uses defaults for host and storage
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Printf("   ✅ DHT created with %v find timeout\n", customTimeout)
-	fmt.Printf("   ✅ Auto-generated host and memory storage\n")
 
 	// Clean up
 	filePersistent.Close()
@@ -124,7 +113,7 @@ func demonstrateProviderOperations(ctx context.Context) {
 	}
 	defer host.Close()
 
-	dhtNode, err := dht.New(ctx, 5*time.Second, host, nil)
+	dhtNode, err := dht.New(ctx, host, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -211,7 +200,7 @@ func demonstrateRoutingTable(ctx context.Context) {
 	fmt.Printf("Analyzing DHT routing table structure...\n")
 
 	// Create DHT node
-	dhtNode, err := dht.New(ctx, 5*time.Second, nil, nil)
+	dhtNode, err := dht.New(ctx, nil, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -274,7 +263,7 @@ func demonstrateMultiNodeDHT(ctx context.Context) {
 		}
 		hosts = append(hosts, host)
 
-		dhtNode, err := dht.New(ctx, 3*time.Second, host, nil)
+		dhtNode, err := dht.New(ctx, host, nil)
 		if err != nil {
 			log.Printf("   ❌ Failed to create DHT %d: %v\n", i, err)
 			host.Close()
@@ -362,7 +351,7 @@ func demonstrateDHTMetrics(ctx context.Context) {
 	fmt.Printf("Measuring DHT performance metrics...\n")
 
 	// Create DHT for testing
-	dhtNode, err := dht.New(ctx, 5*time.Second, nil, nil)
+	dhtNode, err := dht.New(ctx, nil, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -447,13 +436,4 @@ func demonstrateDHTMetrics(ctx context.Context) {
 	fmt.Printf("   • Batch operations when possible\n")
 	fmt.Printf("   • Consider caching frequently accessed provider records\n")
 	fmt.Printf("   • Monitor routing table size for network health\n")
-}
-
-// Helper function to create test CID
-func createTestCID(data string) cid.Cid {
-	hash, err := mh.Sum([]byte(data), mh.SHA2_256, -1)
-	if err != nil {
-		return cid.Undef
-	}
-	return cid.NewCidV1(cid.Raw, hash)
 }
