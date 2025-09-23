@@ -3,7 +3,6 @@ package dht
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/ipfs/go-cid"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
@@ -15,26 +14,17 @@ import (
 )
 
 type DHTWrapper struct {
-	findTimeout time.Duration
-
 	routing.Routing
 }
 
-func NewWithRouting(ctx context.Context, r routing.Routing, findTimeout time.Duration) (*DHTWrapper, error) {
-	if findTimeout == 0 {
-		findTimeout = 10 * time.Second
-	}
+func NewWithRouting(ctx context.Context, r routing.Routing) (*DHTWrapper, error) {
 	return &DHTWrapper{
-		findTimeout: findTimeout,
-		Routing:     r,
+		Routing: r,
 	}, nil
 }
 
-func New(ctx context.Context, findTimeout time.Duration, host *network.HostWrapper, persistentWrapper *persistent.PersistentWrapper) (*DHTWrapper, error) {
+func New(ctx context.Context, host *network.HostWrapper, persistentWrapper *persistent.PersistentWrapper) (*DHTWrapper, error) {
 	var err error
-	if findTimeout == 0 {
-		findTimeout = 10 * time.Second
-	}
 	if host == nil {
 		host, err = network.New(nil)
 		if err != nil {
@@ -54,7 +44,7 @@ func New(ctx context.Context, findTimeout time.Duration, host *network.HostWrapp
 	if err != nil {
 		return nil, err
 	}
-	return NewWithRouting(ctx, ipfsdht, findTimeout)
+	return NewWithRouting(ctx, ipfsdht)
 }
 
 func (w *DHTWrapper) FindProviders(ctx context.Context, c cid.Cid, max int) ([]peer.AddrInfo, error) {

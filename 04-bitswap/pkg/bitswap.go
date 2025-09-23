@@ -49,7 +49,7 @@ func NewBitswap(ctx context.Context, dhtWrapper *dht.DHTWrapper, host *network.H
 		}
 	}
 	if dhtWrapper == nil {
-		dhtWrapper, err = dht.New(ctx, 5*time.Second, host, persistentWrapper)
+		dhtWrapper, err = dht.New(ctx, host, persistentWrapper)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create DHT: %w", err)
 		}
