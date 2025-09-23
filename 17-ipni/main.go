@@ -26,7 +26,7 @@ func main() {
 	fmt.Println("🔧 1. Setting up IPNI wrapper:")
 
 	// Create IPNI wrapper with default storage path
-	ipniWrapper, err := ipni.NewIPNIWrapper("/tmp/ipni-demo", nil)
+	ipniWrapper, err := ipni.NewIPNIWrapper("/tmp/ipni-demo", nil, nil, nil)
 	if err != nil {
 		log.Fatalf("Failed to create IPNI wrapper: %v", err)
 	}
@@ -217,7 +217,7 @@ func main() {
 
 	// Remove a specific provider context
 	fmt.Printf("   📝 Removing GraphSync provider context...\n")
-	err = ipniWrapper.RemoveProviderContext(ctx, graphsyncProviderID, gsContextID)
+	err = ipniWrapper.Remove(ctx, graphsyncProviderID, gsContextID)
 	if err != nil {
 		log.Printf("Failed to remove provider context: %v", err)
 	} else {

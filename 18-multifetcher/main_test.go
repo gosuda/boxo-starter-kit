@@ -46,7 +46,7 @@ func TestMultiFetcher_Creation(t *testing.T) {
 	require.NoError(t, err)
 	defer bs.Close()
 
-	ipniWrapper, err := ipni.NewIPNIWrapper("", nil)
+	ipniWrapper, err := ipni.NewIPNIWrapper("", nil, nil, nil)
 	require.NoError(t, err)
 	defer ipniWrapper.Close()
 
@@ -80,7 +80,7 @@ func TestMultiFetcher_HTTPFetcher(t *testing.T) {
 }
 
 func TestMultiFetcher_ConfigValidation(t *testing.T) {
-	ipniWrapper, err := ipni.NewIPNIWrapper("", nil)
+	ipniWrapper, err := ipni.NewIPNIWrapper("", nil, nil, nil)
 	require.NoError(t, err)
 	defer ipniWrapper.Close()
 
@@ -137,7 +137,7 @@ func TestMultiFetcher_Integration(t *testing.T) {
 func BenchmarkMultiFetcher_Creation(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		ipniWrapper, err := ipni.NewIPNIWrapper("", nil)
+		ipniWrapper, err := ipni.NewIPNIWrapper("", nil, nil, nil)
 		require.NoError(b, err)
 
 		mf := NewMultiFetcher(ipniWrapper, nil, nil, nil)

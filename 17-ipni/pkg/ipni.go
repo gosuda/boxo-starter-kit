@@ -11,60 +11,102 @@ import (
 	"github.com/ipni/go-indexer-core/cache/radixcache"
 	"github.com/ipni/go-indexer-core/engine"
 	"github.com/ipni/go-indexer-core/store/pebble"
-	dagsync "github.com/ipni/go-libipni/dagsync"
-	"github.com/ipni/go-libipni/find/model"
 	md "github.com/ipni/go-libipni/metadata"
+	provengine "github.com/ipni/index-provider/engine"
 	"github.com/libp2p/go-libp2p/core/peer"
 	mh "github.com/multiformats/go-multihash"
-	"github.com/rs/zerolog/log"
+
+	persistent "github.com/gosuda/boxo-starter-kit/01-persistent/pkg"
+	network "github.com/gosuda/boxo-starter-kit/02-network/pkg"
+	ipldprime "github.com/gosuda/boxo-starter-kit/12-ipld-prime/pkg"
 )
 
 type IPNIWrapper struct {
-	Engine       *engine.Engine
+	Engine *engine.Engine
+
+	Provider     *ProviderWrapper
+	Subscriber   *SubscriberWrapper
 	Planner      *Planner
 	HealthScorer HealthScorer
 	DefaultTTL   time.Duration
-
-	Subscriber *SubscriberWrapper
 }
 
-func NewIPNIWrapper(path string, subscriber *SubscriberWrapper) (*IPNIWrapper, error) {
+func NewIPNIWrapper(path string, persistentWrapper *persistent.PersistentWrapper, hostWrapper *network.HostWrapper, ipldWrapper *ipldprime.IpldWrapper) (*IPNIWrapper, error) {
 	var err error
 	if path == "" {
 		path = os.TempDir() + "/ipni"
 	}
-	if subscriber == nil {
-		subscriber, err = NewSubscriberWrapper(nil, nil)
+	if persistentWrapper == nil {
+		persistentWrapper, err = persistent.New(persistent.Memory, "")
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to create persistent wrapper: %w", err)
 		}
 	}
+	if hostWrapper == nil {
+		hostWrapper, err = network.New(nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create libp2p host: %w", err)
+		}
+	}
+	if ipldWrapper == nil {
+		ipldWrapper, err = ipldprime.NewDefault(nil, persistentWrapper)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create ipld wrapper: %w", err)
+		}
+	}
+
+	subscriber, err := NewSubscriberWrapper(hostWrapper, ipldWrapper, "https://cid.contact")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create subscriber: %w", err)
+	}
+
+	provider, err := NewProviderWrapper("", persistentWrapper, hostWrapper)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create provider: %w", err)
+	}
+	pl := NewPlanner(nil)
 
 	store, err := pebble.New(path, nil)
 	if err != nil {
 		return nil, err
 	}
-	// 4 MB cache
 	cache := radixcache.New(4 * 1024 * 1024)
-
 	eng := engine.New(store, engine.WithCache(cache), engine.WithCacheOnPut(true))
-
-	// scoring-only planner with default policy
-	pl := NewPlanner(nil)
 
 	return &IPNIWrapper{
 		Engine:       eng,
+		Provider:     provider,
+		Subscriber:   subscriber,
 		Planner:      pl,
 		HealthScorer: nil,              // can be set via SetHealthScorer
 		DefaultTTL:   60 * time.Second, // used when composing Providers
-		Subscriber:   subscriber,
 	}, nil
+}
+
+func (w *IPNIWrapper) Start(ctx context.Context) error {
+	// start provider
+	if pe, ok := w.Provider.Interface.(*provengine.Engine); ok {
+		if err := pe.Start(ctx); err != nil {
+			return fmt.Errorf("provider engine start: %w", err)
+		}
+	}
+
+	// start subscriber
+	if err := w.Subscriber.Start(ctx, w.Put, w.Remove); err != nil {
+		return fmt.Errorf("subscriber start: %w", err)
+	}
+	return nil
 }
 
 func (w *IPNIWrapper) Close() error                   { return w.Engine.Close() }
 func (w *IPNIWrapper) Flush() error                   { return w.Engine.Flush() }
 func (w *IPNIWrapper) Size() (int64, error)           { return w.Engine.Size() }
 func (w *IPNIWrapper) Stats() (*indexer.Stats, error) { return w.Engine.Stats() }
+
+func (w *IPNIWrapper) Put(ctx context.Context, providerID peer.ID, contextID []byte, metadataBytes []byte, mhs []mh.Multihash) error {
+	val := indexer.Value{ProviderID: providerID, ContextID: contextID, MetadataBytes: metadataBytes}
+	return w.PutMultihashes(ctx, val, mhs...)
+}
 
 func (w *IPNIWrapper) PutMultihashes(ctx context.Context, val indexer.Value, mhs ...mh.Multihash) error {
 	if len(mhs) == 0 {
@@ -77,7 +119,7 @@ func (w *IPNIWrapper) PutCID(ctx context.Context, val indexer.Value, c cid.Cid) 
 	return w.Engine.Put(val, c.Hash())
 }
 
-func (w *IPNIWrapper) Remove(ctx context.Context, val indexer.Value, mhs ...mh.Multihash) error {
+func (w *IPNIWrapper) RemoveMultihashes(ctx context.Context, val indexer.Value, mhs ...mh.Multihash) error {
 	return w.Engine.Remove(val, mhs...)
 }
 
@@ -85,7 +127,7 @@ func (w *IPNIWrapper) RemoveProvider(ctx context.Context, id peer.ID) error {
 	return w.Engine.RemoveProvider(ctx, id)
 }
 
-func (w *IPNIWrapper) RemoveProviderContext(ctx context.Context, id peer.ID, contextID []byte) error {
+func (w *IPNIWrapper) Remove(ctx context.Context, id peer.ID, contextID []byte) error {
 	return w.Engine.RemoveProviderContext(id, contextID)
 }
 
@@ -142,29 +184,6 @@ func (w *IPNIWrapper) PutHTTP(ctx context.Context, pid peer.ID, contextID []byte
 
 	val := indexer.Value{ProviderID: pid, ContextID: contextID, MetadataBytes: metaBytes}
 	return w.PutMultihashes(ctx, val, mhs...)
-}
-
-func (w *IPNIWrapper) Subscribe() {
-	if w.Subscriber == nil {
-		fmt.Println("Subscriber not initialized")
-		return
-	}
-	selector := cid.Undef
-	err := w.Subscriber.Start(func(ev *dagsync.SyncFinished, provider *model.ProviderInfo) error {
-		if ev.Err != nil {
-			log.Error().Err(ev.Err).Msg("DAG sync error")
-			return ev.Err
-		}
-		pub := provider.Publisher.ID
-
-		return nil
-	})
-	if err != nil {
-		fmt.Printf("Failed to subscribe: %v\n", err)
-		return
-	}
-	fmt.Println("Subscribed successfully")
-
 }
 
 // Planning helpers (scoring-only)
