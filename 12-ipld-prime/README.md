@@ -332,12 +332,43 @@ func TestIpldLink(t *testing.T) {
 - Configure appropriate storage backends for your use case
 - Use path resolution for efficient nested data access
 
-## 🔗 Related Modules
+## 📚 Next Steps
 
-- **[05-dag-ipld](../05-dag-ipld)**: Basic IPLD operations and concepts
-- **[14-traversal-selector](../14-traversal-selector)**: Advanced data traversal
-- **[13-dasl](../13-dasl)**: Data modeling and schema language
-- **[00-block-cid](../00-block-cid)**: Underlying block and CID concepts
+### Immediate Next Steps
+Having mastered IPLD-prime fundamentals, progress to these advanced capabilities:
+
+1. **[13-dasl](../13-dasl)**: Schema-Based Development
+   - Learn DASL (Data Schema Language) for type-safe data structures
+   - Implement code generation from schemas to Go structs
+   - Build validation systems with schema enforcement
+
+2. **[14-traversal-selector](../14-traversal-selector)**: Advanced Traversal Patterns
+   - Master sophisticated data structure navigation
+   - Implement complex selector patterns for data extraction
+   - Optimize traversal performance for large data graphs
+
+### Related Modules
+**Prerequisites (Review if needed):**
+- [00-block-cid](../00-block-cid): Content addressing fundamentals
+- [01-persistent](../01-persistent): Storage backends and persistence
+- [05-dag-ipld](../05-dag-ipld): Basic IPLD operations and concepts
+
+**Advanced Applications:**
+- [15-graphsync](../15-graphsync): Network synchronization with IPLD-prime
+- [16-trustless-gateway](../16-trustless-gateway): HTTP gateways with verification
+- [17-ipni](../17-ipni): Content indexing and discovery
+- [18-multifetcher](../18-multifetcher): Multi-source content retrieval
+
+### Alternative Learning Paths
+
+**For Data Modeling Focus:**
+12-ipld-prime → 13-dasl → 05-dag-ipld (review) → 14-traversal-selector
+
+**For Performance Optimization Focus:**
+12-ipld-prime → 14-traversal-selector → 15-graphsync → 18-multifetcher
+
+**For Web Integration Focus:**
+12-ipld-prime → 16-trustless-gateway → 17-ipni → Integration Projects
 
 ## 📚 Further Reading
 

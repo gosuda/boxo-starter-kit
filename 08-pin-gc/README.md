@@ -14,8 +14,8 @@ Through this module, you will learn:
 
 - **00-block-cid** module completed (understanding Blocks and CIDs)
 - **01-persistent** module completed (understanding data persistence)
-- **02-dag-ipld** module completed (understanding DAG and connected data)
-- **03-unixfs** module completed (understanding file systems and chunking)
+- **05-dag-ipld** module completed (understanding DAG and connected data)
+- **06-unixfs-car** module completed (understanding file systems and chunking)
 - Basic concepts of memory management and garbage collection
 
 ## 🔑 Core Concepts
@@ -923,10 +923,37 @@ func emergencyGC(pm *PinManager) error {
 - [Garbage Collection in IPFS](https://docs.ipfs.io/concepts/lifecycle/)
 - [Pin API Reference](https://docs.ipfs.io/reference/kubo/rpc/#api-v0-pin)
 
-### Next Steps
-1. **06-gateway**: HTTP interface and web integration
-2. **07-ipns**: Naming system and dynamic content
-3. **99-kubo-api-demo**: Actual IPFS network integration
+## 📚 Next Steps
+
+### Immediate Next Steps
+1. **[09-ipns](../09-ipns)**: Learn mutable naming system for persistent content
+   - **Connection**: Use IPNS to create stable names for pinned content
+   - **Why Next**: Provide persistent access points to content managed by pin/GC
+   - **Learning Focus**: Mutable pointers and content resolution
+
+2. **[10-gateway](../10-gateway)**: Serve pinned content via HTTP gateway
+   - **Connection**: Provide web access to carefully managed content
+   - **Why Important**: Bridge between content management and web accessibility
+   - **Learning Focus**: HTTP interfaces for content-addressed storage
+
+### Related Modules
+3. **[11-kubo-api-demo](../11-kubo-api-demo)**: Complete IPFS network integration
+   - **Connection**: Apply pin/GC strategies in real IPFS network context
+   - **When to Learn**: For production-ready content management systems
+
+4. **[07-mfs](../07-mfs)**: Pin management for mutable file systems
+   - **Connection**: Understand how pin/GC applies to dynamic file system content
+   - **Relevance**: Content lifecycle in mutable environments
+
+5. **[17-ipni](../17-ipni)**: Content indexing and discovery for pinned content
+   - **Connection**: Enhanced discovery of pinned content through network indexing
+   - **Advanced Use**: Large-scale content management and discovery
+
+### Alternative Learning Paths
+- **For Web Integration**: Jump to **[10-gateway](../10-gateway)** for immediate HTTP content serving
+- **For Naming Systems**: Go to **[09-ipns](../09-ipns)** to learn persistent content addressing
+- **For Production Use**: Skip to **[11-kubo-api-demo](../11-kubo-api-demo)** for complete IPFS integration
+- **For Advanced Storage**: Explore **[17-ipni](../17-ipni)** for enhanced content indexing
 
 ## 🍳 Cookbook - Ready-to-use Code
 
@@ -940,7 +967,7 @@ import (
     "time"
 
     pin "github.com/gosuda/boxo-starter-kit/05-pin-gc/pkg"
-    dag "github.com/gosuda/boxo-starter-kit/02-dag-ipld/pkg"
+    dag "github.com/gosuda/boxo-starter-kit/05-dag-ipld/pkg"
 )
 
 // System that automatically pins and manages content

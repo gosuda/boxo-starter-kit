@@ -531,12 +531,49 @@ var (
 - **Network**: Bandwidth scales with content size and request volume
 - **Storage**: Minimal local storage (only for temporary operations)
 
-## 🔗 Related Modules
+## 📚 Next Steps
 
-- **[06-unixfs-car](../06-unixfs-car)**: CAR file operations and UnixFS
-- **[15-graphsync](../15-graphsync)**: P2P alternative to HTTP gateways
-- **[00-block-cid](../00-block-cid)**: Content addressing fundamentals
-- **[02-network](../02-network)**: Networking foundation concepts
+### Immediate Next Steps
+With trustless gateway expertise, advance to comprehensive content discovery and optimization:
+
+1. **[17-ipni](../17-ipni)**: Content Indexing and Discovery
+   - Integrate trustless gateways with IPNI for intelligent content routing
+   - Build scalable content discovery for gateway networks
+   - Master provider selection for optimal gateway performance
+
+2. **Advanced Integration Options**: Choose your focus:
+   - **[18-multifetcher](../18-multifetcher)**: Multi-source optimization with trustless verification
+   - **Production Deployment**: Enterprise gateway implementations
+
+### Related Modules
+**Prerequisites (Essential foundation):**
+- [06-unixfs-car](../06-unixfs-car): CAR file operations and content verification
+- [00-block-cid](../00-block-cid): Content addressing and verification fundamentals
+- [10-gateway](../10-gateway): Basic HTTP gateway concepts (for comparison)
+
+**Supporting Technologies:**
+- [15-graphsync](../15-graphsync): Efficient data transfer protocols
+- [14-traversal-selector](../14-traversal-selector): Advanced content selection
+- [12-ipld-prime](../12-ipld-prime): High-performance IPLD operations
+
+**Advanced Applications:**
+- [17-ipni](../17-ipni): Content discovery and intelligent routing
+- [18-multifetcher](../18-multifetcher): Multi-source content retrieval with verification
+- Production CDN: Enterprise content delivery networks
+
+### Alternative Learning Paths
+
+**For Security-First Development:**
+16-trustless-gateway → Cryptographic Verification Systems → Security Auditing
+
+**For Performance Engineering:**
+16-trustless-gateway → 18-multifetcher → 17-ipni → High-Performance CDN
+
+**For Web3 Infrastructure:**
+16-trustless-gateway → Decentralized Web Applications → Blockchain Integration
+
+**For Enterprise Solutions:**
+16-trustless-gateway → 17-ipni → Large-Scale Gateway Networks → CDN Implementation
 
 ## 📚 Further Reading
 

@@ -431,12 +431,45 @@ func TestDaslWrapperPutGet(t *testing.T) {
 // - Reduced runtime type checking
 ```
 
-## 🔗 Related Modules
+## 📚 Next Steps
 
-- **[12-ipld-prime](../12-ipld-prime)**: Underlying IPLD-prime operations
-- **[14-traversal-selector](../14-traversal-selector)**: Schema-aware traversal
-- **[05-dag-ipld](../05-dag-ipld)**: Basic IPLD concepts
-- **[00-block-cid](../00-block-cid)**: Content addressing fundamentals
+### Immediate Next Steps
+With DASL schema expertise, advance to these specialized areas:
+
+1. **[14-traversal-selector](../14-traversal-selector)**: Schema-Aware Navigation
+   - Apply schema knowledge to sophisticated traversal patterns
+   - Build efficient selector systems with type validation
+   - Master schema-guided data exploration techniques
+
+2. **Advanced Schema Applications**: Choose your specialization:
+   - **[15-graphsync](../15-graphsync)**: Schema-validated network synchronization
+   - **[17-ipni](../17-ipni)**: Schema-based content indexing systems
+
+### Related Modules
+**Prerequisites (Essential foundation):**
+- [12-ipld-prime](../12-ipld-prime): IPLD-prime operations and datamodel.Node
+- [05-dag-ipld](../05-dag-ipld): Basic IPLD concepts and DAG structures
+- [00-block-cid](../00-block-cid): Content addressing fundamentals
+
+**Advanced Applications:**
+- [15-graphsync](../15-graphsync): Network sync with schema validation
+- [16-trustless-gateway](../16-trustless-gateway): Schema-aware gateway operations
+- [17-ipni](../17-ipni): Schema-based indexing and discovery
+- [18-multifetcher](../18-multifetcher): Multi-source fetching with schema support
+
+### Alternative Learning Paths
+
+**For Type-Safe Development:**
+13-dasl → Custom Schema Projects → 14-traversal-selector → Production Applications
+
+**For Network Protocol Focus:**
+13-dasl → 14-traversal-selector → 15-graphsync → Distributed Systems
+
+**For Data Architecture Focus:**
+13-dasl → 17-ipni → Schema-based Indexing Systems → Enterprise Solutions
+
+**For Web Integration:**
+13-dasl → 16-trustless-gateway → Schema-validated Web APIs
 
 ## 📚 Further Reading
 

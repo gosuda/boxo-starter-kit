@@ -335,15 +335,6 @@ mfsWrapper.WriteBytes(ctx, "/batch/file3.txt", data3, true)
 rootCID, err := mfsWrapper.Flush(ctx)
 ```
 
-## 🔗 Next Steps
-
-After mastering MFS, explore:
-
-1. **08-pin-gc**: Pin important MFS states and manage storage
-2. **09-ipns**: Publish MFS content with mutable addresses
-3. **10-gateway**: Serve MFS content over HTTP
-4. **Advanced Topics**: Conflict resolution, collaborative editing
-
 ## 🐛 Troubleshooting
 
 ### Common Issues
@@ -383,6 +374,37 @@ log.Printf("Current files: %+v", files)
 exists, err := mfsWrapper.Exists(ctx, "/path/to/file")
 log.Printf("File exists: %v", exists)
 ```
+
+## 📚 Next Steps
+
+### Immediate Next Steps
+1. **[08-pin-gc](../08-pin-gc)**: Learn data lifecycle management for MFS content
+   - **Connection**: Manage persistence of mutable file system changes
+   - **Why Next**: Ensure MFS modifications are preserved and optimally stored
+   - **Learning Focus**: Pin strategies for mutable content and garbage collection
+
+2. **[09-ipns](../09-ipns)**: Create mutable pointers to MFS content
+   - **Connection**: Publish MFS root changes through IPNS for network access
+   - **Why Important**: Enable others to access your evolving file system
+   - **Learning Focus**: Mutable naming for dynamic content
+
+### Related Modules
+3. **[10-gateway](../10-gateway)**: Serve MFS content via HTTP gateway
+   - **Connection**: Provide web access to mutable file system content
+   - **When to Learn**: When building web applications with dynamic file serving
+
+4. **[11-kubo-api-demo](../11-kubo-api-demo)**: Complete IPFS integration with MFS
+   - **Connection**: Real-world MFS usage in full IPFS network context
+   - **Relevance**: Production-ready mutable file system applications
+
+5. **[13-dasl](../13-dasl)**: Advanced data structures for complex MFS operations
+   - **Connection**: Build sophisticated data management on MFS foundations
+   - **Advanced Use**: When simple file operations aren't sufficient
+
+### Alternative Learning Paths
+- **For Naming Focus**: Jump to **[09-ipns](../09-ipns)** to learn mutable pointers for MFS content
+- **For Web Integration**: Go to **[10-gateway](../10-gateway)** for HTTP access to mutable content
+- **For Complete System**: Skip to **[11-kubo-api-demo](../11-kubo-api-demo)** for full IPFS network integration
 
 ## 📚 Additional Resources
 

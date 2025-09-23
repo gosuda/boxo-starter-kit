@@ -11,7 +11,7 @@ Through this module, you will learn:
 
 ## 📋 Prerequisites
 
-- **Previous Chapters**: 00-block-cid, 01-persistent, 02-dag-ipld, 03-unixfs completed
+- **Previous Chapters**: 00-block-cid, 01-persistent, 05-dag-ipld, 06-unixfs-car completed
 - **Technical Knowledge**: Cryptography basics (public/private keys), DNS concepts, digital signatures
 - **Go Knowledge**: Cryptographic packages, time handling, struct serialization
 
@@ -311,7 +311,7 @@ im.PublishRecord(newPath, time.Minute)
 ```
 
 ## 🔗 Related Learning
-- **Next Steps**: 99-kubo-api-demo (actual network integration)
+- **Next Steps**: 11-kubo-api-demo (actual network integration)
 - **Advanced Topics**:
   - DNS-Link integration
   - IPNS over PubSub
@@ -344,8 +344,8 @@ import (
     "github.com/libp2p/go-libp2p/core/peer"
     "github.com/ipfs/boxo/ipns"
     "github.com/ipfs/boxo/path"
-    dag "github.com/sonheesung/boxo-starter-kit/02-dag-ipld/pkg"
-    unixfs "github.com/sonheesung/boxo-starter-kit/03-unixfs/pkg"
+    dag "github.com/sonheesung/boxo-starter-kit/05-dag-ipld/pkg"
+    unixfs "github.com/sonheesung/boxo-starter-kit/06-unixfs-car/pkg"
 )
 
 type NewsFeed struct {
@@ -626,8 +626,8 @@ import (
 
     "github.com/libp2p/go-libp2p/core/crypto"
     ipns "github.com/sonheesung/boxo-starter-kit/09-ipns/pkg"
-    dag "github.com/sonheesung/boxo-starter-kit/02-dag-ipld/pkg"
-    unixfs "github.com/sonheesung/boxo-starter-kit/03-unixfs/pkg"
+    dag "github.com/sonheesung/boxo-starter-kit/05-dag-ipld/pkg"
+    unixfs "github.com/sonheesung/boxo-starter-kit/06-unixfs-car/pkg"
 )
 
 type ConfigManager struct {
@@ -1036,3 +1036,34 @@ Through these examples, you can learn practical ways to use IPNS:
 2. **Configuration Management**: Centralized configuration distribution and synchronization
 
 Each example is a complete solution that uses IPNS's core functionality to solve real business requirements.
+
+## 📚 Next Steps
+
+### Immediate Next Steps
+1. **[10-gateway](../10-gateway)**: Serve IPNS content via HTTP gateway
+   - **Connection**: Provide web access to IPNS-resolved content
+   - **Why Next**: Enable web browsers to access your mutable content
+   - **Learning Focus**: HTTP interfaces for IPNS resolution
+
+2. **[11-kubo-api-demo](../11-kubo-api-demo)**: Complete IPFS network integration
+   - **Connection**: Use IPNS in real IPFS network with full functionality
+   - **Why Important**: Production-ready IPNS applications
+   - **Learning Focus**: Real-world IPNS usage patterns
+
+### Related Modules
+3. **[07-mfs](../07-mfs)**: Combine IPNS with mutable file systems
+   - **Connection**: Publish MFS root changes through IPNS
+   - **When to Learn**: For dynamic file system applications
+
+4. **[16-trustless-gateway](../16-trustless-gateway)**: Verified IPNS resolution
+   - **Connection**: Enhanced security for IPNS content serving
+   - **Advanced Use**: High-security IPNS applications
+
+5. **[17-ipni](../17-ipni)**: Enhanced discovery for IPNS content
+   - **Connection**: Improved content discovery through network indexing
+   - **Advanced Use**: Large-scale IPNS content networks
+
+### Alternative Learning Paths
+- **For Web Integration**: Jump to **[10-gateway](../10-gateway)** for immediate HTTP serving
+- **For Production Use**: Go to **[11-kubo-api-demo](../11-kubo-api-demo)** for complete IPFS integration
+- **For Advanced Features**: Explore **[16-trustless-gateway](../16-trustless-gateway)** for enhanced security

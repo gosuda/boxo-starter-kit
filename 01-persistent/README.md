@@ -341,16 +341,29 @@ func checkDiskSpace(path string) error {
 
 ## 📚 Next Steps
 
-### Related Modules
-1. **02-dag-ipld**: Learn about complex data structures and linking
-2. **03-unixfs**: Understand file system abstraction over blocks
-3. **04-network-bitswap**: Explore peer-to-peer data exchange
+### Immediate Next Steps
+1. **[02-network](../02-network)**: Learn P2P networking fundamentals with libp2p
+   - **Connection**: Build networking layer on top of persistent storage
+   - **Why Next**: Essential for distributed data exchange and peer communication
+   - **Learning Focus**: Host creation, peer connections, and message protocols
 
-### Advanced Topics
-- Database migration between backends
-- Backup and recovery strategies
-- Performance monitoring and tuning
-- Distributed storage configurations
+2. **[05-dag-ipld](../05-dag-ipld)**: Understand complex data structures and linking
+   - **Connection**: Uses persistent storage to store linked data structures
+   - **Why Important**: Move from simple blocks to sophisticated data organization
+
+### Related Modules
+3. **[03-dht-router](../03-dht-router)**: DHT-based content and peer discovery
+   - **Connection**: Requires persistent storage for routing tables and peer information
+   - **When to Learn**: After networking basics are understood
+
+4. **[08-pin-gc](../08-pin-gc)**: Pin management and garbage collection
+   - **Connection**: Uses persistent backends to track pinned content and optimize storage
+   - **Relevance**: Storage optimization and content lifecycle management
+
+### Alternative Learning Paths
+- **For Data Structure Focus**: Go directly to **[05-dag-ipld](../05-dag-ipld)** to understand linked data before networking
+- **For Network Focus**: Continue with **[02-network](../02-network)** → **[03-dht-router](../03-dht-router)** → **[04-bitswap](../04-bitswap)** sequence
+- **For File System Focus**: Jump to **[06-unixfs-car](../06-unixfs-car)** to see how file systems are built on persistent storage
 
 ## 🎓 Practice Exercises
 

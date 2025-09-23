@@ -1,4 +1,4 @@
-# 99-kubo-api-demo: Real IPFS Network Integration
+# 11-kubo-api-demo: Real IPFS Network Integration
 
 ## 🎯 Learning Objectives
 
@@ -12,7 +12,7 @@ Through this final module, you will learn:
 
 ## 📋 Prerequisites
 
-- **All Previous Modules**: 00-block-cid through 09-ipns completed
+- **All Previous Modules**: 00-block-cid through 10-gateway completed
 - **Technical Knowledge**: HTTP client programming, API integration, network debugging
 - **Go Knowledge**: HTTP clients, JSON handling, concurrent programming
 - **Infrastructure**: Running Kubo (go-ipfs) node or access to public IPFS gateway
@@ -383,7 +383,7 @@ ipfs daemon
 ### 2. Demo Application Execution
 
 ```bash
-cd 99-kubo-api-demo
+cd 11-kubo-api-demo
 go run main.go
 ```
 
@@ -885,10 +885,36 @@ ipfs dht findprovs [HASH]   # Check who provides the content
 - [IPFS HTTP Client Libraries](https://docs.ipfs.io/reference/http/api/)
 - [Production Deployment Guide](https://docs.ipfs.io/install/server-infrastructure/)
 
-### Next Steps
-- Deploy to production environment
-- Integrate with existing applications
-- Explore advanced IPFS features (PubSub, Circuit Relay, etc.)
+## 📚 Next Steps
+
+### Immediate Next Steps
+**Congratulations!** You've completed the core boxo learning path. Here are your next opportunities:
+
+1. **Production Deployment**: Deploy your IPFS applications to production environments
+   - **Focus**: Infrastructure setup, monitoring, and scaling
+   - **Next Actions**: Server configuration, load balancing, and operational procedures
+
+2. **Advanced Feature Integration**: Explore specialized IPFS features
+   - **Options**: PubSub messaging, Circuit Relay, Experimental features
+   - **Focus**: Advanced networking and distributed application patterns
+
+### Related Advanced Modules
+3. **[12-ipld-prime](../12-ipld-prime)**: Next-generation IPLD with advanced schemas
+   - **Connection**: Enhanced data structures and type safety
+   - **When to Learn**: For complex data modeling requirements
+
+4. **[16-trustless-gateway](../16-trustless-gateway)**: Verified content serving
+   - **Connection**: Production-grade gateway with cryptographic verification
+   - **Advanced Use**: High-security content delivery applications
+
+5. **[17-ipni](../17-ipni)**: Large-scale content indexing and discovery
+   - **Connection**: Enhanced content discovery for production networks
+   - **Enterprise Use**: Large-scale content management systems
+
+### Specialized Learning Paths
+- **For Data Processing**: Explore **[13-dasl](../13-dasl)** → **[14-traversal-selector](../14-traversal-selector)** → **[15-graphsync](../15-graphsync)**
+- **For Content Distribution**: Focus on **[16-trustless-gateway](../16-trustless-gateway)** → **[17-ipni](../17-ipni)** → **[18-multifetcher](../18-multifetcher)**
+- **For Application Development**: Build custom applications using the patterns learned throughout this series
 
 ## 🍳 Production Cookbook - Ready-to-Deploy Code
 
@@ -904,7 +930,7 @@ import (
     "time"
     "sync"
 
-    kubo "github.com/your-org/boxo-starter-kit/99-kubo-api-demo/pkg"
+    kubo "github.com/your-org/boxo-starter-kit/11-kubo-api-demo/pkg"
 )
 
 // Production-ready IPFS application with full integration

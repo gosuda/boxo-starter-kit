@@ -429,12 +429,49 @@ func loadLink(t *testing.T, n datamodel.Node, key string) cid.Cid
 - **Streams**: Bounded memory usage with buffering
 - **Transform**: Memory proportional to transformation complexity
 
-## 🔗 Related Modules
+## 📚 Next Steps
 
-- **[12-ipld-prime](../12-ipld-prime)**: Underlying IPLD operations
-- **[13-dasl](../13-dasl)**: Schema-based data structures
-- **[15-graphsync](../15-graphsync)**: Network-based selective sync
-- **[05-dag-ipld](../05-dag-ipld)**: Basic IPLD concepts
+### Immediate Next Steps
+With advanced traversal mastery, apply these skills to network protocols and optimization:
+
+1. **[15-graphsync](../15-graphsync)**: Network-Based Selective Synchronization
+   - Apply selector expertise to peer-to-peer data synchronization
+   - Build efficient network protocols using traversal patterns
+   - Master selective sync for distributed data systems
+
+2. **Production Optimization Paths**: Choose your focus:
+   - **[18-multifetcher](../18-multifetcher)**: Multi-source traversal optimization
+   - **[17-ipni](../17-ipni)**: Large-scale content discovery with traversal
+
+### Related Modules
+**Prerequisites (Essential foundation):**
+- [12-ipld-prime](../12-ipld-prime): IPLD-prime operations and datamodel types
+- [13-dasl](../13-dasl): Schema concepts for type-aware traversal (recommended)
+- [05-dag-ipld](../05-dag-ipld): Basic IPLD concepts and DAG structures
+
+**Network Applications:**
+- [15-graphsync](../15-graphsync): P2P synchronization with selectors
+- [02-network](../02-network): Networking fundamentals for distributed traversal
+- [04-bitswap](../04-bitswap): Block exchange with selective requests
+
+**Advanced Systems:**
+- [17-ipni](../17-ipni): Content indexing with traversal optimization
+- [16-trustless-gateway](../16-trustless-gateway): Gateway optimization with selectors
+- [18-multifetcher](../18-multifetcher): Multi-protocol optimization
+
+### Alternative Learning Paths
+
+**For Network Protocol Development:**
+14-traversal-selector → 15-graphsync → 02-network (review) → Distributed Systems
+
+**For Performance Engineering:**
+14-traversal-selector → 18-multifetcher → 17-ipni → High-Performance Systems
+
+**For Data Architecture:**
+14-traversal-selector → 17-ipni → Content Discovery Systems → Enterprise Solutions
+
+**For Gateway Development:**
+14-traversal-selector → 16-trustless-gateway → Web Integration Projects
 
 ## 📚 Further Reading
 

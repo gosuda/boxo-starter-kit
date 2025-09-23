@@ -518,12 +518,49 @@ func diagnosePeerConnection(gs *graphsync.GraphSyncWrapper, peerID peer.ID) {
 - **Cache frequently accessed** data locally
 - **Set appropriate timeouts** for network conditions
 
-## 🔗 Related Modules
+## 📚 Next Steps
 
-- **[14-traversal-selector](../14-traversal-selector)**: Selector building and usage
-- **[12-ipld-prime](../12-ipld-prime)**: Underlying IPLD operations
-- **[02-network](../02-network)**: libp2p networking foundation
-- **[16-trustless-gateway](../16-trustless-gateway)**: HTTP-based data access
+### Immediate Next Steps
+With GraphSync mastery, expand to comprehensive content discovery and optimization:
+
+1. **[17-ipni](../17-ipni)**: Content Indexing and Discovery
+   - Integrate GraphSync with IPNI for intelligent provider selection
+   - Build scalable content discovery systems
+   - Master network indexing for efficient data location
+
+2. **Advanced Integration Paths**: Choose your specialization:
+   - **[18-multifetcher](../18-multifetcher)**: Multi-protocol optimization with GraphSync
+   - **[16-trustless-gateway](../16-trustless-gateway)**: Trustless HTTP delivery systems
+
+### Related Modules
+**Prerequisites (Essential foundation):**
+- [02-network](../02-network): libp2p networking fundamentals
+- [12-ipld-prime](../12-ipld-prime): Advanced IPLD operations
+- [14-traversal-selector](../14-traversal-selector): Selector patterns for selective sync
+
+**Complementary Protocols:**
+- [04-bitswap](../04-bitswap): Block exchange protocol comparison
+- [06-unixfs-car](../06-unixfs-car): CAR file operations for efficient transfer
+- [10-gateway](../10-gateway): HTTP gateway integration patterns
+
+**Advanced Applications:**
+- [17-ipni](../17-ipni): Content discovery and provider selection
+- [16-trustless-gateway](../16-trustless-gateway): Trustless content delivery
+- [18-multifetcher](../18-multifetcher): Multi-source content retrieval
+
+### Alternative Learning Paths
+
+**For Distributed Systems Architecture:**
+15-graphsync → 17-ipni → 18-multifetcher → Large-Scale Deployment
+
+**For Protocol Engineering:**
+15-graphsync → Custom Protocol Development → 02-network (advanced) → P2P Innovation
+
+**For Content Delivery Networks:**
+15-graphsync → 16-trustless-gateway → 17-ipni → CDN Implementation
+
+**For Performance Optimization:**
+15-graphsync → 18-multifetcher → Performance Tuning → High-Throughput Systems
 
 ## 📚 Further Reading
 

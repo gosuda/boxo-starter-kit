@@ -666,10 +666,31 @@ func (cdw *CachedDagWrapper) GetAny(ctx context.Context, c cid.Cid) (any, error)
 - [IPFS DAG API](https://docs.ipfs.io/reference/kubo/rpc/#api-v0-dag)
 - [Graph Theory Basics](https://en.wikipedia.org/wiki/Directed_acyclic_graph)
 
-### Next Steps
-1. **05-unixfs**: IPLD representation of file and directory structures
-2. **04-bitswap**: DAG node exchange in distributed networks
-3. **09-ipns**: Updating DAG roots with mutable pointers
+## 📚 Next Steps
+
+### Immediate Next Steps
+1. **[06-unixfs-car](../06-unixfs-car)**: Learn IPLD representation of file and directory structures
+   - **Connection**: Build practical file systems using DAG and IPLD concepts
+   - **Why Next**: Move from abstract data structures to concrete file system applications
+   - **Learning Focus**: UnixFS data model and CAR (Content Addressable aRchive) format
+
+### Related Modules
+2. **[07-mfs](../07-mfs)**: Mutable File System built on IPLD foundations
+   - **Connection**: Uses DAG structures to create mutable file system views
+   - **When to Learn**: After understanding file system basics from UnixFS
+
+3. **[08-pin-gc](../08-pin-gc)**: Data persistence and garbage collection strategies
+   - **Connection**: Manage lifecycle of DAG nodes and linked data structures
+   - **Relevance**: Ensure important DAG structures remain available
+
+4. **[12-ipld-prime](../12-ipld-prime)**: Advanced IPLD implementation and schemas
+   - **Connection**: Next-generation IPLD with enhanced schema support
+   - **Advanced Use**: When building complex, schema-validated data structures
+
+### Alternative Learning Paths
+- **For Network Distribution**: Go to **[02-network](../02-network)** → **[04-bitswap](../04-bitswap)** to learn how DAG nodes are distributed
+- **For Specialized Processing**: Jump to **[14-traversal-selector](../14-traversal-selector)** for advanced DAG query capabilities
+- **For File Focus**: Skip directly to **[06-unixfs-car](../06-unixfs-car)** if primarily interested in file systems
 
 ## 🎓 Practice Problems
 
