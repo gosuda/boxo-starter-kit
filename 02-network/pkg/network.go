@@ -14,6 +14,9 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
+	"github.com/libp2p/go-libp2p/p2p/host/autorelay"
+	noisec "github.com/libp2p/go-libp2p/p2p/security/noise"
+	tlssec "github.com/libp2p/go-libp2p/p2p/security/tls"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/multiformats/go-varint"
 
@@ -39,18 +42,40 @@ type HostWrapper struct {
 }
 
 type Config struct {
-	ProtoID     string
+	ProtocolID  string
 	MaxPayload  uint64
 	Timeout     time.Duration
 	ListenAddrs []string
+	UseTLS      bool
+	UseNoise    bool
+
+	// Ask router via UPnP/NAT-PMP/PCP to map inbound ports.
+	// Use on home/office public IPv4; ineffective under CGNAT/double NAT.
+	NATPortMap bool
+
+	// Enable DCUtR to form direct connections through NATs.
+	// Best with relay candidates; helpful when port mapping fails.
+	HolePunching bool
+
+	// Fixed relay candidates for AutoRelay v2 (/p2p-circuit).
+	// Use behind CGNAT/strict NAT for predictable reachability.
+	StaticRelays []string
+
+	// Dynamic supplier of relay candidates when StaticRelays is empty.
+	// AutoRelay requests up to numPeers; send then close the channel.
+	PeerSource autorelay.PeerSource
+
+	// Run THIS node as a public relay (HOP).
+	// Use on well-connected/public hosts; clients usually keep OFF.
+	RelayService bool
 }
 
 func New(cfg *Config) (*HostWrapper, error) {
 	if cfg == nil {
 		cfg = &Config{}
 	}
-	if cfg.ProtoID == "" {
-		cfg.ProtoID = "/custom/xfer/1.0.0"
+	if cfg.ProtocolID == "" {
+		cfg.ProtocolID = "/custom/xfer/1.0.0"
 	}
 	if cfg.MaxPayload == 0 {
 		cfg.MaxPayload = 1 << 20 // 1MiB
@@ -59,19 +84,44 @@ func New(cfg *Config) (*HostWrapper, error) {
 		cfg.Timeout = 10 * time.Second
 	}
 	if len(cfg.ListenAddrs) == 0 {
-		cfg.ListenAddrs = []string{"/ip4/0.0.0.0/tcp/0"}
+		cfg.ListenAddrs = []string{"/ip4/0.0.0.0/tcp/0", "/ip4/0.0.0.0/udp/0/quic-v1"}
 	}
 
-	var las []multiaddr.Multiaddr
-	for _, s := range cfg.ListenAddrs {
-		ma, err := multiaddr.NewMultiaddr(s)
+	las, err := ToMultiaddrs(cfg.ListenAddrs)
+	if err != nil {
+		return nil, fmt.Errorf("listen addrs: %w", err)
+	}
+	opts := []libp2p.Option{
+		libp2p.ListenAddrs(las...),
+		libp2p.EnableAutoNATv2(),
+	}
+	if cfg.UseTLS {
+		opts = append(opts, libp2p.Security(tlssec.ID, tlssec.New))
+	}
+	if cfg.UseNoise {
+		opts = append(opts, libp2p.Security(noisec.ID, noisec.New))
+	}
+	if cfg.NATPortMap {
+		opts = append(opts, libp2p.NATPortMap())
+	}
+	if cfg.HolePunching {
+		opts = append(opts, libp2p.EnableHolePunching())
+	}
+	if len(cfg.StaticRelays) > 0 {
+		addrInfos, err := ToAddrInfos(cfg.StaticRelays)
 		if err != nil {
-			return nil, fmt.Errorf("listen addr %q: %w", s, err)
+			return nil, fmt.Errorf("static relays (peer ids): %w", err)
 		}
-		las = append(las, ma)
+		opts = append(opts, libp2p.EnableAutoRelayWithStaticRelays(addrInfos))
+	}
+	if cfg.PeerSource != nil {
+		opts = append(opts, libp2p.EnableAutoRelayWithPeerSource(cfg.PeerSource))
+	}
+	if cfg.RelayService {
+		opts = append(opts, libp2p.EnableRelayService())
 	}
 
-	h, err := libp2p.New(libp2p.ListenAddrs(las...))
+	h, err := libp2p.New(opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +132,7 @@ func New(cfg *Config) (*HostWrapper, error) {
 
 	n := &HostWrapper{
 		Host:       h,
-		protoID:    protocol.ID(cfg.ProtoID),
+		protoID:    protocol.ID(cfg.ProtocolID),
 		maxPayload: cfg.MaxPayload,
 		timeout:    cfg.Timeout,
 		inbox:      make(chan network.Stream, 32),
@@ -102,6 +152,14 @@ func New(cfg *Config) (*HostWrapper, error) {
 	go n.dispatch()
 
 	return n, nil
+}
+
+func (n *HostWrapper) Close() error {
+	close(n.done)
+	if n.Host != nil {
+		return n.Host.Close()
+	}
+	return nil
 }
 
 func (n *HostWrapper) ConnectToPeer(ctx context.Context, addrs ...multiaddr.Multiaddr) error {
@@ -230,25 +288,9 @@ func (n *HostWrapper) GetFullAddresses() []multiaddr.Multiaddr {
 	return out
 }
 
-func (n *HostWrapper) Close() error {
-	close(n.done)
-	if n.Host != nil {
-		return n.Host.Close()
-	}
-	return nil
-}
-
 // GetMetrics returns the current metrics for this network wrapper
 func (n *HostWrapper) GetMetrics() metrics.MetricsSnapshot {
 	return n.metrics.GetSnapshot()
-}
-
-// --- internal ---
-
-type msg struct {
-	from peer.ID
-	cid  cid.Cid
-	data []byte
 }
 
 func (n *HostWrapper) dispatch() {
@@ -301,4 +343,10 @@ func (n *HostWrapper) handle(s network.Stream) {
 	} else {
 		n.buf[key] = m
 	}
+}
+
+type msg struct {
+	from peer.ID
+	cid  cid.Cid
+	data []byte
 }
