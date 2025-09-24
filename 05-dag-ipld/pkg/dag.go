@@ -7,9 +7,7 @@ import (
 	"github.com/ipfs/boxo/ipld/merkledag"
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
-	mc "github.com/multiformats/go-multicodec"
 
-	block "github.com/gosuda/boxo-starter-kit/00-block-cid/pkg"
 	bitswap "github.com/gosuda/boxo-starter-kit/04-bitswap/pkg"
 )
 
@@ -19,11 +17,9 @@ type DagServiceWrapper struct {
 	format.DAGService
 }
 
-func NewDagServiceWrapper(ctx context.Context, prefix *cid.Prefix, blockserviceWrapper *bitswap.BlockServiceWrapper) (*DagServiceWrapper, error) {
+func NewDagServiceWrapper(ctx context.Context, blockserviceWrapper *bitswap.BlockServiceWrapper) (*DagServiceWrapper, error) {
 	var err error
-	if prefix == nil {
-		prefix = block.NewV1Prefix(mc.Protobuf, 0, 0)
-	}
+
 	if blockserviceWrapper == nil {
 		blockserviceWrapper, err = bitswap.NewBlockService(ctx, nil, nil)
 		if err != nil {

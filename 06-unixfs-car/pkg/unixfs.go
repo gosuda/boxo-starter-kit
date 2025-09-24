@@ -31,7 +31,7 @@ func New(defaultChunkSize int64, dagWrapper *dag.IpldWrapper) (*UnixFsWrapper, e
 	}
 	if dagWrapper == nil {
 		ctx := context.Background()
-		dagWrapper, err = dag.NewIpldWrapper(ctx, nil, nil)
+		dagWrapper, err = dag.NewIpldWrapper(ctx, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create DAG wrapper: %w", err)
 		}

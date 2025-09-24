@@ -9,7 +9,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	bitswap "github.com/gosuda/boxo-starter-kit/04-bitswap/pkg"
-	"github.com/gosuda/boxo-starter-kit/05-dag-ipld/pkg"
+	dag "github.com/gosuda/boxo-starter-kit/05-dag-ipld/pkg"
 )
 
 func main() {
@@ -62,7 +62,7 @@ func demonstrateIPLDSetup(ctx context.Context) {
 
 	// 1. Basic IPLD setup with default BlockService
 	fmt.Printf("\n🔧 1. Default IPLD Setup:\n")
-	defaultIPLD, err := dag.NewIpldWrapper(ctx, nil, nil)
+	defaultIPLD, err := dag.NewIpldWrapper(ctx, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -80,7 +80,7 @@ func demonstrateIPLDSetup(ctx context.Context) {
 	}
 	defer blockService.Close()
 
-	_, err = dag.NewIpldWrapper(ctx, nil, blockService)
+	_, err = dag.NewIpldWrapper(ctx, blockService)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -100,7 +100,7 @@ func demonstrateRawDataOps(ctx context.Context) {
 	fmt.Printf("Demonstrating basic raw data operations with IPLD...\n")
 
 	// Create IPLD wrapper
-	ipld, err := dag.NewIpldWrapper(ctx, nil, nil)
+	ipld, err := dag.NewIpldWrapper(ctx, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -167,7 +167,7 @@ func demonstrateDAGStructures(ctx context.Context) {
 	fmt.Printf("Creating and manipulating DAG (Directed Acyclic Graph) structures...\n")
 
 	// Create IPLD wrapper
-	ipld, err := dag.NewIpldWrapper(ctx, nil, nil)
+	ipld, err := dag.NewIpldWrapper(ctx, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -279,7 +279,7 @@ func demonstrateLinkedStructures(ctx context.Context) {
 	fmt.Printf("Building complex linked data structures...\n")
 
 	// Create IPLD wrapper
-	ipld, err := dag.NewIpldWrapper(ctx, nil, nil)
+	ipld, err := dag.NewIpldWrapper(ctx, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -388,7 +388,7 @@ func demonstrateJSONHandling(ctx context.Context) {
 	fmt.Printf("Working with JSON data in IPLD structures...\n")
 
 	// Create IPLD wrapper
-	ipld, err := dag.NewIpldWrapper(ctx, nil, nil)
+	ipld, err := dag.NewIpldWrapper(ctx, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -511,7 +511,7 @@ func demonstratePathResolution(ctx context.Context) {
 	fmt.Printf("Demonstrating path resolution and navigation...\n")
 
 	// Create IPLD wrapper
-	ipld, err := dag.NewIpldWrapper(ctx, nil, nil)
+	ipld, err := dag.NewIpldWrapper(ctx, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -642,7 +642,7 @@ func demonstratePerformance(ctx context.Context) {
 	fmt.Printf("Measuring IPLD performance characteristics...\n")
 
 	// Create IPLD wrapper
-	ipld, err := dag.NewIpldWrapper(ctx, nil, nil)
+	ipld, err := dag.NewIpldWrapper(ctx, nil)
 	if err != nil {
 		log.Fatal(err)
 	}

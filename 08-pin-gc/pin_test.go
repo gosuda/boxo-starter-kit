@@ -16,7 +16,7 @@ func TestPinWrapper(t *testing.T) {
 	ctx := context.Background()
 
 	// Create DAG wrapper for testing
-	dagWrapper, err := dag.NewIpldWrapper(ctx, nil, nil)
+	dagWrapper, err := dag.NewIpldWrapper(ctx, nil)
 	require.NoError(t, err)
 
 	// Create pin manager
@@ -142,7 +142,7 @@ func TestPinManager(t *testing.T) {
 	ctx := context.Background()
 
 	// Create DAG wrapper for testing
-	dagWrapper, err := dag.NewIpldWrapper(ctx, nil, nil)
+	dagWrapper, err := dag.NewIpldWrapper(ctx, nil)
 	require.NoError(t, err)
 	defer dagWrapper.BlockServiceWrapper.Close()
 
@@ -334,7 +334,7 @@ func TestPinTypes(t *testing.T) {
 func TestErrorHandling(t *testing.T) {
 	ctx := context.Background()
 
-	dagWrapper, err := dag.NewIpldWrapper(ctx, nil, nil)
+	dagWrapper, err := dag.NewIpldWrapper(ctx, nil)
 	require.NoError(t, err)
 	defer dagWrapper.BlockServiceWrapper.Close()
 

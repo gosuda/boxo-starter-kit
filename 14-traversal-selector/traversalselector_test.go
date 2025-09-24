@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"testing"
 
-	ts "github.com/gosuda/boxo-starter-kit/14-traversal-selector/pkg"
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-ipld-prime/datamodel"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/stretchr/testify/require"
+
+	ts "github.com/gosuda/boxo-starter-kit/14-traversal-selector/pkg"
 )
 
 func buildBinaryTree(t *testing.T, ctx context.Context, d *ts.TraversalSelectorWrapper, level int, prefix string) cid.Cid {

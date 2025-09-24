@@ -5,10 +5,11 @@ import (
 	"testing"
 	"time"
 
-	traversalselector "github.com/gosuda/boxo-starter-kit/14-traversal-selector/pkg"
-	graphsync "github.com/gosuda/boxo-starter-kit/15-graphsync/pkg"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/stretchr/testify/require"
+
+	traversalselector "github.com/gosuda/boxo-starter-kit/14-traversal-selector/pkg"
+	graphsync "github.com/gosuda/boxo-starter-kit/15-graphsync/pkg"
 )
 
 func TestGraphSyncPubsub(t *testing.T) {
