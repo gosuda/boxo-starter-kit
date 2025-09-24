@@ -12,7 +12,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 
-	"github.com/gosuda/boxo-starter-kit/06-unixfs-car/pkg"
+	unixfs "github.com/gosuda/boxo-starter-kit/06-unixfs-car/pkg"
 )
 
 func main() {

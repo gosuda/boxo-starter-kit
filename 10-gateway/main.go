@@ -26,7 +26,7 @@ func main() {
 	fmt.Println("\n1. Setting up storage and UnixFS system:")
 
 	// Create DAG wrapper
-	dagWrapper, err := dag.NewIpldWrapper(ctx, nil, nil)
+	dagWrapper, err := dag.NewIpldWrapper(ctx, nil)
 	if err != nil {
 		log.Fatalf("Failed to create DAG wrapper: %v", err)
 	}

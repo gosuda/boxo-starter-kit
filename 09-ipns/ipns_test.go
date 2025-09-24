@@ -18,7 +18,7 @@ func TestIPNSManager(t *testing.T) {
 	defer cancel()
 
 	// Setup
-	dagWrapper, err := dag.NewIpldWrapper(ctx, nil, nil)
+	dagWrapper, err := dag.NewIpldWrapper(ctx, nil)
 	require.NoError(t, err)
 	defer dagWrapper.BlockServiceWrapper.Close()
 

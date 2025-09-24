@@ -6,8 +6,9 @@ import (
 	"log"
 	"time"
 
-	host "github.com/gosuda/boxo-starter-kit/02-network/pkg"
 	"github.com/ipfs/go-cid"
+
+	host "github.com/gosuda/boxo-starter-kit/02-network/pkg"
 )
 
 func main() {

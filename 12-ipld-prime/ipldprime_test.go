@@ -5,9 +5,10 @@ import (
 	"testing"
 	"time"
 
-	ipld "github.com/gosuda/boxo-starter-kit/12-ipld-prime/pkg"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	ipld "github.com/gosuda/boxo-starter-kit/12-ipld-prime/pkg"
 )
 
 func TestIPLD(t *testing.T) {

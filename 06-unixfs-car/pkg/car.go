@@ -8,11 +8,12 @@ import (
 	"os"
 	"path/filepath"
 
-	dag "github.com/gosuda/boxo-starter-kit/05-dag-ipld/pkg"
 	"github.com/ipfs/boxo/blockstore"
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-car/v2"
 	"github.com/ipld/go-car/v2/storage"
+
+	dag "github.com/gosuda/boxo-starter-kit/05-dag-ipld/pkg"
 )
 
 func CarExport(ctx context.Context, ipldWrapper *dag.IpldWrapper, roots []cid.Cid, w io.Writer) error {

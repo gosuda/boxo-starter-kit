@@ -5,11 +5,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/stretchr/testify/require"
+
 	block "github.com/gosuda/boxo-starter-kit/00-block-cid/pkg"
 	network "github.com/gosuda/boxo-starter-kit/02-network/pkg"
 	dht "github.com/gosuda/boxo-starter-kit/03-dht-router/pkg"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/stretchr/testify/require"
 )
 
 func TestDHTBootstrap(t *testing.T) {

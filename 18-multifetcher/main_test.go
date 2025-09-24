@@ -14,13 +14,12 @@ import (
 	dht "github.com/gosuda/boxo-starter-kit/03-dht-router/pkg"
 	bitswap "github.com/gosuda/boxo-starter-kit/04-bitswap/pkg"
 	ipni "github.com/gosuda/boxo-starter-kit/17-ipni/pkg"
-
-	. "github.com/gosuda/boxo-starter-kit/18-multifetcher/pkg"
+	multifetcher "github.com/gosuda/boxo-starter-kit/18-multifetcher/pkg"
 )
 
 func TestMultiFetcher_Configuration(t *testing.T) {
 	// Test default configuration
-	config := DefaultConfig()
+	config := multifetcher.DefaultConfig()
 	assert.Equal(t, 3, config.MaxConcurrent)
 	assert.Equal(t, 30*time.Second, config.Timeout)
 	assert.Equal(t, 150*time.Millisecond, config.StaggerDelay)
@@ -51,7 +50,7 @@ func TestMultiFetcher_Creation(t *testing.T) {
 	defer ipniWrapper.Close()
 
 	// Create multifetcher
-	mf := NewMultiFetcher(ipniWrapper, nil, bs, nil)
+	mf := multifetcher.NewMultiFetcher(ipniWrapper, nil, bs, nil)
 	require.NotNil(t, mf)
 	defer mf.Close()
 
@@ -66,7 +65,7 @@ func TestMultiFetcher_Creation(t *testing.T) {
 }
 
 func TestMultiFetcher_HTTPFetcher(t *testing.T) {
-	fetcher := NewHTTPFetcher()
+	fetcher := multifetcher.NewHTTPFetcher()
 	require.NotNil(t, fetcher)
 	defer fetcher.Close()
 
@@ -85,14 +84,14 @@ func TestMultiFetcher_ConfigValidation(t *testing.T) {
 	defer ipniWrapper.Close()
 
 	// Test with custom config
-	customConfig := FetcherConfig{
+	customConfig := multifetcher.FetcherConfig{
 		MaxConcurrent:    5,
 		Timeout:          60 * time.Second,
 		StaggerDelay:     200 * time.Millisecond,
 		CancelOnFirstWin: false,
 	}
 
-	mf := NewMultiFetcher(ipniWrapper, nil, nil, &customConfig)
+	mf := multifetcher.NewMultiFetcher(ipniWrapper, nil, nil, &customConfig)
 	require.NotNil(t, mf)
 	defer mf.Close()
 
@@ -105,7 +104,7 @@ func TestFetchResult_Validation(t *testing.T) {
 	c, err := cid.Parse("QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG")
 	require.NoError(t, err)
 
-	result := &FetchResult{
+	result := &multifetcher.FetchResult{
 		Protocol: "bitswap",
 		Provider: "test-provider",
 		Data:     []byte("test"),
@@ -140,7 +139,7 @@ func BenchmarkMultiFetcher_Creation(b *testing.B) {
 		ipniWrapper, err := ipni.New("", "topic", nil, nil, nil)
 		require.NoError(b, err)
 
-		mf := NewMultiFetcher(ipniWrapper, nil, nil, nil)
+		mf := multifetcher.NewMultiFetcher(ipniWrapper, nil, nil, nil)
 		require.NotNil(b, mf)
 
 		mf.Close()
