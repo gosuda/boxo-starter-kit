@@ -43,7 +43,9 @@ func NewGatewayWrapper(port int, urls []string) (*GatewayWrapper, error) {
 	if err != nil {
 		return nil, err
 	}
-	handler := gateway.NewHandler(gateway.Config{}, backend)
+	handler := gateway.NewHandler(gateway.Config{
+    DeserializedResponses: true,
+  }, backend)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", gatewayWrapper.handleRoot)
 	mux.Handle("/ipfs/", handler)
@@ -182,15 +184,20 @@ func (g *GatewayWrapper) handleRoot(w http.ResponseWriter, r *http.Request) {
 
       <div class="card">
         <h2>🧪 Examples</h2>
-        <p>Enter a <b>CAR URL</b> or a <b>CID</b>. We’ll redirect you to the right path.</p>
-        <form class="row" onsubmit="return openCar(event)">
-          <input id="carinput" class="input" type="text" spellcheck="false" autocomplete="off"
-                 value="/ipfs/QmT78zSuBmuS4z925WZfrqQ1qHaJ56DQaTfyMUF7F8ff5o?format=car" />
+        <p>Enter a <b>CID</b> and choose the format. We’ll build the right path for you.</p>
+        <form class="row" onsubmit="return openExample(event)">
+          <input id="cidInput" class="input" type="text" spellcheck="false" autocomplete="off"
+                placeholder="Enter CID (e.g. Qm...)" />
+          <select id="formatSelect" class="input" style="flex:0 0 140px;">
+            <option value="car">CAR</option>
+            <option value="file">File</option>
+            <option value="raw">Raw</option>
+          </select>
           <button class="btn" type="submit">🚀 Open</button>
         </form>
         <p class="muted" style="margin-top:8px;">
-          • CID → <span class="mono">/ipfs/&lt;CID&gt;?format=car</span><br/>
-          • URL ending with <span class="mono">.car</span> → open as-is
+          • Example: <span class="mono">QmT78zSuBmuS4z925WZfrqQ1qHaJ56DQaTfyMUF7F8ff5o</span><br/>
+          → /ipfs/&lt;CID&gt;?format=&lt;selected&gt;
         </p>
       </div>
 
@@ -245,36 +252,18 @@ func (g *GatewayWrapper) handleRoot(w http.ResponseWriter, r *http.Request) {
     function isAbsoluteURL(s) { return /^https?:\/\//i.test(s); }
     function addFormatIfMissing(path) { return path.includes('?') ? path : (path + '?format=car'); }
 
-    function openCar(e) {
+    function openExample(e) {
       e.preventDefault();
-      let v = (document.getElementById('carinput').value || '').trim();
-      if (!v) return false;
-
-      // 1) Absolute URL → go as-is (supports https://.../*.car)
-      if (isAbsoluteURL(v)) {
-        window.location.href = v;
+      let cid = (document.getElementById('cidInput').value || '').trim();
+      let format = document.getElementById('formatSelect').value;
+      if (!cid) {
+        alert("Please enter a CID");
         return false;
       }
-      // 2) Already /ipfs/ or /ipns/ → use as-is (avoid duplicating ?format)
-      if (v.startsWith('/ipfs/') || v.startsWith('/ipns/')) {
-        window.location.href = v;
-        return false;
-      }
-      // 3) CID → /ipfs/<CID>[?format=car]
-      if (looksLikeCID(v)) {
-        window.location.href = addFormatIfMissing('/ipfs/' + encodeURIComponent(v));
-        return false;
-      }
-      // 4) Ends with .car but missing scheme → ask for full URL
-      if (v.toLowerCase().endsWith('.car')) {
-        alert('Please enter a full CAR URL including http(s)://');
-        return false;
-      }
-      // 5) Fallback: treat as CID-like
-      window.location.href = addFormatIfMissing('/ipfs/' + encodeURIComponent(v));
+      let url = '/ipfs/' + encodeURIComponent(cid) + '?format=' + format;
+      window.location.href = url;
       return false;
     }
-
     ping(); setInterval(ping, 5000);
   </script>
 </body>
