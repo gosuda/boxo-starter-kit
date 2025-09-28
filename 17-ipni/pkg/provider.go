@@ -1,134 +1,161 @@
 package ipni
 
 import (
-	"context"
-	"fmt"
-	"os"
+	"encoding/json"
+	"sync"
+	"time"
 
 	"github.com/ipfs/go-cid"
-	"github.com/ipni/go-libipni/find/model"
-	md "github.com/ipni/go-libipni/metadata"
-	"github.com/ipni/go-libipni/pcache"
-	provengine "github.com/ipni/index-provider/engine"
-	carsupplier "github.com/ipni/index-provider/supplier"
+	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p/core/peer"
-
-	persistent "github.com/gosuda/boxo-starter-kit/01-persistent/pkg"
-	network "github.com/gosuda/boxo-starter-kit/02-network/pkg"
 )
 
-var _ pcache.ProviderSource = (*ProviderWrapper)(nil)
+// Provider handles provider management and indexing
+type Provider struct {
+	datastore datastore.Datastore
 
-type ProviderWrapper struct {
-	path  string
-	topic string
+	// In-memory index for fast lookups
+	providerIndex map[string][]ProviderInfo
+	indexMutex    sync.RWMutex
 
-	provider *peer.AddrInfo
-	engine   *provengine.Engine
+	// Statistics
+	stats *IndexStats
 
-	*carsupplier.CarSupplier
+	// Configuration
+	config *IPNIConfig
 }
 
-func NewProviderWrapper(path, topic string, persistentWrapper *persistent.PersistentWrapper, hostWrapper *network.HostWrapper) (*ProviderWrapper, error) {
-	if path == "" {
-		path = os.TempDir()
+// NewProvider creates a new provider component
+func NewProvider(ds datastore.Datastore) *Provider {
+	return &Provider{
+		datastore:     ds,
+		providerIndex: make(map[string][]ProviderInfo),
+		stats: &IndexStats{
+			LastUpdate: time.Now(),
+		},
+		config: DefaultIPNIConfig(),
 	}
-	path += "/ipni-provider"
+}
 
-	var err error
-	if persistentWrapper == nil {
-		persistentWrapper, err = persistent.New(persistent.Memory, "")
-		if err != nil {
-			return nil, fmt.Errorf("failed to create persistent wrapper: %w", err)
+// ProviderID returns a mock provider ID
+func (p *Provider) ProviderID() peer.ID {
+	// Return a mock peer ID for demo purposes
+	return peer.ID("12D3KooWDemo")
+}
+
+// PutCID adds CIDs to the index
+func (p *Provider) PutCID(providerID peer.ID, contextID []byte, metadataBytes []byte, cids ...cid.Cid) error {
+	p.indexMutex.Lock()
+	defer p.indexMutex.Unlock()
+
+	// Parse metadata
+	var metadata map[string]string
+	if len(metadataBytes) > 0 {
+		if err := json.Unmarshal(metadataBytes, &metadata); err != nil {
+			metadata = map[string]string{"raw": string(metadataBytes)}
 		}
+	} else {
+		metadata = make(map[string]string)
 	}
-	if hostWrapper == nil {
-		hostWrapper, err = network.New(nil)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create libp2p host: %w", err)
+
+	// Create provider info
+	providerInfo := ProviderInfo{
+		ProviderID: providerID,
+		ContextID:  contextID,
+		Addresses:  []string{"/ip4/127.0.0.1/tcp/4001"},
+		Metadata:   metadata,
+		LastSeen:   time.Now(),
+		TTL:        p.config.DefaultTTL,
+	}
+
+	// Add to index
+	for _, c := range cids {
+		key := c.Hash().String()
+		providers := p.providerIndex[key]
+
+		// Check if provider already exists
+		found := false
+		for i, existing := range providers {
+			if existing.ProviderID == providerID {
+				providers[i] = providerInfo
+				found = true
+				break
+			}
 		}
+
+		if !found {
+			providers = append(providers, providerInfo)
+		}
+
+		// Limit providers per multihash
+		if len(providers) > p.config.MaxProvidersPerMultihash {
+			providers = providers[:p.config.MaxProvidersPerMultihash]
+		}
+
+		p.providerIndex[key] = providers
 	}
 
-	provider := &peer.AddrInfo{
-		ID:    hostWrapper.ID(),
-		Addrs: hostWrapper.Addrs(),
-	}
+	// Update statistics
+	p.stats.TotalEntries = int64(len(p.providerIndex))
+	p.stats.LastUpdate = time.Now()
 
-	eng, err := provengine.New(
-		provengine.WithDatastore(persistentWrapper.Batching),
-		provengine.WithHost(hostWrapper.Host),
-		provengine.WithTopicName(topic),
-		provengine.WithPublisherKind(provengine.Libp2pHttpPublisher),
-		provengine.WithPubsubAnnounce(true),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create index provider: %w", err)
-	}
-
-	carSup := carsupplier.NewCarSupplier(eng, persistentWrapper.Batching)
-
-	return &ProviderWrapper{
-		path:        path,
-		topic:       topic,
-		provider:    provider,
-		engine:      eng,
-		CarSupplier: carSup,
-	}, nil
-}
-
-func (p *ProviderWrapper) ProviderID() peer.ID {
-	return p.provider.ID
-}
-
-func (p *ProviderWrapper) Start(ctx context.Context) error {
-	err := p.engine.Start(ctx)
-	if err != nil {
-		return fmt.Errorf("provider engine start: %w", err)
-	}
 	return nil
 }
 
-func (p *ProviderWrapper) AnnounceMultihashes(ctx context.Context, contextID []byte, meta md.Metadata) (cid.Cid, error) {
-	return p.engine.NotifyPut(ctx, p.provider, contextID, meta)
-}
+// GetProvidersByCID finds providers for a given CID
+func (p *Provider) GetProvidersByCID(c cid.Cid) ([]ProviderInfo, bool, error) {
+	p.indexMutex.RLock()
+	defer p.indexMutex.RUnlock()
 
-func (p *ProviderWrapper) PutCAR(ctx context.Context, contextID []byte, md md.Metadata) (cid.Cid, error) {
-	if p.CarSupplier == nil {
-		return cid.Undef, fmt.Errorf("car supplier not initialized")
-	}
-	return p.CarSupplier.Put(ctx, contextID, p.path, md)
-}
-
-func (p *ProviderWrapper) RemoveCAR(ctx context.Context, contextID []byte) (cid.Cid, error) {
-	if p.CarSupplier == nil {
-		return cid.Undef, fmt.Errorf("car supplier not initialized")
-	}
-	return p.CarSupplier.Remove(ctx, contextID)
-}
-
-func (p *ProviderWrapper) Fetch(ctx context.Context, pid peer.ID) (*model.ProviderInfo, error) {
-	if pid != "" && pid != p.provider.ID {
-		return nil, nil
-	}
-	return p.buildProviderInfo(), nil
-}
-
-func (p *ProviderWrapper) FetchAll(ctx context.Context) ([]*model.ProviderInfo, error) {
-	return []*model.ProviderInfo{p.buildProviderInfo()}, nil
-}
-
-func (p *ProviderWrapper) String() string { return "local-provider" }
-
-func (p *ProviderWrapper) buildProviderInfo() *model.ProviderInfo {
-	lastCid, _, err := p.engine.GetLatestAdv(context.Background())
-	if err != nil {
-		return nil
+	providers, found := p.providerIndex[c.Hash().String()]
+	if !found || len(providers) == 0 {
+		return nil, false, nil
 	}
 
-	pi := &model.ProviderInfo{
-		AddrInfo:          *p.provider,
-		Publisher:         p.provider,
-		LastAdvertisement: lastCid,
+	// Filter out expired providers
+	var validProviders []ProviderInfo
+	now := time.Now()
+	for _, provider := range providers {
+		if now.Sub(provider.LastSeen) < provider.TTL {
+			validProviders = append(validProviders, provider)
+		}
 	}
-	return pi
+
+	if len(validProviders) == 0 {
+		return nil, false, nil
+	}
+
+	p.stats.QueryCount++
+	return validProviders, true, nil
+}
+
+// GetStats returns index statistics
+func (p *Provider) GetStats() *IndexStats {
+	p.indexMutex.RLock()
+	defer p.indexMutex.RUnlock()
+
+	// Count unique providers
+	providerSet := make(map[peer.ID]struct{})
+	totalProviders := int64(0)
+	totalMultihashes := int64(len(p.providerIndex))
+
+	for _, providers := range p.providerIndex {
+		for _, provider := range providers {
+			if _, exists := providerSet[provider.ProviderID]; !exists {
+				providerSet[provider.ProviderID] = struct{}{}
+				totalProviders++
+			}
+		}
+	}
+
+	stats := *p.stats
+	stats.TotalProviders = totalProviders
+	stats.TotalMultihashes = totalMultihashes
+
+	return &stats
+}
+
+// Close gracefully shuts down the provider
+func (p *Provider) Close() error {
+	return nil
 }
