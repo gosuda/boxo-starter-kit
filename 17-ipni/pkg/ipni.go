@@ -14,16 +14,16 @@ import (
 
 // IPNI represents the main IPNI coordinator
 type IPNI struct {
-	Provider     *Provider
-	Subscriber   *Subscriber
-	Security     *Security
-	AntiSpam     *AntiSpamFilter
-	Planner      *Planner
-	PubSub       *PubSubManager
-	AdChain      *AdvertisementChain
-	Monitoring   *MonitoringManager
-	datastore    datastore.Datastore
-	config       *IPNIConfig
+	Provider   *Provider
+	Subscriber *Subscriber
+	Security   *Security
+	AntiSpam   *AntiSpamFilter
+	Planner    *Planner
+	PubSub     *PubSubManager
+	AdChain    *AdvertisementChain
+	Monitoring *MonitoringManager
+	datastore  datastore.Datastore
+	config     *IPNIConfig
 }
 
 // New creates a new IPNI instance
@@ -353,10 +353,10 @@ func (ipni *IPNI) GetSystemHealth() *SystemHealth {
 
 	// Return basic health if monitoring is not available
 	return &SystemHealth{
-		Overall:   HealthHealthy,
+		Overall:    HealthHealthy,
 		Components: make(map[string]HealthResult),
-		Timestamp: time.Now(),
-		Version:   "demo-v1.0.0",
+		Timestamp:  time.Now(),
+		Version:    "demo-v1.0.0",
 	}
 }
 

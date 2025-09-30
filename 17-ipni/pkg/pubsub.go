@@ -13,21 +13,21 @@ import (
 
 // PubSubManager handles real-time synchronization via PubSub
 type PubSubManager struct {
-	host         host.Host
-	topics       map[string]*Topic
-	subscribers  map[string][]MessageHandler
-	messagePool  *MessagePool
-	config       *PubSubConfig
-	running      bool
-	stopCh       chan struct{}
-	mutex        sync.RWMutex
+	host        host.Host
+	topics      map[string]*Topic
+	subscribers map[string][]MessageHandler
+	messagePool *MessagePool
+	config      *PubSubConfig
+	running     bool
+	stopCh      chan struct{}
+	mutex       sync.RWMutex
 }
 
 // PubSubConfig holds PubSub configuration
 type PubSubConfig struct {
-	BufferSize       int           `json:"buffer_size"`
-	MessageTimeout   time.Duration `json:"message_timeout"`
-	MaxMessageSize   int           `json:"max_message_size"`
+	BufferSize        int           `json:"buffer_size"`
+	MessageTimeout    time.Duration `json:"message_timeout"`
+	MaxMessageSize    int           `json:"max_message_size"`
 	ValidationTimeout time.Duration `json:"validation_timeout"`
 }
 
@@ -43,11 +43,11 @@ func DefaultPubSubConfig() *PubSubConfig {
 
 // Topic represents a PubSub topic
 type Topic struct {
-	name       string
-	handlers   []MessageHandler
-	messages   chan *Message
-	stopCh     chan struct{}
-	running    bool
+	name     string
+	handlers []MessageHandler
+	messages chan *Message
+	stopCh   chan struct{}
+	running  bool
 }
 
 // Message represents a PubSub message

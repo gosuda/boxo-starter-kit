@@ -66,15 +66,15 @@ type QueryIntent struct {
 
 // Advertisement represents a provider advertisement
 type Advertisement struct {
-	Provider    peer.ID                    `json:"provider"`
-	ContextID   []byte                     `json:"context_id"`
-	Multihashes []string                   `json:"multihashes"`
-	Metadata    *AdvertisementMetadata     `json:"metadata"`
-	Protocol    TransportProtocol          `json:"protocol"`
-	Addresses   []string                   `json:"addresses"`
-	Timestamp   time.Time                  `json:"timestamp"`
-	TTL         time.Duration              `json:"ttl"`
-	Previous    *string                    `json:"previous,omitempty"`
+	Provider    peer.ID                `json:"provider"`
+	ContextID   []byte                 `json:"context_id"`
+	Multihashes []string               `json:"multihashes"`
+	Metadata    *AdvertisementMetadata `json:"metadata"`
+	Protocol    TransportProtocol      `json:"protocol"`
+	Addresses   []string               `json:"addresses"`
+	Timestamp   time.Time              `json:"timestamp"`
+	TTL         time.Duration          `json:"ttl"`
+	Previous    *string                `json:"previous,omitempty"`
 }
 
 // AdvertisementMetadata contains metadata for advertisements
@@ -101,11 +101,11 @@ type PubSubProviderAnnouncement struct {
 type GossipMessageType string
 
 const (
-	GossipTypeAdvertisement GossipMessageType = "advertisement"
+	GossipTypeAdvertisement  GossipMessageType = "advertisement"
 	GossipTypeProviderUpdate GossipMessageType = "provider_update"
-	GossipTypeHeartbeat     GossipMessageType = "heartbeat"
-	GossipTypePeerDiscovery GossipMessageType = "peer_discovery"
-	GossipTypeChainUpdate   GossipMessageType = "chain_update"
+	GossipTypeHeartbeat      GossipMessageType = "heartbeat"
+	GossipTypePeerDiscovery  GossipMessageType = "peer_discovery"
+	GossipTypeChainUpdate    GossipMessageType = "chain_update"
 )
 
 // Monitoring types
@@ -127,16 +127,16 @@ type RankedProvider struct {
 
 // Fetcher for retrieval
 type RankedFetcher struct {
-	Provider  ProviderInfo      `json:"provider"`
-	Protocol  TransportProtocol `json:"protocol"`
-	Score     float64           `json:"score"`
-	Priority  int               `json:"priority"`
+	Provider ProviderInfo      `json:"provider"`
+	Protocol TransportProtocol `json:"protocol"`
+	Score    float64           `json:"score"`
+	Priority int               `json:"priority"`
 }
 
 // Cache configuration
 type CacheConfig struct {
-	Enabled    bool          `json:"enabled"`
-	Size       int64         `json:"size_bytes"`
-	TTL        time.Duration `json:"ttl"`
-	Compression bool         `json:"compression"`
+	Enabled     bool          `json:"enabled"`
+	Size        int64         `json:"size_bytes"`
+	TTL         time.Duration `json:"ttl"`
+	Compression bool          `json:"compression"`
 }

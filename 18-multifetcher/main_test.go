@@ -39,7 +39,7 @@ func TestMultiFetcher_Creation(t *testing.T) {
 	require.NoError(t, err)
 	defer store.Close()
 
-	dhtWrapper, err := dht.New(ctx,  host, store)
+	dhtWrapper, err := dht.New(ctx, host, store)
 	require.NoError(t, err)
 
 	bs, err := bitswap.NewBitswap(ctx, dhtWrapper, host, store)

@@ -77,7 +77,7 @@ type ProtocolMetrics struct {
 
 // NewMultiFetcher creates a new multifetcher instance
 func NewMultiFetcher(
-	ipni *ipni.IPNIWrapper,
+	ipni *ipni.IPNI,
 	graphsync *graphsync.GraphSyncWrapper,
 	bitswap *bitswap.BitswapWrapper,
 	config *FetcherConfig,

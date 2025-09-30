@@ -76,13 +76,13 @@ func (s *Security) GetPublicKey() []byte {
 
 // SignedAnnouncement represents a cryptographically signed provider announcement
 type SignedAnnouncement struct {
-	ProviderID peer.ID               `json:"provider_id"`
-	ContextID  []byte                `json:"context_id"`
-	Metadata   map[string]string     `json:"metadata"`
-	CIDs       []string              `json:"cids"`
-	Timestamp  time.Time             `json:"timestamp"`
-	Signature  []byte                `json:"signature"`
-	PublicKey  []byte                `json:"public_key"`
+	ProviderID peer.ID           `json:"provider_id"`
+	ContextID  []byte            `json:"context_id"`
+	Metadata   map[string]string `json:"metadata"`
+	CIDs       []string          `json:"cids"`
+	Timestamp  time.Time         `json:"timestamp"`
+	Signature  []byte            `json:"signature"`
+	PublicKey  []byte            `json:"public_key"`
 }
 
 // CreateSignedAnnouncement creates a cryptographically signed announcement

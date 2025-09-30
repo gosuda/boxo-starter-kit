@@ -41,10 +41,10 @@ func DefaultMonitoringConfig() *MonitoringConfig {
 // IPNIMetrics collects comprehensive IPNI metrics
 type IPNIMetrics struct {
 	// Index metrics
-	TotalProviders    int64 `json:"total_providers"`
-	TotalEntries      int64 `json:"total_entries"`
-	TotalMultihashes  int64 `json:"total_multihashes"`
-	IndexSizeBytes    int64 `json:"index_size_bytes"`
+	TotalProviders   int64 `json:"total_providers"`
+	TotalEntries     int64 `json:"total_entries"`
+	TotalMultihashes int64 `json:"total_multihashes"`
+	IndexSizeBytes   int64 `json:"index_size_bytes"`
 
 	// Query metrics
 	QueriesTotal      int64   `json:"queries_total"`
@@ -53,10 +53,10 @@ type IPNIMetrics struct {
 	CacheHitRate      float64 `json:"cache_hit_rate"`
 
 	// Network metrics
-	PeersConnected    int     `json:"peers_connected"`
-	MessagesReceived  int64   `json:"messages_received"`
-	MessagesSent      int64   `json:"messages_sent"`
-	NetworkLatencyMS  float64 `json:"network_latency_ms"`
+	PeersConnected   int     `json:"peers_connected"`
+	MessagesReceived int64   `json:"messages_received"`
+	MessagesSent     int64   `json:"messages_sent"`
+	NetworkLatencyMS float64 `json:"network_latency_ms"`
 
 	// Security metrics
 	SignaturesVerified int64 `json:"signatures_verified"`
@@ -65,32 +65,32 @@ type IPNIMetrics struct {
 	RateLimitHits      int64 `json:"rate_limit_hits"`
 
 	// Advertisement chain metrics
-	ChainLength       int   `json:"chain_length"`
-	ChainSizeBytes    int64 `json:"chain_size_bytes"`
+	ChainLength         int   `json:"chain_length"`
+	ChainSizeBytes      int64 `json:"chain_size_bytes"`
 	AdvertisementsAdded int64 `json:"advertisements_added"`
 
 	// System metrics
-	MemoryUsageBytes  int64     `json:"memory_usage_bytes"`
-	CPUUsagePercent   float64   `json:"cpu_usage_percent"`
-	GoroutineCount    int       `json:"goroutine_count"`
-	UptimeSeconds     int64     `json:"uptime_seconds"`
-	LastUpdate        time.Time `json:"last_update"`
+	MemoryUsageBytes int64     `json:"memory_usage_bytes"`
+	CPUUsagePercent  float64   `json:"cpu_usage_percent"`
+	GoroutineCount   int       `json:"goroutine_count"`
+	UptimeSeconds    int64     `json:"uptime_seconds"`
+	LastUpdate       time.Time `json:"last_update"`
 }
 
 // HealthChecker performs health checks on IPNI components
 type HealthChecker struct {
-	checks   map[string]HealthCheck
-	results  map[string]HealthResult
-	config   *HealthConfig
-	mutex    sync.RWMutex
+	checks  map[string]HealthCheck
+	results map[string]HealthResult
+	config  *HealthConfig
+	mutex   sync.RWMutex
 }
 
 // HealthConfig holds health check configuration
 type HealthConfig struct {
-	Interval       time.Duration `json:"interval"`
-	Timeout        time.Duration `json:"timeout"`
-	FailureThreshold int         `json:"failure_threshold"`
-	SuccessThreshold int         `json:"success_threshold"`
+	Interval         time.Duration `json:"interval"`
+	Timeout          time.Duration `json:"timeout"`
+	FailureThreshold int           `json:"failure_threshold"`
+	SuccessThreshold int           `json:"success_threshold"`
 }
 
 // HealthCheck interface for component health checks
@@ -101,21 +101,21 @@ type HealthCheck interface {
 
 // HealthResult represents the result of a health check
 type HealthResult struct {
-	Status    HealthStatus  `json:"status"`
-	Message   string        `json:"message"`
-	Duration  time.Duration `json:"duration"`
-	Timestamp time.Time     `json:"timestamp"`
+	Status    HealthStatus           `json:"status"`
+	Message   string                 `json:"message"`
+	Duration  time.Duration          `json:"duration"`
+	Timestamp time.Time              `json:"timestamp"`
 	Metadata  map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // SystemHealth represents overall system health
 type SystemHealth struct {
-	Overall     HealthStatus             `json:"overall"`
-	Components  map[string]HealthResult  `json:"components"`
-	Metrics     *IPNIMetrics             `json:"metrics"`
-	Uptime      time.Duration            `json:"uptime"`
-	Version     string                   `json:"version"`
-	Timestamp   time.Time                `json:"timestamp"`
+	Overall    HealthStatus            `json:"overall"`
+	Components map[string]HealthResult `json:"components"`
+	Metrics    *IPNIMetrics            `json:"metrics"`
+	Uptime     time.Duration           `json:"uptime"`
+	Version    string                  `json:"version"`
+	Timestamp  time.Time               `json:"timestamp"`
 }
 
 // NewMonitoringManager creates a new monitoring manager
