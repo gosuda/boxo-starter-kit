@@ -10,10 +10,11 @@ import (
 	"syscall"
 	"time"
 
-	ipni "github.com/gosuda/boxo-starter-kit/17-ipni/pkg"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/multiformats/go-multihash"
+
+	ipni "github.com/gosuda/boxo-starter-kit/17-ipni/pkg"
 )
 
 func main() {
