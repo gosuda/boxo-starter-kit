@@ -12,13 +12,13 @@ import (
 
 // Planner handles provider selection and query planning
 type Planner struct {
-	config      *PlannerConfig
+	config       *PlannerConfig
 	healthScorer HealthScorer
 }
 
 // PlannerConfig holds planner configuration
 type PlannerConfig struct {
-	MaxProviders       int                            `json:"max_providers"`
+	MaxProviders       int                           `json:"max_providers"`
 	PreferredProtocols []TransportProtocol           `json:"preferred_protocols"`
 	ProtocolScores     map[TransportProtocol]float64 `json:"protocol_scores"`
 	HealthWeight       float64                       `json:"health_weight"`
