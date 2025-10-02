@@ -88,13 +88,18 @@ type AdvertisementMetadata struct {
 
 // PubSub message types
 type PubSubProviderAnnouncement struct {
-	ProviderID  peer.ID           `json:"provider_id"`
+	ProviderID  string            `json:"provider_id"`
 	ContextID   []byte            `json:"context_id"`
 	Metadata    map[string]string `json:"metadata"`
 	Multihashes []string          `json:"multihashes"`
 	Protocol    TransportProtocol `json:"protocol"`
 	Addresses   []string          `json:"addresses"`
 	TTL         time.Duration     `json:"ttl"`
+}
+
+// GetProviderID converts the string provider ID to peer.ID
+func (p *PubSubProviderAnnouncement) GetProviderID() (peer.ID, error) {
+	return peer.Decode(p.ProviderID)
 }
 
 // Gossip message types

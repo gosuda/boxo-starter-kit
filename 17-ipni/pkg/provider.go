@@ -1,12 +1,14 @@
 package ipni
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"sync"
 	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
+	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
@@ -23,24 +25,31 @@ type Provider struct {
 
 	// Configuration
 	config *IPNIConfig
+
+	// Provider ID
+	providerID peer.ID
 }
 
 // NewProvider creates a new provider component
 func NewProvider(ds datastore.Datastore) *Provider {
+	// Generate a valid peer ID for demo purposes
+	priv, _, _ := crypto.GenerateEd25519Key(rand.Reader)
+	peerID, _ := peer.IDFromPrivateKey(priv)
+
 	return &Provider{
 		datastore:     ds,
 		providerIndex: make(map[string][]ProviderInfo),
 		stats: &IndexStats{
 			LastUpdate: time.Now(),
 		},
-		config: DefaultIPNIConfig(),
+		config:     DefaultIPNIConfig(),
+		providerID: peerID,
 	}
 }
 
-// ProviderID returns a mock provider ID
+// ProviderID returns the provider's peer ID
 func (p *Provider) ProviderID() peer.ID {
-	// Return a mock peer ID for demo purposes
-	return peer.ID("12D3KooWDemo")
+	return p.providerID
 }
 
 // PutCID adds CIDs to the index

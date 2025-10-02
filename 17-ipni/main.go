@@ -335,7 +335,7 @@ func demonstratePubSubMessaging(ctx context.Context, ipniInstance *ipni.IPNI) {
 
 	// Create a sample provider announcement
 	announcement := &ipni.PubSubProviderAnnouncement{
-		ProviderID:  ipniInstance.Provider.ProviderID(),
+		ProviderID:  ipniInstance.Provider.ProviderID().String(),
 		ContextID:   []byte("demo-pubsub-context"),
 		Metadata:    map[string]string{"protocol": "demo", "version": "1.0"},
 		Multihashes: []string{"QmSampleHash1", "QmSampleHash2"},

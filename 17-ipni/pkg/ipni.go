@@ -281,6 +281,12 @@ func (ipni *IPNI) GetMessageTypes() []string {
 
 // handleProviderAnnouncement processes provider announcements
 func (ipni *IPNI) handleProviderAnnouncement(ctx context.Context, announcement *PubSubProviderAnnouncement) error {
+	// Convert string provider ID to peer.ID
+	providerID, err := announcement.GetProviderID()
+	if err != nil {
+		return fmt.Errorf("failed to parse peer ID: %w", err)
+	}
+
 	// Convert multihash strings to multihash objects
 	var multihashes []multihash.Multihash
 	for _, mhStr := range announcement.Multihashes {
@@ -289,6 +295,13 @@ func (ipni *IPNI) handleProviderAnnouncement(ctx context.Context, announcement *
 		if len(mhStr) > 10 {
 			// Create a mock multihash for demo
 			hash := []byte(mhStr)
+			// Ensure we have at least 32 bytes
+			if len(hash) < 32 {
+				// Pad with zeros if needed
+				padded := make([]byte, 32)
+				copy(padded, hash)
+				hash = padded
+			}
 			if mh, err := multihash.Encode(hash[:32], multihash.SHA2_256); err == nil {
 				multihashes = append(multihashes, mh)
 			}
@@ -297,7 +310,7 @@ func (ipni *IPNI) handleProviderAnnouncement(ctx context.Context, announcement *
 
 	// Store in provider index
 	if len(multihashes) > 0 {
-		return ipni.Put(announcement.ProviderID, announcement.ContextID, nil, multihashes...)
+		return ipni.Put(providerID, announcement.ContextID, nil, multihashes...)
 	}
 
 	return nil
