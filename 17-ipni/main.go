@@ -4,297 +4,431 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
+	"strings"
+	"syscall"
+	"time"
 
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p/core/peer"
-	mc "github.com/multiformats/go-multicodec"
+	"github.com/ipfs/go-datastore"
+	"github.com/multiformats/go-multihash"
 
-	block "github.com/gosuda/boxo-starter-kit/00-block-cid/pkg"
-	persistent "github.com/gosuda/boxo-starter-kit/01-persistent/pkg"
-	ipldprime "github.com/gosuda/boxo-starter-kit/12-ipld-prime/pkg"
 	ipni "github.com/gosuda/boxo-starter-kit/17-ipni/pkg"
 )
 
 func main() {
 	fmt.Println("=== IPNI (InterPlanetary Network Indexer) Demo ===")
-	fmt.Println()
 
 	ctx := context.Background()
 
-	// Demo 1: Setup IPNI wrapper
-	fmt.Println("🔧 1. Setting up IPNI wrapper:")
+	// Demo 1: Create IPNI system
+	fmt.Println("\n1. Setting up IPNI system:")
 
-	// Create IPNI wrapper with default storage path
-	ipniWrapper, err := ipni.New("/tmp/ipni-demo", "ipni-topic", nil, nil, nil)
+	// Create in-memory datastore
+	ds := datastore.NewMapDatastore()
+
+	// Create IPNI instance
+	ipniInstance, err := ipni.New(ds)
 	if err != nil {
-		log.Fatalf("Failed to create IPNI wrapper: %v", err)
+		log.Fatalf("Failed to create IPNI: %v", err)
 	}
-	defer ipniWrapper.Close()
+	defer ipniInstance.Close()
 
-	fmt.Printf("   ✅ IPNI wrapper created successfully\n")
-	fmt.Printf("   💾 Storage: Pebble database at /tmp/ipni-demo\n")
-	fmt.Printf("   🗄️ Cache: 4MB RadixCache enabled\n")
-	fmt.Printf("   ⏱️  Default TTL: 60 seconds\n")
-
-	// Get initial stats
-	stats, err := ipniWrapper.Stats()
-	if err != nil {
-		log.Printf("Failed to get stats: %v", err)
-	} else {
-		fmt.Printf("   📊 Initial stats: %d multihashes indexed\n", stats.MultihashCount)
-	}
-	fmt.Println()
-
-	// Demo 2: Create sample content for indexing
-	fmt.Println("📊 2. Creating sample content for indexing:")
-
-	// Create persistent storage for content
-	store, err := persistent.New(persistent.Memory, "")
-	if err != nil {
-		log.Fatalf("Failed to create storage: %v", err)
-	}
-	defer store.Close()
-
-	// Create IPLD wrapper for content
-	prefix := block.NewV1Prefix(mc.DagCbor, 0, 0)
-	ipldWrapper, err := ipldprime.NewDefault(prefix, store)
-	if err != nil {
-		log.Fatalf("Failed to create IPLD wrapper: %v", err)
+	// Start IPNI components
+	if err := ipniInstance.Start(ctx); err != nil {
+		log.Fatalf("Failed to start IPNI: %v", err)
 	}
 
-	// Create various types of content
-	contentItems := []map[string]interface{}{
-		{
-			"type":        "document",
-			"title":       "IPNI Architecture Guide",
-			"description": "Comprehensive guide to IPNI protocol and implementation",
-			"size":        45678,
-			"format":      "PDF",
+	// Start PubSub manager for messaging demos
+	if err := ipniInstance.PubSub.Start(ctx); err != nil {
+		log.Fatalf("Failed to start PubSub: %v", err)
+	}
+
+	fmt.Printf("   ✅ IPNI system ready\n")
+	fmt.Printf("   📊 Provider ID: %s\n", ipniInstance.Provider.ProviderID())
+	fmt.Printf("   🔐 Security Peer ID: %s\n", ipniInstance.Security.GetPeerID())
+
+	// Demo 2: Add sample content to index
+	fmt.Println("\n2. Adding sample content to index:")
+	sampleCIDs := createSampleContent(ctx, ipniInstance)
+
+	// Demo 3: Demonstrate provider lookup
+	fmt.Println("\n3. Demonstrating provider lookup:")
+	demonstrateProviderLookup(ipniInstance, sampleCIDs)
+
+	// Demo 4: Test security features
+	fmt.Println("\n4. Testing security features:")
+	demonstrateSecurityFeatures(ipniInstance, sampleCIDs)
+
+	// Demo 5: Show query planning and ranking
+	fmt.Println("\n5. Demonstrating query planning:")
+	demonstrateQueryPlanning(ipniInstance, sampleCIDs)
+
+	// Demo 6: Show PubSub messaging
+	fmt.Println("\n6. Testing PubSub messaging:")
+	demonstratePubSubMessaging(ctx, ipniInstance)
+
+	// Demo 7: Display system metrics
+	fmt.Println("\n7. System metrics and monitoring:")
+	displaySystemMetrics(ipniInstance)
+
+	// Handle graceful shutdown
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	// Show usage examples
+	showUsageExamples()
+
+	// Demo 8: Wait for shutdown signal
+	fmt.Println("\n8. IPNI system is running! Press Ctrl+C to stop...")
+	<-sigChan
+
+	fmt.Println("\n📤 Shutting down IPNI system...")
+	fmt.Println("=== Demo completed! ===")
+}
+
+func createSampleContent(ctx context.Context, ipniInstance *ipni.IPNI) map[string]cid.Cid {
+	sampleCIDs := make(map[string]cid.Cid)
+	providerID := ipniInstance.Provider.ProviderID()
+
+	// Create various types of content with different metadata
+	contents := map[string]struct {
+		data     string
+		metadata map[string]string
+	}{
+		"document.txt": {
+			data: "Hello, IPNI World! This is a sample document.",
+			metadata: map[string]string{
+				"content-type": "text/plain",
+				"protocol":     "bitswap",
+				"size":         "45",
+			},
 		},
-		{
-			"type":        "video",
-			"title":       "IPFS Introduction",
-			"description": "Educational video about IPFS fundamentals",
-			"duration":    1200,
-			"resolution":  "1920x1080",
+		"video.mp4": {
+			data: "Mock video content for IPNI indexing demonstration",
+			metadata: map[string]string{
+				"content-type": "video/mp4",
+				"protocol":     "http",
+				"quality":      "720p",
+				"duration":     "120",
+			},
 		},
-		{
-			"type":        "dataset",
-			"title":       "Climate Data 2024",
-			"description": "Global climate measurements dataset",
-			"records":     1000000,
-			"compression": "gzip",
+		"dataset.json": {
+			data: `{"type": "dataset", "records": 1000, "format": "json"}`,
+			metadata: map[string]string{
+				"content-type": "application/json",
+				"protocol":     "graphsync",
+				"schema":       "v1.0",
+			},
+		},
+		"archive.car": {
+			data: "CAR archive content with multiple blocks",
+			metadata: map[string]string{
+				"content-type": "application/car",
+				"protocol":     "car",
+				"blocks":       "500",
+			},
 		},
 	}
 
-	var contentCIDs []cid.Cid
-	for i, content := range contentItems {
-		contentCID, err := ipldWrapper.PutIPLDAny(ctx, content)
+	fmt.Printf("   Creating sample content:\n")
+	for filename, content := range contents {
+		// Compute CID for the content
+		hash, err := multihash.Sum([]byte(content.data), multihash.SHA2_256, -1)
 		if err != nil {
-			log.Fatalf("Failed to store content %d: %v", i, err)
-		}
-		contentCIDs = append(contentCIDs, contentCID)
-		fmt.Printf("   📦 Stored %s: %s\n", content["type"], contentCID)
-	}
-	fmt.Printf("   📈 Total content items created: %d\n", len(contentCIDs))
-	fmt.Println()
-
-	// Demo 3: Index content with Bitswap provider
-	fmt.Println("🔍 3. Indexing content with Bitswap provider:")
-
-	// Create a mock provider peer ID
-	providerID, err := peer.Decode("12D3KooWDpJ3HrAXLNhppXRwLenEgseUnhTMDMnQBzRBHSCHaWky")
-	if err != nil {
-		log.Fatalf("Failed to create provider peer ID: %v", err)
-	}
-
-	// Add Bitswap provider metadata
-	contextID := []byte("bitswap-context-001")
-	err = ipniWrapper.PutBitswap(providerID, contextID, contentCIDs...)
-	if err != nil {
-		log.Fatalf("Failed to index content with Bitswap: %v", err)
-	}
-
-	fmt.Printf("   ✅ Indexed %d items with Bitswap provider\n", len(contentCIDs))
-	fmt.Printf("   👤 Provider: %s\n", providerID)
-	fmt.Printf("   🆔 Context ID: %s\n", string(contextID))
-	fmt.Println()
-
-	// Demo 4: Index content with HTTP gateway provider
-	fmt.Println("🌐 4. Indexing content with HTTP gateway provider:")
-
-	// Create another provider for HTTP gateway
-	gatewayProviderID, err := peer.Decode("12D3KooWRBhwKtpH6RarVVNW6xvMvQ3XnZxFTR3Ek4jvoKNTxHbo")
-	if err != nil {
-		log.Fatalf("Failed to create gateway provider ID: %v", err)
-	}
-
-	// HTTP gateway provider (commented out due to metadata structure changes)
-	fmt.Printf("   ⚠️  HTTP gateway indexing skipped due to library updates\n")
-	fmt.Printf("   👤 Provider: %s\n", gatewayProviderID)
-	fmt.Printf("   🌐 See IPNI documentation for current HTTP metadata format\n")
-	fmt.Println()
-
-	// Demo 5: Index content with GraphSync provider
-	fmt.Println("📡 5. Indexing content with GraphSync provider:")
-
-	// Create GraphSync provider
-	graphsyncProviderID, err := peer.Decode("12D3KooWQYhTNmY1kZXCJM3BFrwCNhkJQYxWqHN7TAWkqLmZv6wC")
-	if err != nil {
-		log.Fatalf("Failed to create GraphSync provider ID: %v", err)
-	}
-
-	// Add GraphSync provider metadata
-	gsContextID := []byte("graphsync-001")
-	err = ipniWrapper.PutGraphSyncFilecoin(graphsyncProviderID, contentCIDs[0], false, false, gsContextID, contentCIDs...)
-	if err != nil {
-		log.Fatalf("Failed to index content with GraphSync: %v", err)
-	}
-
-	fmt.Printf("   ✅ Indexed %d items with GraphSync provider\n", len(contentCIDs))
-	fmt.Printf("   👤 Provider: %s\n", graphsyncProviderID)
-	fmt.Printf("   🆔 Context ID: %s\n", string(gsContextID))
-	fmt.Println()
-
-	// Demo 6: Query providers for content
-	fmt.Println("🔎 6. Querying providers for content:")
-
-	// Query providers for each content item
-	for i, contentCID := range contentCIDs {
-		providers, found, err := ipniWrapper.GetProvidersByCID(contentCID)
-		if err != nil {
-			log.Printf("Failed to get providers for %s: %v", contentCID, err)
+			log.Printf("   ❌ Failed to compute hash for %s: %v", filename, err)
 			continue
 		}
 
-		fmt.Printf("   📦 Content %d (CID: %s...)\n", i+1, contentCID.String()[:16])
-		if found {
-			fmt.Printf("     Found %d provider(s):\n", len(providers))
-			for j, provider := range providers {
-				// Extract provider info from metadata
-				fmt.Printf("       %d. Provider ID: %s\n", j+1, provider.ProviderID)
-				fmt.Printf("          Context ID: %x\n", provider.ContextID)
-				if len(provider.MetadataBytes) > 0 {
-					fmt.Printf("          Metadata size: %d bytes\n", len(provider.MetadataBytes))
-				}
+		c := cid.NewCidV1(cid.Raw, hash)
+
+		// Store in provider index
+		contextID := []byte("demo-context-" + filename)
+		err = ipniInstance.Provider.PutCID(providerID, contextID, nil, c)
+		if err != nil {
+			log.Printf("   ❌ Failed to index %s: %v", filename, err)
+			continue
+		}
+
+		sampleCIDs[filename] = c
+		fmt.Printf("   ✅ %s → %s\n", filename, c.String()[:20]+"...")
+	}
+
+	fmt.Printf("   ✅ Sample content indexed\n")
+	return sampleCIDs
+}
+
+func demonstrateProviderLookup(ipniInstance *ipni.IPNI, sampleCIDs map[string]cid.Cid) {
+	fmt.Printf("   Testing provider lookup for indexed content:\n")
+
+	for filename, c := range sampleCIDs {
+		providers, found, err := ipniInstance.Provider.GetProvidersByCID(c)
+		if err != nil {
+			fmt.Printf("   ❌ Error looking up %s: %v\n", filename, err)
+			continue
+		}
+
+		if found && len(providers) > 0 {
+			fmt.Printf("   ✅ %s: Found %d provider(s)\n", filename, len(providers))
+			for _, provider := range providers {
+				fmt.Printf("      📍 Provider: %s (last seen: %s)\n",
+					provider.ProviderID, provider.LastSeen.Format("15:04:05"))
 			}
 		} else {
-			fmt.Printf("     ❌ No providers found\n")
+			fmt.Printf("   ❌ %s: No providers found\n", filename)
 		}
 	}
-	fmt.Println()
 
-	// Demo 7: Get ranked fetchers for efficient retrieval
-	fmt.Println("🏆 7. Getting ranked fetchers for optimal retrieval:")
+	// Test lookup for non-existent content
+	fmt.Printf("   Testing lookup for non-existent content:\n")
+	hash, _ := multihash.Sum([]byte("non-existent-content"), multihash.SHA2_256, -1)
+	nonExistentCID := cid.NewCidV1(cid.Raw, hash)
 
-	// Use the planner to get ranked fetchers
-	testCID := contentCIDs[0]
-	providers, found, err := ipniWrapper.GetProvidersByCID(testCID)
+	providers, found, err := ipniInstance.Provider.GetProvidersByCID(nonExistentCID)
 	if err != nil {
-		log.Fatalf("Failed to get providers: %v", err)
+		fmt.Printf("   ❌ Error: %v\n", err)
+	} else if !found || len(providers) == 0 {
+		fmt.Printf("   ✅ Correctly returned no providers for non-existent content\n")
+	}
+}
+
+func demonstrateSecurityFeatures(ipniInstance *ipni.IPNI, sampleCIDs map[string]cid.Cid) {
+	providerID := ipniInstance.Provider.ProviderID()
+
+	// Test trust scoring
+	fmt.Printf("   Testing trust scoring:\n")
+	trustScore := ipniInstance.GetTrustScore(providerID)
+	fmt.Printf("   🛡️ Provider trust score: %.3f\n", trustScore)
+
+	if ipniInstance.IsProviderTrusted(providerID) {
+		fmt.Printf("   ✅ Provider is trusted (above threshold)\n")
+	} else {
+		fmt.Printf("   ⚠️ Provider trust below threshold\n")
 	}
 
-	if found && len(providers) > 0 {
-		fmt.Printf("   📋 Planning optimal fetch strategy for CID: %s...\n", testCID.String()[:16])
+	// Test signed announcements
+	fmt.Printf("   Testing signed announcements:\n")
 
-		// Show provider information
-		fmt.Printf("   🎯 Available providers:\n")
-		for i, provider := range providers {
-			fmt.Printf("     %d. Provider ID: %s\n", i+1, provider.ProviderID)
-			fmt.Printf("        Context ID: %x\n", provider.ContextID)
-			if len(provider.MetadataBytes) > 0 {
-				fmt.Printf("        Metadata size: %d bytes\n", len(provider.MetadataBytes))
+	// Get first CID for announcement
+	var firstCID cid.Cid
+	for _, c := range sampleCIDs {
+		firstCID = c
+		break
+	}
+
+	metadata := map[string]string{
+		"protocol":    "bitswap",
+		"version":     "demo-v1",
+		"timestamp":   time.Now().Format(time.RFC3339),
+		"description": "Sample provider announcement",
+	}
+
+	announcement, err := ipniInstance.CreateSignedAnnouncement(
+		providerID, []byte("demo-context"), metadata, []cid.Cid{firstCID})
+	if err != nil {
+		fmt.Printf("   ❌ Failed to create signed announcement: %v\n", err)
+		return
+	}
+
+	fmt.Printf("   ✅ Created signed announcement\n")
+	fmt.Printf("      📝 Signature length: %d bytes\n", len(announcement.Signature))
+	fmt.Printf("      🔑 Public key length: %d bytes\n", len(announcement.PublicKey))
+
+	// Verify the announcement
+	if ipniInstance.VerifyAnnouncement(announcement) {
+		fmt.Printf("   ✅ Signature verification successful\n")
+	} else {
+		fmt.Printf("   ❌ Signature verification failed\n")
+	}
+
+	// Test anti-spam filtering
+	fmt.Printf("   Testing anti-spam protection:\n")
+
+	// Simulate rapid requests from the same provider
+	allowed := 0
+	blocked := 0
+	for i := 0; i < 10; i++ {
+		if ipniInstance.AntiSpam.CheckRateLimit(providerID) {
+			allowed++
+		} else {
+			blocked++
+		}
+	}
+
+	fmt.Printf("   📊 Requests: %d allowed, %d blocked\n", allowed, blocked)
+	if blocked > 0 {
+		fmt.Printf("   ✅ Rate limiting is working\n")
+	}
+}
+
+func demonstrateQueryPlanning(ipniInstance *ipni.IPNI, sampleCIDs map[string]cid.Cid) {
+	// Get first CID for query planning demo
+	var queryCID cid.Cid
+	for _, c := range sampleCIDs {
+		queryCID = c
+		break
+	}
+
+	// Test different query intents
+	queryIntents := []struct {
+		name   string
+		intent ipni.QueryIntent
+	}{
+		{
+			name: "High Quality Video",
+			intent: ipni.QueryIntent{
+				PreferredProtocols: []ipni.TransportProtocol{ipni.ProtocolHTTP, ipni.ProtocolCAR},
+				MaxProviders:       5,
+				RequireHealthy:     true,
+				PreferLocal:        false,
+			},
+		},
+		{
+			name: "Fast Local Access",
+			intent: ipni.QueryIntent{
+				PreferredProtocols: []ipni.TransportProtocol{ipni.ProtocolBitswap},
+				MaxProviders:       3,
+				RequireHealthy:     true,
+				PreferLocal:        true,
+			},
+		},
+		{
+			name: "Best Availability",
+			intent: ipni.QueryIntent{
+				PreferredProtocols: []ipni.TransportProtocol{ipni.ProtocolHTTP, ipni.ProtocolBitswap, ipni.ProtocolGraphSync},
+				MaxProviders:       10,
+				RequireHealthy:     false,
+				PreferLocal:        false,
+			},
+		},
+	}
+
+	fmt.Printf("   Testing query planning strategies:\n")
+	for _, test := range queryIntents {
+		rankedFetchers, found, err := ipniInstance.Planner.RankedFetchersByCID(context.Background(), queryCID, test.intent)
+		if err != nil {
+			fmt.Printf("   ❌ %s: %v\n", test.name, err)
+			continue
+		}
+
+		if !found || len(rankedFetchers) == 0 {
+			fmt.Printf("   ❌ %s: No providers found\n", test.name)
+			continue
+		}
+
+		fmt.Printf("   📋 %s:\n", test.name)
+		fmt.Printf("      🎯 Found %d ranked provider(s)\n", len(rankedFetchers))
+
+		for i, fetcher := range rankedFetchers {
+			if i >= 3 { // Show only top 3
+				break
 			}
+			fmt.Printf("      %d. Score: %.3f, Provider: %s, Protocol: %s\n",
+				fetcher.Priority, fetcher.Score, fetcher.Provider.ProviderID, fetcher.Protocol)
 		}
 	}
-	fmt.Println()
+}
 
-	// Demo 8: Remove specific provider context
-	fmt.Println("🗑️ 8. Managing provider entries:")
+func demonstratePubSubMessaging(ctx context.Context, ipniInstance *ipni.IPNI) {
+	fmt.Printf("   Testing PubSub messaging system:\n")
 
-	// Remove a specific provider context
-	fmt.Printf("   📝 Removing GraphSync provider context...\n")
-	err = ipniWrapper.Remove(graphsyncProviderID, gsContextID)
-	if err != nil {
-		log.Printf("Failed to remove provider context: %v", err)
-	} else {
-		fmt.Printf("   ✅ GraphSync provider context removed\n")
+	// Create a sample provider announcement
+	announcement := &ipni.PubSubProviderAnnouncement{
+		ProviderID:  ipniInstance.Provider.ProviderID().String(),
+		ContextID:   []byte("demo-pubsub-context"),
+		Metadata:    map[string]string{"protocol": "demo", "version": "1.0"},
+		Multihashes: []string{"QmSampleHash1", "QmSampleHash2"},
+		Protocol:    ipni.ProtocolBitswap,
+		Addresses:   []string{"/ip4/127.0.0.1/tcp/4001"},
+		TTL:         time.Hour * 24,
 	}
 
-	// Verify removal
-	providers, found, err = ipniWrapper.GetProvidersByCID(contentCIDs[0])
+	// Publish the announcement
+	err := ipniInstance.PubSub.PublishProviderAnnouncement(ctx, announcement)
 	if err != nil {
-		log.Printf("Failed to verify removal: %v", err)
-	} else if found {
-		fmt.Printf("   📊 Remaining providers: %d\n", len(providers))
-		for _, p := range providers {
-			fmt.Printf("     • %s\n", p.ProviderID)
-		}
-	}
-	fmt.Println()
-
-	// Demo 9: Performance and statistics
-	fmt.Println("📊 9. Performance analysis and statistics:")
-
-	// Get final statistics
-	_, err = ipniWrapper.Stats()
-	if err != nil {
-		log.Printf("Failed to get final stats: %v", err)
-	} else {
-		fmt.Printf("   📈 Index Statistics available\n")
+		fmt.Printf("   ❌ Failed to publish announcement: %v\n", err)
+		return
 	}
 
-	// Get storage size
-	size, err := ipniWrapper.Size()
-	if err != nil {
-		log.Printf("Failed to get size: %v", err)
-	} else {
-		fmt.Printf("   💾 Storage size: %d bytes\n", size)
+	fmt.Printf("   ✅ Published provider announcement\n")
+	fmt.Printf("      📢 Provider: %s\n", announcement.ProviderID)
+	fmt.Printf("      🏷️ Protocol: %s\n", announcement.Protocol)
+	fmt.Printf("      📦 Multihashes: %d\n", len(announcement.Multihashes))
+
+	// Get PubSub metrics
+	metrics := ipniInstance.PubSub.GetMetrics()
+	fmt.Printf("   📊 PubSub metrics:\n")
+	fmt.Printf("      📨 Messages sent: %d\n", metrics.MessagesSent)
+	fmt.Printf("      📥 Messages received: %d\n", metrics.MessagesReceived)
+	fmt.Printf("      📋 Topics: %d\n", metrics.TopicCount)
+	fmt.Printf("      👥 Subscribers: %d\n", metrics.SubscriberCount)
+
+	// Get active topics
+	topics := ipniInstance.PubSub.GetTopics()
+	fmt.Printf("      🏷️ Active topics: %s\n", strings.Join(topics, ", "))
+}
+
+func displaySystemMetrics(ipniInstance *ipni.IPNI) {
+	// Get comprehensive system stats
+	stats := ipniInstance.GetStats()
+	fmt.Printf("   📊 System Statistics:\n")
+	fmt.Printf("      👥 Total providers: %d\n", stats.TotalProviders)
+	fmt.Printf("      📚 Total entries: %d\n", stats.TotalEntries)
+	fmt.Printf("      🔍 Total queries: %d\n", stats.QueryCount)
+	fmt.Printf("      🗂️ Total multihashes: %d\n", stats.TotalMultihashes)
+	fmt.Printf("      🕐 Last update: %s\n", stats.LastUpdate.Format("15:04:05"))
+
+	// Get comprehensive metrics
+	monitoring := ipniInstance.GetMetrics()
+	fmt.Printf("   🔍 Monitoring Metrics:\n")
+	fmt.Printf("      📈 Query rate: %.2f queries/sec\n", float64(monitoring.QueriesTotal))
+	fmt.Printf("      ⚡ Average query latency: %.2fms\n", monitoring.QueryLatencyMS)
+	fmt.Printf("      🎯 Cache hit rate: %.1f%%\n", monitoring.CacheHitRate*100)
+	fmt.Printf("      💾 Index size: %.1fMB\n", float64(monitoring.IndexSizeBytes)/(1024*1024))
+	fmt.Printf("      🌡️ Successful queries: %d/%d\n", monitoring.QueriesSuccessful, monitoring.QueriesTotal)
+
+	// Get subscriber stats
+	subscriberStats := ipniInstance.Subscriber.GetSubscriptionStats()
+	fmt.Printf("   📡 Subscriber Statistics:\n")
+	for key, value := range subscriberStats {
+		fmt.Printf("      %s: %v\n", key, value)
 	}
+}
 
-	// Flush to ensure persistence
-	err = ipniWrapper.Flush()
-	if err != nil {
-		log.Printf("Failed to flush: %v", err)
-	} else {
-		fmt.Printf("   ✅ Index flushed to persistent storage\n")
-	}
+func showUsageExamples() {
+	fmt.Println("\n📖 IPNI Usage Examples:")
+	fmt.Println("   🌐 This demo shows key IPNI concepts:")
 	fmt.Println()
 
-	// Demo 10: Real-world usage patterns
-	fmt.Println("🌍 10. Real-world usage patterns:")
+	fmt.Println("   📄 Content Indexing:")
+	fmt.Println("      • Content is identified by cryptographic CIDs")
+	fmt.Println("      • Providers register availability for specific content")
+	fmt.Println("      • Metadata describes protocols and capabilities")
 
-	fmt.Printf("   📚 Common Use Cases:\n")
-	fmt.Printf("     • Content routing: Find providers for any CID\n")
-	fmt.Printf("     • Protocol selection: Choose optimal retrieval method\n")
-	fmt.Printf("     • Provider discovery: Locate content across networks\n")
-	fmt.Printf("     • Load balancing: Distribute requests across providers\n")
-	fmt.Printf("     • Failover: Automatic fallback to alternative providers\n")
+	fmt.Println("\n   🔍 Provider Discovery:")
+	fmt.Println("      • Clients query the index using CIDs")
+	fmt.Println("      • IPNI returns ranked list of providers")
+	fmt.Println("      • Query planning optimizes provider selection")
 
-	fmt.Printf("\n   🔧 Integration Points:\n")
-	fmt.Printf("     • Bitswap: Direct P2P block exchange\n")
-	fmt.Printf("     • GraphSync: Efficient DAG synchronization\n")
-	fmt.Printf("     • HTTP Gateways: Web-compatible content access\n")
-	fmt.Printf("     • CAR files: Partial content retrieval\n")
+	fmt.Println("\n   🔐 Security Features:")
+	fmt.Println("      • Ed25519 signatures verify provider announcements")
+	fmt.Println("      • Trust scoring prevents malicious providers")
+	fmt.Println("      • Rate limiting protects against spam")
 
-	fmt.Printf("\n   ⚡ Performance Tips:\n")
-	fmt.Printf("     • Cache frequently accessed provider info\n")
-	fmt.Printf("     • Use health scoring for provider selection\n")
-	fmt.Printf("     • Implement TTL-based provider refresh\n")
-	fmt.Printf("     • Batch index updates for efficiency\n")
-	fmt.Printf("     • Monitor provider availability metrics\n")
+	fmt.Println("\n   📡 Real-time Synchronization:")
+	fmt.Println("      • PubSub enables instant network updates")
+	fmt.Println("      • Advertisement chains provide audit trails")
+	fmt.Println("      • Gossip protocols distribute information")
 
-	fmt.Println()
-	fmt.Println("✅ IPNI demo completed successfully!")
-	fmt.Println()
-	fmt.Println("🔗 Key concepts demonstrated:")
-	fmt.Println("   • Content indexing with multiple transport protocols")
-	fmt.Println("   • Provider discovery and ranking")
-	fmt.Println("   • Metadata storage for protocol-specific information")
-	fmt.Println("   • Efficient provider selection strategies")
-	fmt.Println("   • Index management and statistics")
-	fmt.Println("   • Real-world integration patterns")
-	fmt.Println()
-	fmt.Println("💡 IPNI enables efficient content discovery and optimal")
-	fmt.Println("   provider selection across distributed IPFS networks!")
+	fmt.Println("\n   🎯 Production Use Cases:")
+	fmt.Println("      • Content discovery in IPFS networks")
+	fmt.Println("      • Provider routing for distributed storage")
+	fmt.Println("      • Decentralized content delivery networks")
+
+	fmt.Println("\n   💡 Try This:")
+	fmt.Println("      • Run with different content types")
+	fmt.Println("      • Experiment with query strategies")
+	fmt.Println("      • Monitor system metrics")
+	fmt.Println("      • Test security verification")
 }
