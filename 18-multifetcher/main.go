@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p/core/peer"
 	mc "github.com/multiformats/go-multicodec"
 
@@ -50,8 +51,9 @@ func main() {
 		log.Fatalf("Failed to create IPLD wrapper: %v", err)
 	}
 
-	// Setup IPNI for provider discovery
-	ipniWrapper, err := ipni.New("/tmp/multifetcher-ipni", "topic", nil, nil, nil)
+	// Setup IPNI for provider discovery with in-memory datastore
+	ipniDatastore := datastore.NewMapDatastore()
+	ipniWrapper, err := ipni.New(ipniDatastore)
 	if err != nil {
 		log.Fatalf("Failed to create IPNI wrapper: %v", err)
 	}
@@ -121,7 +123,7 @@ func main() {
 	provider3, _ := peer.Decode("12D3KooWQYhTNmY1kZXCJM3BFrwCNhkJQYxWqHN7TAWkqLmZv6wC")
 
 	// Index with Bitswap provider
-	err = ipniWrapper.PutBitswap(provider1, []byte("bitswap-ctx"), contentCIDs...)
+	err = ipniWrapper.PutCID(provider1, []byte("bitswap-ctx"), nil, contentCIDs...)
 	if err != nil {
 		log.Printf("Failed to index with Bitswap: %v", err)
 	}
@@ -130,7 +132,7 @@ func main() {
 	fmt.Printf("   ⚠️  HTTP gateway indexing skipped due to library updates\n")
 
 	// Index with GraphSync provider
-	err = ipniWrapper.PutGraphSyncFilecoin(provider3, contentCIDs[0], false, true, []byte("graphsync-ctx"), contentCIDs...)
+	err = ipniWrapper.PutCID(provider3, []byte("graphsync-ctx"), nil, contentCIDs...)
 	if err != nil {
 		log.Printf("Failed to index with GraphSync: %v", err)
 	}

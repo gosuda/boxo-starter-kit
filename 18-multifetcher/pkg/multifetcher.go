@@ -49,7 +49,7 @@ func DefaultConfig() FetcherConfig {
 // MultiFetcher orchestrates parallel fetching across multiple protocols
 type MultiFetcher struct {
 	config      FetcherConfig
-	ipni        *ipni.IPNIWrapper
+	ipni        *ipni.IPNI
 	graphsync   *graphsync.GraphSyncWrapper
 	bitswap     *bitswap.BitswapWrapper
 	httpFetcher *HTTPFetcher
@@ -108,12 +108,14 @@ func (mf *MultiFetcher) FetchBlock(ctx context.Context, c cid.Cid) (*FetchResult
 	mf.recordRequest()
 
 	// Get ranked fetchers from IPNI
-	intent := ipni.Intent{
-		Format: "raw",
-		Scope:  "block",
+	intent := ipni.QueryIntent{
+		PreferredProtocols: []ipni.TransportProtocol{ipni.ProtocolBitswap, ipni.ProtocolHTTP},
+		MaxProviders:       5,
+		RequireHealthy:     true,
+		PreferLocal:        false,
 	}
 
-	rankedFetchers, found, err := mf.ipni.RankedFetchersByCID(ctx, c, intent)
+	rankedFetchers, found, err := mf.ipni.Planner.RankedFetchersByCID(ctx, c, intent)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get providers from IPNI: %w", err)
 	}
@@ -135,12 +137,14 @@ func (mf *MultiFetcher) FetchBlock(ctx context.Context, c cid.Cid) (*FetchResult
 func (mf *MultiFetcher) FetchDAG(ctx context.Context, root cid.Cid, selector ipld.Node) (*FetchResult, error) {
 	mf.recordRequest()
 
-	intent := ipni.Intent{
-		Format: "car",
-		Scope:  "entity",
+	intent := ipni.QueryIntent{
+		PreferredProtocols: []ipni.TransportProtocol{ipni.ProtocolGraphSync, ipni.ProtocolCAR},
+		MaxProviders:       5,
+		RequireHealthy:     true,
+		PreferLocal:        false,
 	}
 
-	rankedFetchers, found, err := mf.ipni.RankedFetchersByCID(ctx, root, intent)
+	rankedFetchers, found, err := mf.ipni.Planner.RankedFetchersByCID(ctx, root, intent)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get providers from IPNI: %w", err)
 	}
@@ -194,18 +198,18 @@ func (mf *MultiFetcher) raceProtocols(ctx context.Context, c cid.Cid, fetchers [
 			}
 
 			var result *FetchResult
-			switch f.Proto {
-			case ipni.TBitswap:
-				result = mf.fetchViaBitswap(fetchCtx, c, f.ProviderID)
-			case ipni.TGraphSync:
-				result = mf.fetchViaGraphSync(fetchCtx, c, f.ProviderID, selector)
-			case ipni.THTTP:
-				result = mf.fetchViaHTTP(fetchCtx, c, f.ProviderID, f.Meta)
+			switch f.Protocol {
+			case ipni.ProtocolBitswap:
+				result = mf.fetchViaBitswap(fetchCtx, c, f.Provider.ProviderID.String())
+			case ipni.ProtocolGraphSync:
+				result = mf.fetchViaGraphSync(fetchCtx, c, f.Provider.ProviderID.String(), selector)
+			case ipni.ProtocolHTTP:
+				result = mf.fetchViaHTTP(fetchCtx, c, f.Provider.ProviderID.String(), f.Provider.Metadata)
 			default:
 				result = &FetchResult{
-					Protocol: string(f.Proto),
-					Provider: f.ProviderID,
-					Error:    fmt.Errorf("unsupported protocol: %s", f.Proto),
+					Protocol: string(f.Protocol),
+					Provider: f.Provider.ProviderID.String(),
+					Error:    fmt.Errorf("unsupported protocol: %s", f.Protocol),
 					CID:      c,
 				}
 			}
