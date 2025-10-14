@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -45,7 +46,8 @@ func TestMultiFetcher_Creation(t *testing.T) {
 	require.NoError(t, err)
 	defer bs.Close()
 
-	ipniWrapper, err := ipni.New("", "topic", nil, nil, nil)
+	ipniDatastore := datastore.NewMapDatastore()
+	ipniWrapper, err := ipni.New(ipniDatastore)
 	require.NoError(t, err)
 	defer ipniWrapper.Close()
 
@@ -79,7 +81,8 @@ func TestMultiFetcher_HTTPFetcher(t *testing.T) {
 }
 
 func TestMultiFetcher_ConfigValidation(t *testing.T) {
-	ipniWrapper, err := ipni.New("", "topic", nil, nil, nil)
+	ipniDatastore := datastore.NewMapDatastore()
+	ipniWrapper, err := ipni.New(ipniDatastore)
 	require.NoError(t, err)
 	defer ipniWrapper.Close()
 
@@ -136,7 +139,8 @@ func TestMultiFetcher_Integration(t *testing.T) {
 func BenchmarkMultiFetcher_Creation(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		ipniWrapper, err := ipni.New("", "topic", nil, nil, nil)
+		ipniDatastore := datastore.NewMapDatastore()
+		ipniWrapper, err := ipni.New(ipniDatastore)
 		require.NoError(b, err)
 
 		mf := multifetcher.NewMultiFetcher(ipniWrapper, nil, nil, nil)
