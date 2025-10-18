@@ -47,6 +47,10 @@ func NewGateway(dagWrapper *dag.IpldWrapper, unixfsSystem *unixfs.UnixFsWrapper,
 
 	// Create HTTP server with routes
 	mux := http.NewServeMux()
+
+	// Serve static files (HTML, CSS, JS) with proper MIME types
+	mux.HandleFunc("/static/", gateway.handleStatic)
+
 	mux.HandleFunc("/", gateway.handleRoot)
 	mux.HandleFunc("/ipfs/", gateway.handleIPFS)
 	mux.HandleFunc("/api/v0/", gateway.handleAPI)
@@ -80,76 +84,62 @@ func (g *Gateway) Stop() error {
 	return nil
 }
 
-// handleRoot serves the gateway homepage
+// handleStatic serves static files (CSS, JS) with proper MIME types
+func (g *Gateway) handleStatic(w http.ResponseWriter, r *http.Request) {
+	// Extract filename from /static/filename
+	filename := strings.TrimPrefix(r.URL.Path, "/static/")
+	if filename == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Read file from embedded FS
+	data, err := StaticFiles.ReadFile("static/" + filename)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Set proper MIME type based on extension
+	contentType := "application/octet-stream"
+	if strings.HasSuffix(filename, ".css") {
+		contentType = "text/css; charset=utf-8"
+	} else if strings.HasSuffix(filename, ".js") {
+		contentType = "application/javascript; charset=utf-8"
+	} else if strings.HasSuffix(filename, ".html") {
+		contentType = "text/html; charset=utf-8"
+	} else if strings.HasSuffix(filename, ".json") {
+		contentType = "application/json; charset=utf-8"
+	} else if strings.HasSuffix(filename, ".png") {
+		contentType = "image/png"
+	} else if strings.HasSuffix(filename, ".jpg") || strings.HasSuffix(filename, ".jpeg") {
+		contentType = "image/jpeg"
+	} else if strings.HasSuffix(filename, ".svg") {
+		contentType = "image/svg+xml"
+	}
+
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Cache-Control", "public, max-age=31536000") // Cache for 1 year
+	w.Write(data)
+}
+
+// handleRoot serves the gateway homepage with full web UI
 func (g *Gateway) handleRoot(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
 		return
 	}
 
-	w.Header().Set("Content-Type", "text/html")
-	fmt.Fprintf(w, `<!DOCTYPE html>
-<html>
-<head>
-    <title>IPFS Gateway</title>
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
-        .header { text-align: center; margin-bottom: 40px; }
-        .section { margin: 30px 0; }
-        .code { background: #f5f5f5; padding: 10px; border-radius: 4px; }
-        .example { margin: 10px 0; }
-        a { color: #0066cc; text-decoration: none; }
-        a:hover { text-decoration: underline; }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>🌐 IPFS Gateway</h1>
-        <p>HTTP Gateway for IPFS Content</p>
-    </div>
+	// Serve index.html from embedded static files
+	data, err := StaticFiles.ReadFile("static/index.html")
+	if err != nil {
+		// Debug: print error
+		http.Error(w, fmt.Sprintf("Failed to load index.html: %v", err), http.StatusInternalServerError)
+		return
+	}
 
-    <div class="section">
-        <h2>📖 How to Use</h2>
-        <p>Access IPFS content via HTTP:</p>
-        <div class="code">http://localhost:%d/ipfs/&lt;CID&gt;</div>
-    </div>
-
-    <div class="section">
-        <h2>🔗 Example URLs</h2>
-        <div class="example">
-            <strong>Raw content:</strong><br>
-            <a href="/ipfs/QmT78zSuBmuS4z925WZfrqQ1qHaJ56DQaTfyMUF7F8ff5o">/ipfs/QmT78z... (example CID)</a>
-        </div>
-        <div class="example">
-            <strong>Directory listing:</strong><br>
-            <a href="/ipfs/QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn">/ipfs/QmUNL... (example directory)</a>
-        </div>
-    </div>
-
-    <div class="section">
-        <h2>🔧 API Endpoints</h2>
-        <div class="example">
-            <strong>Add content:</strong><br>
-            <div class="code">curl -X POST http://localhost:%d/api/v0/add -F "file=@example.txt"</div>
-        </div>
-        <div class="example">
-            <strong>Get content info:</strong><br>
-            <div class="code">curl http://localhost:%d/api/v0/object/stat?cid=&lt;CID&gt;</div>
-        </div>
-    </div>
-
-    <div class="section">
-        <h2>ℹ️ About</h2>
-        <p>This is an educational IPFS Gateway implementation demonstrating:</p>
-        <ul>
-            <li>HTTP access to IPFS content</li>
-            <li>UnixFS directory listings</li>
-            <li>Content-Type detection</li>
-            <li>Basic API endpoints</li>
-        </ul>
-    </div>
-</body>
-</html>`, g.port, g.port, g.port)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write(data)
 }
 
 // handleIPFS handles /ipfs/<cid> requests
@@ -171,20 +161,9 @@ func (g *Gateway) handleIPFS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx := r.Context()
+	fmt.Printf("📥 Request for CID: %s\n", c.String())
 
-	// Check if CID exists
-	exists, err := g.dagWrapper.BlockServiceWrapper.HasBlock(ctx, c)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to check CID: %s", err), http.StatusInternalServerError)
-		return
-	}
-	if !exists {
-		http.Error(w, "Content not found", http.StatusNotFound)
-		return
-	}
-
-	// Try to resolve as UnixFS first
+	// Try to resolve as UnixFS first (don't check HasBlock, just try to get it)
 	if g.unixfsSystem != nil {
 		g.handleUnixFS(w, r, c, subPath)
 		return
@@ -198,39 +177,53 @@ func (g *Gateway) handleIPFS(w http.ResponseWriter, r *http.Request) {
 func (g *Gateway) handleUnixFS(w http.ResponseWriter, r *http.Request, c cid.Cid, subPath string) {
 	ctx := r.Context()
 
+	fmt.Printf("📂 Attempting UnixFS Get for CID: %s\n", c.String())
+
 	// Try to get as UnixFS node
 	node, err := g.unixfsSystem.Get(ctx, c)
-	if err == nil {
-		// Navigate to subPath if needed
-		if subPath != "" {
-			node, err = g.navigateToPath(ctx, node, subPath)
-			if err != nil {
-				http.Error(w, fmt.Sprintf("Path not found: %s", err), http.StatusNotFound)
-				return
-			}
-		}
+	if err != nil {
+		fmt.Printf("❌ UnixFS Get failed: %v\n", err)
+		// Fallback to raw content
+		g.handleRawContent(w, r, c)
+		return
+	}
 
-		// Check node type and serve accordingly
-		switch n := node.(type) {
-		case files.File:
-			defer n.Close()
-			data, err := io.ReadAll(n)
-			if err != nil {
-				http.Error(w, fmt.Sprintf("Failed to read file: %s", err), http.StatusInternalServerError)
-				return
-			}
-			g.serveFile(w, r, data, subPath)
-			return
+	fmt.Printf("✅ UnixFS Get succeeded, node type: %T\n", node)
 
-		case files.Directory:
-			defer n.Close()
-			entries := g.collectDirectoryEntries(n)
-			g.serveDirectoryListing(w, r, c, subPath, entries)
+	// Navigate to subPath if needed
+	if subPath != "" {
+		node, err = g.navigateToPath(ctx, node, subPath)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Path not found: %s", err), http.StatusNotFound)
 			return
 		}
 	}
 
+	// Check node type and serve accordingly
+	switch n := node.(type) {
+	case files.File:
+		fmt.Printf("📄 Serving file, reading content...\n")
+		defer n.Close()
+		data, err := io.ReadAll(n)
+		if err != nil {
+			fmt.Printf("❌ Failed to read file: %v\n", err)
+			http.Error(w, fmt.Sprintf("Failed to read file: %s", err), http.StatusInternalServerError)
+			return
+		}
+		fmt.Printf("✅ Read %d bytes, serving file\n", len(data))
+		g.serveFile(w, r, data, subPath)
+		return
+
+	case files.Directory:
+		fmt.Printf("📁 Serving directory listing\n")
+		defer n.Close()
+		entries := g.collectDirectoryEntries(n)
+		g.serveDirectoryListing(w, r, c, subPath, entries)
+		return
+	}
+
 	// Fallback to raw content
+	fmt.Printf("⚠️  Unknown node type, falling back to raw content\n")
 	g.handleRawContent(w, r, c)
 }
 
@@ -534,18 +527,27 @@ func (g *Gateway) handleAPIAdd(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var c cid.Cid
 
+	fmt.Printf("📤 Uploading file: %s (%d bytes)\n", header.Filename, len(data))
+
 	if g.unixfsSystem != nil {
 		// Use UnixFS to store file with metadata
 		fileReader := strings.NewReader(string(data))
 		fileNode := files.NewReaderFile(fileReader)
 		c, err = g.unixfsSystem.Put(ctx, fileNode)
+		if err != nil {
+			fmt.Printf("❌ UnixFS Put failed: %v\n", err)
+			http.Error(w, fmt.Sprintf("Failed to add file: %s", err), http.StatusInternalServerError)
+			return
+		}
+		fmt.Printf("✅ UnixFS Put succeeded, CID: %s\n", c.String())
 	} else {
 		c, err = g.dagWrapper.BlockServiceWrapper.AddBlockRaw(ctx, data)
-	}
-
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to add file: %s", err), http.StatusInternalServerError)
-		return
+		if err != nil {
+			fmt.Printf("❌ AddBlockRaw failed: %v\n", err)
+			http.Error(w, fmt.Sprintf("Failed to add file: %s", err), http.StatusInternalServerError)
+			return
+		}
+		fmt.Printf("✅ AddBlockRaw succeeded, CID: %s\n", c.String())
 	}
 
 	// Return JSON response
@@ -555,6 +557,7 @@ func (g *Gateway) handleAPIAdd(w http.ResponseWriter, r *http.Request) {
 		"Hash": c.String(),
 		"Size": len(data),
 	}
+	fmt.Printf("📋 Returning response: %+v\n", response)
 	json.NewEncoder(w).Encode(response)
 }
 
@@ -574,32 +577,46 @@ func (g *Gateway) handleAPIObjectStat(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	// Check if exists
-	exists, err := g.dagWrapper.BlockServiceWrapper.HasBlock(ctx, c)
-	if err != nil {
-		http.Error(w, "Failed to check CID", http.StatusInternalServerError)
-		return
-	}
-	if !exists {
-		http.Error(w, "Object not found", http.StatusNotFound)
-		return
+	// Try to get actual file size via UnixFS first
+	var actualSize int64
+	var fileType string = "file"
+
+	if g.unixfsSystem != nil {
+		node, err := g.unixfsSystem.Get(ctx, c)
+		if err == nil {
+			// Successfully got as UnixFS node
+			switch n := node.(type) {
+			case files.File:
+				defer n.Close()
+				data, err := io.ReadAll(n)
+				if err == nil {
+					actualSize = int64(len(data))
+				}
+			case files.Directory:
+				defer n.Close()
+				fileType = "directory"
+				actualSize = 0 // Directories don't have a simple size
+			}
+		}
 	}
 
-	// Get object info
-	data, err := g.dagWrapper.BlockServiceWrapper.GetBlockRaw(ctx, c)
-	if err != nil {
-		http.Error(w, "Failed to get object", http.StatusInternalServerError)
-		return
+	// Fallback: get block size if UnixFS failed
+	if actualSize == 0 && fileType == "file" {
+		data, err := g.dagWrapper.BlockServiceWrapper.GetBlockRaw(ctx, c)
+		if err != nil {
+			http.Error(w, "Failed to get object", http.StatusInternalServerError)
+			return
+		}
+		actualSize = int64(len(data))
 	}
 
 	// Return JSON response
 	w.Header().Set("Content-Type", "application/json")
 	response := map[string]any{
 		"Hash":           c.String(),
-		"DataSize":       len(data),
-		"LinksSize":      0, // Simplified
-		"CumulativeSize": len(data),
-		"Type":           "file", // Simplified
+		"DataSize":       actualSize,
+		"CumulativeSize": actualSize,
+		"Type":           fileType,
 	}
 	json.NewEncoder(w).Encode(response)
 }

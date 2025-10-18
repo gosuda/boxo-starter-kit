@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"embed"
 	"fmt"
 	"log"
 	"os"
@@ -12,32 +13,67 @@ import (
 
 	"github.com/ipfs/boxo/files"
 
+	persistent "github.com/gosuda/boxo-starter-kit/01-persistent/pkg"
+	bitswap "github.com/gosuda/boxo-starter-kit/04-bitswap/pkg"
 	dag "github.com/gosuda/boxo-starter-kit/05-dag-ipld/pkg"
 	unixfs "github.com/gosuda/boxo-starter-kit/06-unixfs-car/pkg"
-	gateway "github.com/gosuda/boxo-starter-kit/10-gateway/pkg"
+	gw "github.com/gosuda/boxo-starter-kit/10-gateway/pkg"
 )
+
+//go:embed static
+var staticFiles embed.FS
 
 func main() {
 	fmt.Println("=== IPFS HTTP Gateway Demo ===")
+
+	// Set static files for the gateway
+	gw.StaticFiles = staticFiles
+
+	// Debug: check if static files are embedded
+	entries, err := staticFiles.ReadDir("static")
+	if err != nil {
+		fmt.Printf("⚠️  Warning: Failed to read static directory: %v\n", err)
+	} else {
+		fmt.Printf("✅ Embedded static files:\n")
+		for _, entry := range entries {
+			fmt.Printf("   - %s\n", entry.Name())
+		}
+	}
 
 	ctx := context.Background()
 
 	// Demo 1: Create storage and UnixFS system
 	fmt.Println("\n1. Setting up storage and UnixFS system:")
 
-	// Create DAG wrapper
-	dagWrapper, err := dag.NewIpldWrapper(ctx, nil)
+	// Create persistent storage (survives restart)
+	storageDir := "./gateway-data"
+	fmt.Printf("   📁 Using persistent storage: %s\n", storageDir)
+
+	persistentStore, err := persistent.New(persistent.Badgerdb, storageDir)
+	if err != nil {
+		log.Fatalf("Failed to create persistent storage: %v", err)
+	}
+
+	// Create BlockService with persistent storage
+	blockService, err := bitswap.NewBlockService(ctx, persistentStore, nil)
+	if err != nil {
+		log.Fatalf("Failed to create BlockService: %v", err)
+	}
+
+	// Create DAG wrapper with persistent blockstore
+	dagWrapper, err := dag.NewIpldWrapper(ctx, blockService)
 	if err != nil {
 		log.Fatalf("Failed to create DAG wrapper: %v", err)
 	}
 	defer dagWrapper.BlockServiceWrapper.Close()
 
-	// Create UnixFS system
-	unixfsSystem, err := unixfs.New(256*1024, nil) // 256KB chunks
+	// Create UnixFS system using the SAME dagWrapper
+	// This ensures uploaded files are accessible via both systems
+	unixfsSystem, err := unixfs.New(256*1024, dagWrapper)
 	if err != nil {
 		log.Fatalf("Failed to create UnixFS system: %v", err)
 	}
-	defer unixfsSystem.BlockServiceWrapper.Close()
+	// unixfsSystem shares the blockservice with dagWrapper, so we don't close it separately
 
 	fmt.Printf("   ✅ Storage and UnixFS system ready\n")
 
@@ -48,10 +84,10 @@ func main() {
 	// Demo 3: Create and start gateway
 	fmt.Println("\n3. Starting HTTP Gateway:")
 
-	config := gateway.GatewayConfig{
+	config := gw.GatewayConfig{
 		Port: 8080,
 	}
-	gw := gateway.NewGateway(dagWrapper, unixfsSystem, config)
+	gateway := gw.NewGateway(dagWrapper, unixfsSystem, config)
 
 	// Handle graceful shutdown
 	sigChan := make(chan os.Signal, 1)
@@ -59,7 +95,7 @@ func main() {
 
 	// Start gateway in goroutine
 	go func() {
-		if err := gw.Start(); err != nil {
+		if err := gateway.Start(); err != nil {
 			log.Printf("Gateway error: %v", err)
 		}
 	}()
@@ -75,7 +111,7 @@ func main() {
 	<-sigChan
 
 	fmt.Println("\n📤 Shutting down gateway...")
-	if err := gw.Stop(); err != nil {
+	if err := gateway.Stop(); err != nil {
 		log.Printf("Error stopping gateway: %v", err)
 	}
 
