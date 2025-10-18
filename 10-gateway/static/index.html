@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPFS Gateway - Upload & Download</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌐 IPFS Gateway</h1>
+            <p>Upload and Download Files on the InterPlanetary File System</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('upload')">📤 Upload</button>
+            <button class="tab" onclick="switchTab('download')">📥 Download</button>
+            <button class="tab" onclick="switchTab('about')">ℹ️ About</button>
+        </div>
+
+        <div class="content">
+            <!-- UPLOAD TAB -->
+            <div id="upload-tab" class="tab-content active">
+                <div class="info-box">
+                    <div class="info-box-title">💡 How to Upload</div>
+                    <div class="info-box-text">
+                        Drag and drop files into the box below, or click to browse.
+                        Your files will be stored on IPFS and you'll receive a unique CID (Content Identifier).
+                    </div>
+                </div>
+
+                <div class="upload-zone" id="uploadZone">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">Drag & drop files here</div>
+                    <div class="upload-hint">or click to browse your computer</div>
+                    <input type="file" id="fileInput" style="display:none" multiple>
+                </div>
+
+                <div class="progress-container" id="progressContainer">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-text" id="progressText">Uploading...</div>
+                </div>
+
+                <div id="fileList" class="file-list"></div>
+
+                <div class="result" id="uploadResult">
+                    <div class="result-title">✅ Upload Successful!</div>
+                    <div>Your content is now stored on IPFS:</div>
+                    <div class="result-cid" id="resultCID"></div>
+                    <div class="result-actions">
+                        <button class="btn btn-primary" onclick="copyToClipboard()">📋 Copy CID</button>
+                        <button class="btn btn-secondary" onclick="viewContent()">👁️ View Content</button>
+                        <button class="btn btn-secondary" onclick="shareLink()">🔗 Share Link</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DOWNLOAD TAB -->
+            <div id="download-tab" class="tab-content">
+                <div class="info-box">
+                    <div class="info-box-title">💡 How to Download</div>
+                    <div class="info-box-text">
+                        Enter a CID (Content Identifier) below to retrieve content from IPFS.
+                        CIDs look like: QmT78zSuBmuS4z925WZfrqQ1qHaJ56DQaTfyMUF7F8ff5o
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label class="input-label">Enter CID:</label>
+                    <input type="text"
+                           class="input-box"
+                           id="cidInput"
+                           placeholder="QmT78zSuBmuS4z925WZfrqQ1qHaJ56DQaTfyMUF7F8ff5o"
+                           spellcheck="false">
+                </div>
+
+                <button class="btn btn-primary" style="width:100%" onclick="fetchContent()">
+                    📥 Fetch Content
+                </button>
+
+                <div class="result" id="downloadResult">
+                    <div class="result-title">✅ Content Found!</div>
+                    <div id="downloadInfo"></div>
+                    <div class="result-actions">
+                        <button class="btn btn-primary" onclick="openInBrowser()">🌐 Open in Browser</button>
+                        <button class="btn btn-secondary" onclick="downloadFile()">💾 Download File</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ABOUT TAB -->
+            <div id="about-tab" class="tab-content">
+                <h2 style="margin-bottom: 20px; color: #1f2937;">About This Gateway</h2>
+
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="stat-value" id="statFiles">-</div>
+                        <div class="stat-label">Files Uploaded</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statSize">-</div>
+                        <div class="stat-label">Total Storage</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statDownloads">-</div>
+                        <div class="stat-label">Downloads</div>
+                    </div>
+                </div>
+
+                <h3 style="margin: 30px 0 16px; color: #374151;">What is IPFS?</h3>
+                <p style="line-height: 1.8; color: #6b7280; margin-bottom: 20px;">
+                    IPFS (InterPlanetary File System) is a peer-to-peer hypermedia protocol designed to make
+                    the web faster, safer, and more open. Unlike traditional HTTP, IPFS uses content-addressing
+                    instead of location-addressing, meaning files are retrieved by <em>what</em> they are, not
+                    <em>where</em> they are.
+                </p>
+
+                <h3 style="margin: 30px 0 16px; color: #374151;">Features</h3>
+                <ul style="line-height: 2; color: #6b7280; padding-left: 20px;">
+                    <li>✅ Content-addressed storage</li>
+                    <li>✅ Decentralized and peer-to-peer</li>
+                    <li>✅ Permanent and immutable content</li>
+                    <li>✅ Built-in deduplication</li>
+                    <li>✅ Efficient data distribution</li>
+                </ul>
+
+                <h3 style="margin: 30px 0 16px; color: #374151;">API Endpoints</h3>
+                <div style="background: #f9fafb; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb;">
+                    <p style="margin-bottom: 12px; color: #374151;"><strong>Upload:</strong></p>
+                    <code style="display: block; background: white; padding: 12px; border-radius: 4px; margin-bottom: 16px; color: #1f2937;">
+                        POST /api/v0/add
+                    </code>
+
+                    <p style="margin-bottom: 12px; color: #374151;"><strong>Download:</strong></p>
+                    <code style="display: block; background: white; padding: 12px; border-radius: 4px; margin-bottom: 16px; color: #1f2937;">
+                        GET /ipfs/&lt;CID&gt;
+                    </code>
+
+                    <p style="margin-bottom: 12px; color: #374151;"><strong>Get Info:</strong></p>
+                    <code style="display: block; background: white; padding: 12px; border-radius: 4px; color: #1f2937;">
+                        GET /api/v0/object/stat?cid=&lt;CID&gt;
+                    </code>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
