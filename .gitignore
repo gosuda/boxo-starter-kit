@@ -8,6 +8,11 @@
 *.so
 *.dylib
 
+# Module demo binaries
+*-demo
+*-node
+simple-indexer
+
 # Test binary, built with `go test -c`
 *.test
 
@@ -23,6 +28,10 @@ profile.cov
 # Go workspace file
 go.work
 go.work.sum
+
+# Module-level go.mod and go.sum (managed at root level)
+*/go.mod
+*/go.sum
 
 # env file
 .env
