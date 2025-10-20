@@ -261,18 +261,13 @@ fmt.Printf("Content: %d, Providers: %d, Records: %d\n",
 - **Auto-Cleanup**: Background goroutine removes expired records
 - **Max Limit**: 20 providers per content (configurable)
 
-## 🆚 vs Production Version
+## 📊 Module Stats
 
-| Feature | 17-ipni (Current) | 17-ipni-old |
-|---------|-------------------|-------------|
-| Lines | ~985 | 2,642 |
-| Files | 4 | 8 |
-| Learning | 10 min | Hours |
-| Persistence | In-memory | Configurable |
-| PubSub | No | Yes |
-| Use Case | Education | Production |
-
-**When to use:** Learning & small projects → this version. Production → see `../17-ipni-old/`
+- **Total Lines**: ~985
+- **Files**: 4 core components
+- **Learning Time**: ~10 minutes
+- **Storage**: In-memory (fast & simple)
+- **Use Case**: Education & small projects
 
 ## 🔗 Protocol Support
 
@@ -288,7 +283,6 @@ Easy to extend with custom protocols.
 - [04-bitswap](../04-bitswap/) - Bitswap protocol
 - [10-gateway](../10-gateway/) - HTTP Gateway
 - [18-multifetcher](../18-multifetcher/) - Protocol fallback
-- [17-ipni-old](../17-ipni-old/) - Production version
 
 ## 📚 Further Reading
 
