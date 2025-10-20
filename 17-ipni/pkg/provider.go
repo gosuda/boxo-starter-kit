@@ -1,170 +1,184 @@
-package ipni
+package indexer
 
 import (
-	"crypto/rand"
-	"encoding/json"
+	"context"
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
-	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/multiformats/go-multiaddr"
 )
 
-// Provider handles provider management and indexing
-type Provider struct {
-	datastore datastore.Datastore
-
-	// In-memory index for fast lookups
-	providerIndex map[string][]ProviderInfo
-	indexMutex    sync.RWMutex
-
-	// Statistics
-	stats *IndexStats
-
-	// Configuration
-	config *IPNIConfig
-
-	// Provider ID
-	providerID peer.ID
+// SimpleProvider announces content to the network
+// "I have this content and you can get it from me"
+type SimpleProvider struct {
+	host      host.Host
+	content   map[cid.Cid]*ContentInfo // What content this provider has
+	index     *SimpleIndex             // Where to announce
+	mu        sync.RWMutex
+	ctx       context.Context
+	cancel    context.CancelFunc
+	defaultTTL time.Duration
 }
 
-// NewProvider creates a new provider component
-func NewProvider(ds datastore.Datastore) *Provider {
-	// Generate a valid peer ID for demo purposes
-	priv, _, _ := crypto.GenerateEd25519Key(rand.Reader)
-	peerID, _ := peer.IDFromPrivateKey(priv)
+// ContentInfo stores metadata about content being provided
+type ContentInfo struct {
+	CID       cid.Cid
+	Protocols []Protocol
+	AddedAt   time.Time
+}
 
-	return &Provider{
-		datastore:     ds,
-		providerIndex: make(map[string][]ProviderInfo),
-		stats: &IndexStats{
-			LastUpdate: time.Now(),
-		},
-		config:     DefaultIPNIConfig(),
-		providerID: peerID,
+// NewSimpleProvider creates a new content provider
+func NewSimpleProvider(h host.Host, index *SimpleIndex) *SimpleProvider {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	return &SimpleProvider{
+		host:       h,
+		content:    make(map[cid.Cid]*ContentInfo),
+		index:      index,
+		ctx:        ctx,
+		cancel:     cancel,
+		defaultTTL: 24 * time.Hour, // Default: records valid for 24 hours
 	}
 }
 
-// ProviderID returns the provider's peer ID
-func (p *Provider) ProviderID() peer.ID {
-	return p.providerID
-}
+// Announce tells the network "I have this content"
+// This is the main function providers call to advertise their content
+func (p *SimpleProvider) Announce(ctx context.Context, c cid.Cid, protocols []Protocol) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 
-// PutCID adds CIDs to the index
-func (p *Provider) PutCID(providerID peer.ID, contextID []byte, metadataBytes []byte, cids ...cid.Cid) error {
-	p.indexMutex.Lock()
-	defer p.indexMutex.Unlock()
-
-	// Parse metadata
-	var metadata map[string]string
-	if len(metadataBytes) > 0 {
-		if err := json.Unmarshal(metadataBytes, &metadata); err != nil {
-			metadata = map[string]string{"raw": string(metadataBytes)}
-		}
-	} else {
-		metadata = make(map[string]string)
+	// Store locally
+	p.content[c] = &ContentInfo{
+		CID:       c,
+		Protocols: protocols,
+		AddedAt:   time.Now(),
 	}
 
-	// Create provider info
-	providerInfo := ProviderInfo{
-		ProviderID: providerID,
-		ContextID:  contextID,
-		Addresses:  []string{"/ip4/127.0.0.1/tcp/4001"},
-		Metadata:   metadata,
-		LastSeen:   time.Now(),
-		TTL:        p.config.DefaultTTL,
+	// Create provider record
+	record := &ProviderRecord{
+		ProviderID: p.host.ID(),
+		ContentID:  c,
+		Protocols:  protocols,
+		Addresses:  multiaddrsToStrings(p.host.Addrs()),
+		Timestamp:  time.Now(),
+		TTL:        p.defaultTTL,
 	}
 
-	// Add to index
-	for _, c := range cids {
-		key := c.Hash().String()
-		providers := p.providerIndex[key]
-
-		// Check if provider already exists
-		found := false
-		for i, existing := range providers {
-			if existing.ProviderID == providerID {
-				providers[i] = providerInfo
-				found = true
-				break
-			}
-		}
-
-		if !found {
-			providers = append(providers, providerInfo)
-		}
-
-		// Limit providers per multihash
-		if len(providers) > p.config.MaxProvidersPerMultihash {
-			providers = providers[:p.config.MaxProvidersPerMultihash]
-		}
-
-		p.providerIndex[key] = providers
+	// Announce to index
+	if p.index != nil {
+		return p.index.Announce(record)
 	}
-
-	// Update statistics
-	p.stats.TotalEntries = int64(len(p.providerIndex))
-	p.stats.LastUpdate = time.Now()
 
 	return nil
 }
 
-// GetProvidersByCID finds providers for a given CID
-func (p *Provider) GetProvidersByCID(c cid.Cid) ([]ProviderInfo, bool, error) {
-	p.indexMutex.RLock()
-	defer p.indexMutex.RUnlock()
+// Remove removes a content announcement
+func (p *SimpleProvider) Remove(ctx context.Context, c cid.Cid) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 
-	providers, found := p.providerIndex[c.Hash().String()]
-	if !found || len(providers) == 0 {
-		return nil, false, nil
+	delete(p.content, c)
+
+	// Remove from index
+	if p.index != nil {
+		return p.index.Remove(c, p.host.ID())
 	}
 
-	// Filter out expired providers
-	var validProviders []ProviderInfo
-	now := time.Now()
-	for _, provider := range providers {
-		if now.Sub(provider.LastSeen) < provider.TTL {
-			validProviders = append(validProviders, provider)
-		}
-	}
-
-	if len(validProviders) == 0 {
-		return nil, false, nil
-	}
-
-	p.stats.QueryCount++
-	return validProviders, true, nil
-}
-
-// GetStats returns index statistics
-func (p *Provider) GetStats() *IndexStats {
-	p.indexMutex.RLock()
-	defer p.indexMutex.RUnlock()
-
-	// Count unique providers
-	providerSet := make(map[peer.ID]struct{})
-	totalProviders := int64(0)
-	totalMultihashes := int64(len(p.providerIndex))
-
-	for _, providers := range p.providerIndex {
-		for _, provider := range providers {
-			if _, exists := providerSet[provider.ProviderID]; !exists {
-				providerSet[provider.ProviderID] = struct{}{}
-				totalProviders++
-			}
-		}
-	}
-
-	stats := *p.stats
-	stats.TotalProviders = totalProviders
-	stats.TotalMultihashes = totalMultihashes
-
-	return &stats
-}
-
-// Close gracefully shuts down the provider
-func (p *Provider) Close() error {
 	return nil
+}
+
+// ListContent returns all content this provider is announcing
+func (p *SimpleProvider) ListContent() []cid.Cid {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	cids := make([]cid.Cid, 0, len(p.content))
+	for c := range p.content {
+		cids = append(cids, c)
+	}
+	return cids
+}
+
+// GetContentInfo returns info about a specific content
+func (p *SimpleProvider) GetContentInfo(c cid.Cid) (*ContentInfo, error) {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	info, exists := p.content[c]
+	if !exists {
+		return nil, fmt.Errorf("content not found: %s", c.String())
+	}
+
+	return info, nil
+}
+
+// HasContent checks if the provider has specific content
+func (p *SimpleProvider) HasContent(c cid.Cid) bool {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	_, exists := p.content[c]
+	return exists
+}
+
+// SetTTL sets the default TTL for new announcements
+func (p *SimpleProvider) SetTTL(ttl time.Duration) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.defaultTTL = ttl
+}
+
+// Close stops the provider
+func (p *SimpleProvider) Close() error {
+	p.cancel()
+	return nil
+}
+
+// Stats returns provider statistics
+func (p *SimpleProvider) Stats() ProviderStats {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	return ProviderStats{
+		ProviderID:     p.host.ID(),
+		ContentCount:   len(p.content),
+		Protocols:      p.getUniqueProtocols(),
+		AnnouncementTTL: p.defaultTTL,
+	}
+}
+
+// ProviderStats contains provider statistics
+type ProviderStats struct {
+	ProviderID      peer.ID
+	ContentCount    int
+	Protocols       []Protocol
+	AnnouncementTTL time.Duration
+}
+
+func (p *SimpleProvider) getUniqueProtocols() []Protocol {
+	protocolSet := make(map[Protocol]bool)
+	for _, info := range p.content {
+		for _, proto := range info.Protocols {
+			protocolSet[proto] = true
+		}
+	}
+
+	protocols := make([]Protocol, 0, len(protocolSet))
+	for proto := range protocolSet {
+		protocols = append(protocols, proto)
+	}
+	return protocols
+}
+
+// Helper function to convert multiaddrs to strings
+func multiaddrsToStrings(addrs []multiaddr.Multiaddr) []string {
+	result := make([]string, len(addrs))
+	for i, addr := range addrs {
+		result[i] = addr.String()
+	}
+	return result
 }

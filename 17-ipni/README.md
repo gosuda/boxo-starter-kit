@@ -1,183 +1,297 @@
-# 17-ipni: Simple IPNI (InterPlanetary Network Indexer) Demo
+# 17-ipni: IPFS Content Indexer
 
-## 🎯 Overview
+**Learn the Provider/Subscriber pattern in IPFS - understand in 10 minutes!**
 
-This is a simplified IPNI (InterPlanetary Network Indexer) demonstration that shows the basic concepts of content indexing and discovery without complex dependencies.
+## 🎯 What is IPNI?
+
+IPNI (InterPlanetary Network Indexer) is a system that helps you find who has specific content in the IPFS network. Think of it as a **phonebook for IPFS content** - instead of mapping names to phone numbers, it maps Content IDs (CIDs) to providers.
+
+### The Problem
+
+In IPFS, content is addressed by its CID (Content Identifier), not by location. But how do you find **who** has that content?
+
+```
+You: "I need bafybeiabc123..."
+Network: "Provider A has it via Bitswap and HTTP"
+         "Provider B has it via GraphSync"
+```
+
+### The Solution: Provider/Subscriber Pattern
+
+- **Providers**: Nodes that **HAVE** content and announce it
+- **Index**: Central registry that **STORES** the mappings
+- **Subscribers**: Nodes that **NEED** content and query for it
 
 ## 🚀 Quick Start
 
-### Build and Run
-
 ```bash
-# Build the binary
-go build -o ipni-node main.go
-
-# Run with default settings
-./ipni-node
-
-# Run with demo mode
-./ipni-node --demo
-
-# Run with custom settings
-./ipni-node --data ./my-data --topic my-topic --storage file --demo
+cd 17-ipni
+go run main.go
 ```
 
-### Using the run script
+You'll see an 8-step demo showing providers announcing content, subscribers finding it, protocol filtering, and TTL expiration.
 
-```bash
-# Development mode
-./run.sh --dev
+## 📖 Core API
 
-# Demo mode
-./run.sh --demo
+### Provider: Announce Content
 
-# Production mode (requires permissions)
-./run.sh --prod
+```go
+provider := indexer.NewSimpleProvider(host, index)
+provider.Announce(ctx, cid, []indexer.Protocol{
+    indexer.ProtocolBitswap,
+    indexer.ProtocolHTTP,
+})
 ```
 
-### Using Makefile
+### Subscriber: Find Providers
 
-```bash
-# Build
-make build
-
-# Run demo
-make demo
-
-# Run in development mode
-make dev
+```go
+subscriber := indexer.NewSimpleSubscriber(host, index)
+providers, _ := subscriber.FindProviders(ctx, cid)
+best, _ := subscriber.GetBestProvider(ctx, cid)
 ```
 
-## 📝 Command Line Options
+### Index: Query & Manage
 
-- `--data`: Data directory for storage (default: `./ipni-data`)
-- `--topic`: PubSub topic name (default: `ipni-demo`)
-- `--storage`: Storage type - `memory` or `file` (default: `memory`)
-- `--demo`: Run demo mode showing basic functionality
-
-## 🎭 Demo Mode
-
-When you run with `--demo`, the application will:
-
-1. **Create sample content**: Generate sample data
-2. **Compute CID**: Calculate Content Identifier
-3. **Store in index**: Add to provider index
-4. **Lookup providers**: Search for content providers
-5. **Show statistics**: Display index stats
-
-Example output:
+```go
+index := indexer.NewSimpleIndex()
+providers, _ := index.Query(cid)
+stats := index.Stats()
 ```
-=== Simple IPNI Demo ===
-📁 Data directory: ./ipni-data
-📢 PubSub topic: ipni-demo
-💾 Storage type: memory
-🚀 IPNI components initialized
 
-=== Demo Mode ===
-📝 Creating sample content...
-📄 Sample data: Hello IPNI World!
-🔍 Computing CID...
-✅ Generated CID: bafybeigdyrzt5sfp7ud...
-📊 Storing in provider index...
-✅ Stored content with CID: bafybeigdyrzt5sfp7ud...
-🔍 Looking up providers...
-✅ Found 1 provider(s)
-📊 Stats: 1 providers, 1 entries
-✨ Demo complete!
-✅ IPNI running. Press Ctrl+C to stop.
-```
+## 📚 Documentation
+
+See full API documentation, use cases, and examples in the sections below.
+
+---
+
+## Table of Contents
+- [Architecture](#architecture)
+- [Components](#components)
+- [API Reference](#api-reference)
+- [Common Use Cases](#common-use-cases)
+- [Learning Path](#learning-path)
+- [Advanced Features](#advanced-features)
+- [Related Modules](#related-modules)
+
+---
 
 ## 🏗️ Architecture
 
-This modular implementation demonstrates:
-
-- **Provider Management**: Content provider indexing with persistent storage
-- **Content Discovery**: Real CID-based provider lookups
-- **Subscriber System**: Content update subscription mechanism
-- **Cryptographic Security**: Ed25519 signatures and trust management
-- **Anti-Spam Protection**: Rate limiting and provider trust scoring
-- **IPNI Coordinator**: Central management of all components
-- **Modular Design**: Clean separation of concerns in pkg/ directory
-
-## 🧪 Core Concepts
-
-### IPNI (InterPlanetary Network Indexer)
-- Distributed system for finding content providers
-- Maps content identifiers (CIDs) to provider information
-- Enables efficient content discovery across IPFS networks
-
-### Provider Index
-- Local database of content providers
-- Maps multihashes to provider metadata
-- Supports TTL-based expiration
-
-### Content Identification
-- Uses CIDs (Content Identifiers) for content addressing
-- Based on cryptographic hashes of content
-- Enables content-based lookup and verification
-
-### Security Features
-- **Ed25519 Signatures**: Cryptographic signing of provider announcements
-- **Trust Scoring**: Provider reputation and reliability assessment
-- **Rate Limiting**: Anti-spam protection with configurable limits
-- **Signature Verification**: Ensuring announcement authenticity
-
-## 📊 Monitoring
-
-The application provides basic monitoring through:
-- Console output with emoji indicators
-- Configuration display on startup
-- Statistics during demo mode
-- Graceful shutdown on Ctrl+C
-
-## 🔧 Development
-
-### Project Structure
 ```
-17-ipni/
-├── main.go           # Main application entry point
-├── go.mod            # Go module definition
-├── pkg/              # IPNI module components
-│   ├── ipni.go      # Main IPNI coordinator
-│   ├── provider.go  # Provider management
-│   ├── subscriber.go # Content subscription
-│   ├── security.go  # Cryptographic security
-│   └── types.go     # Type definitions
-├── run.sh            # Convenience run script
-├── Makefile          # Build automation
-└── README.md         # This documentation
+┌─────────────┐         ┌─────────────┐         ┌──────────────┐
+│  Provider 1 │────────▶│             │◀────────│ Subscriber A │
+│ "I have X"  │ Announce│   Index     │  Query  │ "Who has X?" │
+└─────────────┘         │ (Phonebook) │         └──────────────┘
+                        │ CID→Provider│
+┌─────────────┐         │             │         ┌──────────────┐
+│  Provider 2 │────────▶│             │◀────────│ Subscriber B │
+│ "I have Y"  │         │             │         │ "Who has Y?" │
+└─────────────┘         └─────────────┘         └──────────────┘
 ```
 
-### Building
-```bash
-go build -o ipni-node main.go
+## 📦 Components
+
+**Provider** - Announces content availability  
+**Index** - Stores CID-to-Provider mappings  
+**Subscriber** - Queries for content providers
+
+## 📖 API Reference
+
+### SimpleProvider
+
+```go
+// Create
+provider := indexer.NewSimpleProvider(host, index)
+
+// Announce content
+provider.Announce(ctx, cid, []Protocol{ProtocolBitswap, ProtocolHTTP})
+
+// Remove
+provider.Remove(ctx, cid)
+
+// List & Check
+provider.ListContent()          // []cid.Cid
+provider.HasContent(cid)        // bool
+
+// Configure
+provider.SetTTL(24 * time.Hour)
+
+// Stats
+provider.Stats()  // ProviderStats{ProviderID, ContentCount, Protocols, TTL}
 ```
 
-### Running Tests
-```bash
-go test ./...
+### SimpleIndex
+
+```go
+// Create
+index := indexer.NewSimpleIndex()
+
+// Query
+index.Query(cid)                      // []*ProviderRecord
+index.GetProviderContent(providerID)  // []cid.Cid
+
+// List
+index.ListContent()    // []cid.Cid
+index.ListProviders()  // []peer.ID
+
+// Manage
+index.RemoveProvider(providerID)
+index.CleanupExpired()  // int (removed count)
+
+// Stats
+index.Stats()  // IndexStats{TotalContent, TotalProviders, TotalRecords, ExpiredRecords}
 ```
 
-## 📚 Learning Path
+### SimpleSubscriber
 
-This module teaches:
+```go
+// Create
+subscriber := indexer.NewSimpleSubscriber(host, index)
 
-1. **Basic IPNI concepts**: Provider indexing and content discovery
-2. **Command-line applications**: Flag parsing and signal handling
-3. **Go development**: Project structure and build process
-4. **Content addressing**: CID-based content identification
+// Find
+subscriber.FindProviders(ctx, cid)
+subscriber.FindProvidersByProtocol(ctx, cid, ProtocolHTTP)
+subscriber.GetBestProvider(ctx, cid)  // Most protocols, most recent
 
-## 🔗 Next Steps
+// Subscribe (streaming)
+ch, _ := subscriber.Subscribe(ctx, cid)
+for record := range ch { ... }
 
-After understanding this basic implementation, explore:
-- Real IPNI implementations in production systems
-- Integration with IPFS networks
-- Advanced provider discovery mechanisms
-- Distributed indexing strategies
+// Cache
+subscriber.ClearCache()
+subscriber.ClearCacheFor(cid)
 
-## 🎯 Key Takeaways
+// Stats
+subscriber.Stats()  // SubscriberStats{SubscriberID, CachedContent, TotalProviders}
+```
 
-- IPNI enables efficient content discovery in distributed systems
-- Provider indexes map content to availability information
-- Content addressing provides cryptographic content verification
-- Modular design allows for incremental complexity addition
+### ProviderRecord
+
+```go
+type ProviderRecord struct {
+    ProviderID peer.ID      // Who has it
+    ContentID  cid.Cid      // What content
+    Protocols  []Protocol   // How to get it
+    Addresses  []string     // Where (multiaddrs)
+    Timestamp  time.Time    // When announced
+    TTL        time.Duration // Validity period
+}
+
+record.IsExpired()
+record.SupportsProtocol(ProtocolHTTP)
+```
+
+## 💡 Common Use Cases
+
+### 1. Content Discovery
+
+```go
+subscriber := indexer.NewSimpleSubscriber(host, index)
+providers, _ := subscriber.FindProviders(ctx, targetCID)
+
+for _, p := range providers {
+    if data, err := fetchFrom(p); err == nil {
+        return data
+    }
+}
+```
+
+### 2. Protocol Preference
+
+```go
+// Prefer HTTP, fallback to Bitswap
+httpProviders, _ := subscriber.FindProvidersByProtocol(ctx, cid, ProtocolHTTP)
+if len(httpProviders) > 0 {
+    return fetchViaHTTP(httpProviders[0])
+}
+
+bitswapProviders, _ := subscriber.FindProvidersByProtocol(ctx, cid, ProtocolBitswap)
+return fetchViaBitswap(bitswapProviders[0])
+```
+
+### 3. Load Balancing
+
+```go
+providers, _ := subscriber.FindProviders(ctx, cid)
+selected := providers[requestCount % len(providers)]  // Round-robin
+fetchFrom(selected)
+```
+
+## 🎓 Learning Path
+
+1. **Run Demo** (5 min): `go run main.go`
+2. **Read Code** (10 min): `types.go` → `index.go` → `provider.go` → `subscriber.go`
+3. **Experiment** (15 min): Modify `main.go` - add providers, try protocols
+4. **Build** (30 min): Create your own provider/subscriber app
+
+## 🔧 Advanced Features
+
+### TTL & Expiration
+
+```go
+provider.SetTTL(12 * time.Hour)
+removed := index.CleanupExpired()  // Automatic cleanup every 10min
+```
+
+### Periodic Re-announcements
+
+```go
+ticker := time.NewTicker(12 * time.Hour)
+for range ticker.C {
+    for _, c := range provider.ListContent() {
+        provider.Announce(ctx, c, myProtocols)
+    }
+}
+```
+
+### Monitoring
+
+```go
+stats := index.Stats()
+fmt.Printf("Content: %d, Providers: %d, Records: %d\n",
+    stats.TotalContent, stats.TotalProviders, stats.TotalRecords)
+```
+
+## 🏃 Performance
+
+- **Caching**: Subscribers cache query results
+- **O(1) Lookups**: By CID or Provider ID
+- **Thread-Safe**: All operations use proper locking
+- **Auto-Cleanup**: Background goroutine removes expired records
+- **Max Limit**: 20 providers per content (configurable)
+
+## 📊 Module Stats
+
+- **Total Lines**: ~985
+- **Files**: 4 core components
+- **Learning Time**: ~10 minutes
+- **Storage**: In-memory (fast & simple)
+- **Use Case**: Education & small projects
+
+## 🔗 Protocol Support
+
+- `ProtocolBitswap` - Traditional IPFS block exchange
+- `ProtocolHTTP` - Browser-compatible HTTP
+- `ProtocolGraphSync` - Efficient graph sync
+
+Easy to extend with custom protocols.
+
+## 🔗 Related Modules
+
+- [02-network](../02-network/) - libp2p basics
+- [04-bitswap](../04-bitswap/) - Bitswap protocol
+- [10-gateway](../10-gateway/) - HTTP Gateway
+- [18-multifetcher](../18-multifetcher/) - Protocol fallback
+
+## 📚 Further Reading
+
+- [IPNI Spec](https://github.com/ipni/specs)
+- [libp2p Docs](https://docs.libp2p.io/)
+- [IPFS Content Routing](https://docs.ipfs.tech/concepts/content-routing/)
+
+---
+
+**Code Stats**: 985 lines total | types(45) + index(329) + provider(183) + subscriber(172) + demo(226)
+
+**Made with ❤️ for IPFS learners** | *Part of boxo-starter-kit*
